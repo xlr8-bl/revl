@@ -65,7 +65,7 @@ export default function NotesScreen() {
                 </Pressable>
               </View>
               {courseNotes.length === 0 ? (
-                <Text style={styles.empty}>No notes yet — explanations will use general knowledge.</Text>
+                <Text style={styles.empty}>No notes yet. Explanations will use general knowledge.</Text>
               ) : (
                 courseNotes.map((n) => (
                   <View key={n.id} style={styles.noteRow}>

@@ -4,8 +4,6 @@
  * affordance and an "Available offline" state. Downloads are mock-local
  * for now; the real version caches the paper JSON + AI answers.
  */
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -32,7 +30,7 @@ export default function PapersScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE }}>
       <Text style={styles.title}>Papers</Text>
-      <Text style={styles.subtitle}>Structured past papers — rendered natively, never PDFs.</Text>
+      <Text style={styles.subtitle}>Structured past papers, rendered natively. Never PDFs.</Text>
 
       {courses.map((course) => {
         const coursePapers = papers.filter((p) => p.courseCode === course.code);
@@ -76,8 +74,7 @@ function PaperRow({
     <Pressable
       onPress={() => router.push(unlocked ? `/paper/${paper.id}` : (`/unlock/${paper.id}` as never))}
       style={styles.row}>
-      <View style={styles.thumb}>
-        <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
+      <View style={[styles.thumb, { backgroundColor: gradient[0] }]}>
         <Text style={styles.thumbYear}>{paper.year}</Text>
       </View>
       <View style={{ flex: 1 }}>
@@ -87,25 +84,16 @@ function PaperRow({
         <Text style={styles.rowMeta}>
           {paper.session} · {paper.questions.length > 0 ? `${paper.questions.length} questions` : 'Processing'}
         </Text>
-        {downloaded && (
-          <View style={styles.offlineTag}>
-            <Ionicons name="checkmark-circle" size={12} color={colors.success} />
-            <Text style={styles.offlineText}>Available offline</Text>
-          </View>
-        )}
+        {downloaded && <Text style={styles.offlineText}>Available offline</Text>}
       </View>
       {unlocked ? (
         <Pressable onPress={onToggleDownload} hitSlop={10} style={styles.dlBtn}>
-          <Ionicons
-            name={downloaded ? 'cloud-done' : 'cloud-download-outline'}
-            size={21}
-            color={downloaded ? colors.success : colors.textSecondary}
-          />
+          <Text style={[styles.dlText, downloaded && { color: colors.success }]}>
+            {downloaded ? 'Saved' : 'Save'}
+          </Text>
         </Pressable>
       ) : (
-        <View style={styles.lockWrap}>
-          <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-        </View>
+        <Text style={styles.lockText}>Locked</Text>
       )}
     </Pressable>
   );
@@ -146,8 +134,8 @@ const styles = StyleSheet.create({
   thumbYear: { fontFamily: fonts.bold, fontSize: 14, color: 'rgba(255,255,255,0.9)' },
   rowTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   rowMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
-  offlineTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
-  offlineText: { fontFamily: fonts.regular, fontSize: 12, color: colors.success },
-  dlBtn: { padding: 6 },
-  lockWrap: { padding: 6 },
+  offlineText: { fontFamily: fonts.regular, fontSize: 12, color: colors.success, marginTop: 5 },
+  dlBtn: { paddingVertical: 6, paddingHorizontal: 4 },
+  dlText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.textSecondary, textDecorationLine: 'underline' },
+  lockText: { fontFamily: fonts.regular, fontSize: 13, color: colors.textTertiary },
 });

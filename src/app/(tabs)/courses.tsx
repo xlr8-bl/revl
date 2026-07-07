@@ -5,7 +5,6 @@
  * with thumbnail / meta / title / stars / Start rows.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -17,6 +16,7 @@ import { Stars } from '../../components/Stars';
 import { browseChips, courses, faculties, featuredCourses } from '../../data/courses';
 import { unlockedPaperIds } from '../../data/papers';
 import { currentUser } from '../../data/user';
+import { useSession } from '../../lib/session';
 import type { Course } from '../../types';
 import { colors, fonts, radius, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
@@ -30,14 +30,17 @@ export default function CoursesScreen() {
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
 
+  // The catalogue is scoped to the student's own department (set at
+  // onboarding). Other faculties stay reachable through the tiles above.
+  const profile = useSession().profile;
+  const dept = profile?.department ?? 'Computer Engineering';
+  const level = profile?.level ?? 'L400';
   const myCourses = courses.filter((c) => currentUser.enrolledCourseCodes.includes(c.code));
+  const deptCourses = courses.filter((c) => c.department === dept);
   const shownSections =
     filter === 'My Courses'
       ? [{ title: 'My Courses', data: myCourses }]
-      : [
-          { title: 'Computer Engineering L400', data: courses.filter((c) => c.department === 'Computer Engineering') },
-          { title: 'Across campus', data: courses.filter((c) => c.department !== 'Computer Engineering') },
-        ];
+      : [{ title: `${dept} ${level}`, data: deptCourses.length ? deptCourses : myCourses }];
 
   return (
     <ScrollView
@@ -64,8 +67,7 @@ export default function CoursesScreen() {
         contentContainerStyle={styles.carousel}>
         {featuredCourses.map((f) => (
           <View key={f.id} style={{ width: featuredWidth }}>
-            <View style={[styles.featureCard, { width: featuredWidth }]}>
-              <LinearGradient colors={f.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <View style={[styles.featureCard, { width: featuredWidth, backgroundColor: f.gradient[0] }]}>
               <View style={styles.featureBadge}>
                 <Text style={styles.featureBadgeText}>{f.badge}</Text>
               </View>
@@ -122,8 +124,7 @@ function CourseRow({ course }: { course: Course }) {
 
   return (
     <View style={styles.courseRow}>
-      <View style={styles.courseThumb}>
-        <LinearGradient colors={course.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View style={[styles.courseThumb, { backgroundColor: course.gradient[0] }]}>
         <Text style={styles.courseThumbText}>{course.code.slice(0, 3)}</Text>
       </View>
       <View style={styles.courseInfo}>
@@ -215,10 +216,11 @@ const styles = StyleSheet.create({
   courseMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   courseTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   startBtn: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   startText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accent },
 });

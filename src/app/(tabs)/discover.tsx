@@ -36,19 +36,17 @@ export default function DiscoverScreen() {
       <View style={styles.chipsWrap}>
         {TRENDING.map((t) => (
           <Pressable key={t} style={styles.chip}>
-            <Ionicons name="trending-up" size={13} color={colors.textSecondary} />
             <Text style={styles.chipText}>{t}</Text>
           </Pressable>
         ))}
       </View>
 
       <Pressable onPress={() => router.push('/predicted/CEC420' as never)} style={styles.predictCard}>
-        <Ionicons name="telescope-outline" size={22} color={colors.accent} />
         <View style={{ flex: 1 }}>
           <Text style={styles.predictTitle}>Predicted paper — CEC420</Text>
-          <Text style={styles.predictMeta}>The most-likely exam this session, question by question</Text>
+          <Text style={styles.predictMeta}>The most likely exam this session, question by question</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        <Text style={styles.predictChevron}>›</Text>
       </Pressable>
     </ScrollView>
   );
@@ -102,4 +100,5 @@ const styles = StyleSheet.create({
   },
   predictTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   predictMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
+  predictChevron: { fontFamily: fonts.regular, fontSize: 19, color: colors.textTertiary },
 });

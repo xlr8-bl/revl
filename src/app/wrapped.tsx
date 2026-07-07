@@ -8,7 +8,6 @@
  * via react-native-view-shot + expo-sharing.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
@@ -70,7 +69,7 @@ const CARDS: CardSpec[] = [
       <>
         <Text style={styles.cardSerif}>{s.turnaround.topic}</Text>
         <Text style={styles.cardBody}>
-          Your weakest topic in September — {Math.round(s.turnaround.septemberWeakness * 100)}% miss rate.
+          Your weakest topic in September: {Math.round(s.turnaround.septemberWeakness * 100)}% miss rate.
         </Text>
         <Ionicons name="arrow-down" size={30} color="#7CE3AE" style={{ marginVertical: 12 }} />
         <Text style={styles.cardTitle}>{Math.round(s.turnaround.nowWeakness * 100)}% now</Text>
@@ -113,7 +112,7 @@ const CARDS: CardSpec[] = [
     label: 'THE REALITY CHECK',
     render: () => (
       <>
-        <Text style={styles.cardBody}>Times you said “I know this” — and didn’t:</Text>
+        <Text style={styles.cardBody}>Times you said “I know this” and didn’t:</Text>
         <Text style={styles.bigNumber}>
           {s.falseConfidenceStart} → {s.falseConfidenceEnd}
         </Text>
@@ -169,7 +168,7 @@ export default function WrappedScreen() {
         <Ionicons name="lock-closed-outline" size={40} color={colors.textSecondary} />
         <Text style={styles.lockedTitle}>Wrapped isn’t ready yet</Text>
         <Text style={styles.lockedBody}>
-          Your semester recap unlocks at the end of term — {daysUntilWrapped()} days to go. Keep revising; it’s all
+          Your semester recap unlocks at the end of term, {daysUntilWrapped()} days from now. Keep revising; it’s all
           being counted.
         </Text>
         <Pressable onPress={() => router.back()} style={styles.lockedBtn}>
@@ -195,8 +194,7 @@ export default function WrappedScreen() {
                 shotRefs.current[item.id] = r;
               }}
               options={{ format: 'png', quality: 1 }}
-              style={styles.card}>
-              <LinearGradient colors={item.gradient} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={StyleSheet.absoluteFill} />
+              style={[styles.card, { backgroundColor: item.gradient[1] }]}>
               <Text style={styles.cardLabel}>{item.label}</Text>
               <View style={styles.cardCenter}>{item.render()}</View>
               <Text style={styles.brand}>revl · semester wrapped</Text>

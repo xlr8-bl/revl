@@ -4,7 +4,6 @@
  * amber step number, title + meta, chevron. A deliberate departure from
  * thumbnail-card feeds — this is a checklist, not a content feed.
  */
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -22,13 +21,7 @@ export function SessionCard({ data, index, last }: { data: SessionCardData; inde
         <Text style={styles.title}>{data.title}</Text>
         <Text style={styles.meta}>{data.meta}</Text>
       </View>
-      {data.pill && (
-        <View style={styles.pill}>
-          <Ionicons name={data.pill.icon as never} size={11} color={colors.accent} />
-          <Text style={styles.pillText}>{data.pill.value}</Text>
-        </View>
-      )}
-      <Ionicons name="chevron-forward" size={17} color={colors.textTertiary} />
+      <Text style={styles.chevron}>›</Text>
     </Pressable>
   );
 }
@@ -46,14 +39,5 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   meta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.accentSoft,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  pillText: { fontFamily: fonts.medium, fontSize: 11, color: colors.accent },
+  chevron: { fontFamily: fonts.regular, fontSize: 20, color: colors.textTertiary, marginTop: -2 },
 });

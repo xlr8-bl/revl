@@ -29,7 +29,7 @@ const RevlTheme = {
 };
 
 export default function RootLayout() {
-  const { signedIn } = useSession();
+  const { signedIn, profile } = useSession();
   const [fontsLoaded] = useFonts({
     'SFProDisplay-Regular': require('../../assets/fonts/SFProDisplay-Regular.otf'),
     'SFProDisplay-Medium': require('../../assets/fonts/SFProDisplay-Medium.otf'),
@@ -56,12 +56,15 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: colors.bg },
           }}>
-          {/* Signed-out: onboarding/auth only. Signed-in: the app. */}
+          {/* Signed-out: auth. Signed-in without a profile: setup. Then the app. */}
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="(auth)/welcome" />
             <Stack.Screen name="(auth)/momo" />
           </Stack.Protected>
-          <Stack.Protected guard={signedIn}>
+          <Stack.Protected guard={signedIn && !profile}>
+            <Stack.Screen name="(auth)/setup" />
+          </Stack.Protected>
+          <Stack.Protected guard={signedIn && !!profile}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />

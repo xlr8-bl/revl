@@ -1,22 +1,17 @@
-/** Rating stars for course/paper rows (reference shows red stars; Revl keeps them accent-tinted). */
-import { Ionicons } from '@expo/vector-icons';
+/** Rating as plain text: "4.8" with a single star mark. No icon rows. */
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { colors } from '../theme';
+import { StyleSheet, Text } from 'react-native';
+import { colors, fonts } from '../theme';
 
-export function Stars({ rating, size = 13 }: { rating: number; size?: number }) {
+export function Stars({ rating }: { rating: number; size?: number }) {
   return (
-    <View style={styles.row}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons
-          key={i}
-          name={rating >= i - 0.25 ? 'star' : rating >= i - 0.75 ? 'star-half' : 'star-outline'}
-          size={size}
-          color={colors.accent}
-        />
-      ))}
-    </View>
+    <Text style={styles.text}>
+      {rating.toFixed(1)} <Text style={styles.star}>★</Text>
+    </Text>
   );
 }
 
-const styles = StyleSheet.create({ row: { flexDirection: 'row', gap: 2 } });
+const styles = StyleSheet.create({
+  text: { fontFamily: fonts.medium, fontSize: 13, color: colors.textSecondary },
+  star: { color: colors.accent, fontSize: 12 },
+});

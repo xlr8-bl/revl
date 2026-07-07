@@ -69,11 +69,8 @@ export default function HomeScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
         <View style={styles.kickerRow}>
-          <Text style={type.kicker}>{dateLine}</Text>
-          <View style={styles.countdownChip}>
-            <View style={styles.countdownDot} />
-            <Text style={styles.countdownText}>EXAMS IN {EXAM_IN_DAYS} DAYS</Text>
-          </View>
+          <Text style={styles.dateLine}>{dateLine}</Text>
+          <Text style={styles.countdownText}>Exams in {EXAM_IN_DAYS} days</Text>
         </View>
         <View style={styles.greetingRow}>
           <Text style={styles.greeting}>
@@ -81,8 +78,7 @@ export default function HomeScreen() {
           </Text>
           <View style={styles.headerIcons}>
             <Pressable onPress={() => router.push('/wallet')} style={styles.creditChip} hitSlop={8}>
-              <Ionicons name="flash" size={14} color={colors.accent} />
-              <Text style={styles.creditCount}>{currentUser.credits}</Text>
+              <Text style={styles.creditCount}>{currentUser.credits} credits</Text>
             </Pressable>
             <Pressable hitSlop={8}>
               <Ionicons name="notifications-outline" size={23} color={colors.text} />
@@ -104,39 +100,31 @@ export default function HomeScreen() {
         <HeroCard />
 
         {/* Tonight's plan — AI briefing + numbered study queue */}
-        <Text style={styles.sectionKicker}>YOUR PLAN TONIGHT</Text>
+        <SectionTitle title="Your plan tonight" />
         <DailyBriefing />
         <View style={styles.queueCard}>
           {todaySession.map((s, i) => (
             <SessionCard key={s.id} data={s} index={i} last={i === todaySession.length - 1} />
           ))}
           <Pressable onPress={() => router.push('/dna')} style={styles.queueFooter}>
-            <Ionicons name="planet-outline" size={15} color={colors.textSecondary} />
             <Text style={styles.queueFooterText}>Built from your Study DNA</Text>
-            <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
+            <Text style={styles.queueChevron}>›</Text>
           </Pressable>
         </View>
 
         {/* Wrapped entry — ONLY inside the end-of-semester window. */}
         {isWrappedLive() && (
           <Pressable onPress={() => router.push('/wrapped')} style={styles.wrappedBanner}>
-            <LinearGradient
-              colors={['rgba(157,151,245,0.16)', 'rgba(157,151,245,0.04)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Ionicons name="sparkles" size={18} color={colors.ai} />
             <View style={{ flex: 1 }}>
               <Text style={styles.wrappedTitle}>Your semester, wrapped</Text>
               <Text style={styles.wrappedMeta}>See what your revision really looked like</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.ai} />
+            <Text style={[styles.queueChevron, { color: colors.ai }]}>›</Text>
           </Pressable>
         )}
 
         {/* Class activity — community as a strip, not a tab */}
-        <Text style={styles.sectionKicker}>CLASS ACTIVITY</Text>
+        <SectionTitle title="Class activity" />
         <View style={styles.feedCard}>
           {communityFeed.slice(0, 3).map((item, i) => (
             <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>
@@ -171,6 +159,15 @@ export default function HomeScreen() {
   );
 }
 
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <View style={styles.sectionTick} />
+      <Text style={styles.sectionTitleText}>{title}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
@@ -185,9 +182,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   kickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  countdownChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  countdownDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
-  countdownText: { fontFamily: fonts.medium, fontSize: 10, letterSpacing: 1.2, color: colors.accent },
+  dateLine: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  countdownText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -197,12 +193,9 @@ const styles = StyleSheet.create({
   greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   creditChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -220,12 +213,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   bellBadgeText: { fontFamily: fonts.medium, fontSize: 10, color: '#FFF' },
-  sectionKicker: {
-    ...type.kicker,
-    marginTop: 30,
-    marginBottom: 12,
-    paddingHorizontal: spacing.gutter + 4,
-  },
+  sectionTitleRow: { marginTop: 32, marginBottom: 12, paddingHorizontal: spacing.gutter + 2 },
+  sectionTick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: colors.accent, marginBottom: 8 },
+  sectionTitleText: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
+  queueChevron: { fontFamily: fonts.regular, fontSize: 19, color: colors.textTertiary, marginTop: -2 },
   queueCard: {
     marginHorizontal: spacing.gutter,
     marginTop: 12,
@@ -290,7 +281,7 @@ const styles = StyleSheet.create({
   beginBody: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: colors.textSecondary, marginTop: 4 },
   beginBtn: {
     backgroundColor: colors.accent,
-    borderRadius: 999,
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },

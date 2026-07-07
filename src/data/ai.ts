@@ -69,7 +69,7 @@ export async function askAboutQuestion(q: Question, userMessage: string): Promis
 export function getDailyBriefing(hasEnoughData: boolean): string {
   if (!hasEnoughData) {
     // Honest early state, before there's data to personalize with.
-    return 'Still learning how you think — the more you revise, the sharper this gets.';
+    return 'Still learning how you think. The more you revise, the sharper this gets.';
   }
-  return 'You keep losing marks on definition-style questions — three of today’s five target exactly that. Your information-gain work is clean now, so I’ve eased off it.';
+  return 'You keep losing marks on definition-style questions. Three of tonight’s five target exactly that. Your information-gain work is clean now, so I’ve eased off it.';
 }

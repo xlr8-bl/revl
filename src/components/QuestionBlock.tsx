@@ -101,7 +101,6 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
               <Pressable
                 onPress={() => confidence && setRevealed(true)}
                 style={[styles.revealBtn, !confidence && styles.revealBtnDisabled]}>
-                <Ionicons name="eye-outline" size={17} color={confidence ? colors.onAccent : colors.textTertiary} />
                 <Text style={[styles.revealText, !confidence && { color: colors.textTertiary }]}>Reveal answer</Text>
               </Pressable>
             </>
@@ -111,15 +110,9 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
               <View style={styles.answerBox}>
                 <View style={styles.answerHeader}>
                   {isVerified ? (
-                    <View style={styles.verifiedBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color={colors.verified} />
-                      <Text style={styles.verifiedText}>Verified by top student</Text>
-                    </View>
+                    <Text style={styles.verifiedText}>Verified by a top student</Text>
                   ) : (
-                    <View style={styles.aiTag}>
-                      <Ionicons name="sparkles-outline" size={12} color={colors.textSecondary} />
-                      <Text style={styles.aiTagText}>AI answer</Text>
-                    </View>
+                    <Text style={styles.aiTagText}>AI answer, not yet verified</Text>
                   )}
                 </View>
                 <MathRichText>{answerText}</MathRichText>
@@ -139,21 +132,18 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
               {!resolution ? (
                 <View style={styles.assessRow}>
                   <Pressable onPress={() => resolve('got-it')} style={[styles.assessBtn, styles.gotItBtn]}>
-                    <Ionicons name="checkmark" size={17} color={colors.success} />
                     <Text style={[styles.assessText, { color: colors.success }]}>Got it</Text>
                   </Pressable>
                   <Pressable onPress={() => resolve('not-yet')} style={[styles.assessBtn, styles.notYetBtn]}>
-                    <Ionicons name="refresh" size={17} color={colors.warning} />
                     <Text style={[styles.assessText, { color: colors.warning }]}>Not yet</Text>
                   </Pressable>
                 </View>
               ) : (
                 <View style={styles.resolvedRow}>
                   <Text style={styles.resolvedText}>
-                    {resolution === 'got-it' ? 'Logged — nice.' : 'Logged — this topic will resurface.'}
+                    {resolution === 'got-it' ? 'Logged. Nice.' : 'Logged. This topic will resurface.'}
                   </Text>
                   <Pressable onPress={() => setExplainOpen(true)} style={styles.explainBtn} hitSlop={6}>
-                    <Ionicons name="sparkles" size={14} color={colors.ai} />
                     <Text style={styles.explainText}>Explain</Text>
                   </Pressable>
                 </View>
@@ -220,36 +210,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.accent,
-    borderRadius: 999,
+    borderRadius: 10,
     paddingVertical: 13,
   },
   revealBtnDisabled: { backgroundColor: colors.surface },
   revealText: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAccent },
   answerBox: { backgroundColor: '#111113', borderRadius: 14, padding: 14 },
   answerHeader: { marginBottom: 10 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   verifiedText: { fontFamily: fonts.medium, fontSize: 12, color: colors.verified },
-  aiTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  aiTagText: { fontFamily: fonts.regular, fontSize: 11, color: colors.textSecondary },
+  aiTagText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
   refRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
   refText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
   assessRow: { flexDirection: 'row', gap: 10 },
   assessBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    borderRadius: 999,
+    borderRadius: 10,
     paddingVertical: 12,
     borderWidth: 1,
   },

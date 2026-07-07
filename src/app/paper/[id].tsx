@@ -79,7 +79,7 @@ export default function PaperReaderScreen() {
         {paper.questions.length === 0 ? (
           <View style={styles.processing}>
             <Ionicons name="hourglass-outline" size={26} color={colors.textSecondary} />
-            <Text style={styles.metaText}>This paper is still being structured — check back soon.</Text>
+            <Text style={styles.metaText}>This paper is still being structured. Check back soon.</Text>
           </View>
         ) : (
           paper.questions.map((q) => (
