@@ -22,7 +22,7 @@ export default function YouScreen() {
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; detail?: string; route: string }[] = [
     { icon: 'planet-outline', label: 'Study DNA', detail: weakest ? `weakest: ${weakest.tag}` : undefined, route: '/dna' },
-    { icon: 'flash-outline', label: 'Credits & wallet', detail: `⚡ ${currentUser.credits}`, route: '/wallet' },
+    { icon: 'flash-outline', label: 'Credits & wallet', detail: `${currentUser.credits} credits`, route: '/wallet' },
     { icon: 'document-text-outline', label: 'My Notes', detail: 'grounds your AI answers', route: '/notes' },
     { icon: 'cloud-upload-outline', label: 'Upload a paper, earn credits', route: '/contribute' },
   ];

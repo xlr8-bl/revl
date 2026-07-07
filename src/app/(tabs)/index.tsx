@@ -23,6 +23,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CreditMark } from '../../components/CreditMark';
 import { DailyBriefing } from '../../components/DailyBriefing';
 import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
@@ -78,7 +79,8 @@ export default function HomeScreen() {
           </Text>
           <View style={styles.headerIcons}>
             <Pressable onPress={() => router.push('/wallet')} style={styles.creditChip} hitSlop={8}>
-              <Text style={styles.creditCount}>{currentUser.credits} credits</Text>
+              <CreditMark size={15} />
+              <Text style={styles.creditCount}>{currentUser.credits}</Text>
             </Pressable>
             <Pressable hitSlop={8}>
               <Ionicons name="notifications-outline" size={23} color={colors.text} />
@@ -193,6 +195,9 @@ const styles = StyleSheet.create({
   greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   creditChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
     borderRadius: 8,

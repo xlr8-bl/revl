@@ -1,5 +1,5 @@
 /**
- * Wallet — earned-credit economy stub. The ⚡ number on Home lives here:
+ * Wallet — earned-credit economy stub. The credit count on Home lives here:
  * credits earned by contributing papers / resolving predictions, spent
  * on unlocking papers. Ledger is mocked in data/user.ts.
  */
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CreditMark } from '../components/CreditMark';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { currentUser, ledger } from '../data/user';
 import { colors, fonts, spacing } from '../theme';
@@ -18,11 +19,11 @@ export default function WalletScreen() {
       <ScreenHeader title="Credits" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={styles.balanceCard}>
-          <Ionicons name="flash" size={30} color={colors.warning} />
+          <CreditMark size={30} />
           <Text style={styles.balance}>{currentUser.credits}</Text>
           <Text style={styles.balanceLabel}>credits available</Text>
           <Pressable onPress={() => router.push('/contribute')} style={styles.earnBtn}>
-            <Text style={styles.earnBtnText}>Earn more — upload a paper</Text>
+            <Text style={styles.earnBtnText}>Earn more: upload a paper</Text>
           </Pressable>
         </View>
 

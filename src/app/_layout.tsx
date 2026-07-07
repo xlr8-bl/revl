@@ -29,7 +29,7 @@ const RevlTheme = {
 };
 
 export default function RootLayout() {
-  const { signedIn, profile } = useSession();
+  const { hydrated, signedIn, profile } = useSession();
   const [fontsLoaded] = useFonts({
     'SFProDisplay-Regular': require('../../assets/fonts/SFProDisplay-Regular.otf'),
     'SFProDisplay-Medium': require('../../assets/fonts/SFProDisplay-Medium.otf'),
@@ -42,10 +42,10 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    if (fontsLoaded && hydrated) SplashScreen.hideAsync();
+  }, [fontsLoaded, hydrated]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || !hydrated) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

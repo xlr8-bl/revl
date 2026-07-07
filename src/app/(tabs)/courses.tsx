@@ -23,6 +23,7 @@ import { colors, fonts, radius, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 const FILTERS = ['My Courses', 'Browse', 'Saved', 'Completed'];
 
 export default function CoursesScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState('Browse');
@@ -49,7 +50,7 @@ export default function CoursesScreen() {
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
       {/* Search — floated top right like the reference */}
       <View style={styles.searchRow}>
-        <Pressable style={styles.searchBtn} hitSlop={6}>
+        <Pressable onPress={() => router.push('/discover')} style={styles.searchBtn} hitSlop={6}>
           <Ionicons name="search" size={21} color={colors.text} />
         </Pressable>
       </View>
@@ -111,11 +112,22 @@ export default function CoursesScreen() {
   );
 }
 
-/** One course row: thumbnail · meta line · title · stars · Start button. */
+/**
+ * CourseCard — an index card, not a list row. Course-color spine on the
+ * left, code set against it, title with the rating on the baseline,
+ * then a hairline footer: paper count and years on one side, the
+ * Start/Unlock action on the other.
+ */
 function CourseRow({ course }: { course: Course }) {
   const router = useRouter();
   const paperId = course.paperIds[0];
   const unlocked = paperId && unlockedPaperIds.has(paperId);
+  const years = course.paperIds
+    .map((id) => parseInt(id.slice(-4), 10))
+    .filter((y) => !isNaN(y))
+    .sort((a, b) => a - b);
+  const yearsLabel =
+    years.length > 1 ? `${years[0]}\u2013${years[years.length - 1]}` : String(years[0] ?? '');
 
   const open = () => {
     if (!paperId) return;
@@ -123,23 +135,31 @@ function CourseRow({ course }: { course: Course }) {
   };
 
   return (
-    <View style={styles.courseRow}>
-      <View style={[styles.courseThumb, { backgroundColor: course.gradient[0] }]}>
-        <Text style={styles.courseThumbText}>{course.code.slice(0, 3)}</Text>
-      </View>
-      <View style={styles.courseInfo}>
-        <Text style={styles.courseMeta}>
-          {course.paperIds.length} {course.paperIds.length === 1 ? 'Paper' : 'Papers'} · {course.level}
-        </Text>
+    <Pressable onPress={open} style={({ pressed }) => [styles.courseCard, pressed && { opacity: 0.85 }]}>
+      <View style={[styles.courseSpine, { backgroundColor: course.gradient[0] }]} />
+      <View style={styles.courseBody}>
+        <View style={styles.courseTopRow}>
+          <Text style={styles.courseCode}>{course.code}</Text>
+          <Stars rating={course.rating} />
+        </View>
         <Text style={styles.courseTitle} numberOfLines={1}>
-          {course.code} — {course.title}
+          {course.title}
         </Text>
-        <Stars rating={course.rating} />
+        <Text style={styles.courseMeta}>
+          {course.department} · {course.level}
+        </Text>
+        <View style={styles.courseRule} />
+        <View style={styles.courseFooter}>
+          <Text style={styles.courseMeta}>
+            {course.paperIds.length} {course.paperIds.length === 1 ? 'paper' : 'papers'}
+            {yearsLabel ? ` · ${yearsLabel}` : ''}
+          </Text>
+          <Text style={[styles.courseAction, !unlocked && { color: colors.textSecondary }]}>
+            {unlocked ? 'Start ›' : 'Unlock ›'}
+          </Text>
+        </View>
       </View>
-      <Pressable onPress={open} style={styles.startBtn}>
-        <Text style={styles.startText}>{unlocked ? 'Start' : 'Unlock'}</Text>
-      </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
@@ -195,32 +215,22 @@ const styles = StyleSheet.create({
   tileScroll: { paddingHorizontal: spacing.gutter, marginTop: 26 },
   tileGrid: { gap: 10 },
   tileRow: { flexDirection: 'row', gap: 10 },
-  sectionList: { marginTop: 6 },
-  courseRow: {
+  sectionList: { marginTop: 12, gap: 10, paddingHorizontal: spacing.gutter },
+  courseCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 12,
-    gap: 14,
-  },
-  courseThumb: {
-    width: 62,
-    height: 62,
-    borderRadius: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.card,
     overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  courseThumbText: { fontFamily: fonts.bold, fontSize: 15, color: 'rgba(255,255,255,0.85)' },
-  courseInfo: { flex: 1, gap: 4 },
-  courseMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-  courseTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
-  startBtn: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-  },
-  startText: { fontFamily: fonts.medium, fontSize: 14, color: colors.accent },
+  courseSpine: { width: 5 },
+  courseBody: { flex: 1, padding: 16, paddingBottom: 13 },
+  courseTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  courseCode: { fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.8, color: colors.accent },
+  courseTitle: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginTop: 6 },
+  courseMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
+  courseRule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 12, marginBottom: 10 },
+  courseFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  courseAction: { fontFamily: fonts.medium, fontSize: 14, color: colors.accent },
 });

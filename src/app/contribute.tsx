@@ -29,10 +29,9 @@ export default function ContributeScreen() {
           <Ionicons name="checkmark-circle" size={54} color={colors.success} />
           <Text style={styles.doneTitle}>Paper submitted</Text>
           <Text style={styles.doneBody}>
-            We’ll structure it, verify it’s a real past paper, and credit your wallet — usually within 48 hours.
+            We'll structure it, verify it's a real past paper, and credit your wallet, usually within 48 hours.
           </Text>
           <View style={styles.rewardPill}>
-            <Ionicons name="flash" size={15} color={colors.warning} />
             <Text style={styles.rewardText}>+3 credits on approval</Text>
           </View>
         </View>
@@ -48,7 +47,7 @@ export default function ContributeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.gutter, paddingBottom: 60 }}>
         <Text style={styles.title}>Upload a paper, earn credits</Text>
         <Text style={styles.body}>
-          Own a past paper Revl doesn’t have? Upload photos or a PDF. Approved papers earn ⚡ credits you can spend on
+          Own a past paper Revl doesn't have? Upload photos or a PDF. Approved papers earn credits you can spend on
           unlocks.
         </Text>
 
