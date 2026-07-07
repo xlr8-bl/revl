@@ -101,7 +101,7 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
               <Pressable
                 onPress={() => confidence && setRevealed(true)}
                 style={[styles.revealBtn, !confidence && styles.revealBtnDisabled]}>
-                <Ionicons name="eye-outline" size={17} color={confidence ? '#111' : colors.textTertiary} />
+                <Ionicons name="eye-outline" size={17} color={confidence ? colors.onAccent : colors.textTertiary} />
                 <Text style={[styles.revealText, !confidence && { color: colors.textTertiary }]}>Reveal answer</Text>
               </Pressable>
             </>
@@ -153,7 +153,7 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
                     {resolution === 'got-it' ? 'Logged — nice.' : 'Logged — this topic will resurface.'}
                   </Text>
                   <Pressable onPress={() => setExplainOpen(true)} style={styles.explainBtn} hitSlop={6}>
-                    <Ionicons name="sparkles" size={14} color={colors.accent} />
+                    <Ionicons name="sparkles" size={14} color={colors.ai} />
                     <Text style={styles.explainText}>Explain</Text>
                   </Pressable>
                 </View>
@@ -182,6 +182,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     padding: 18,
     marginBottom: 12,
   },
@@ -217,12 +219,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingVertical: 13,
   },
   revealBtnDisabled: { backgroundColor: colors.surface },
-  revealText: { fontFamily: fonts.medium, fontSize: 15, color: '#111111' },
+  revealText: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAccent },
   answerBox: { backgroundColor: '#111113', borderRadius: 14, padding: 14 },
   answerHeader: { marginBottom: 10 },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -260,10 +262,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.aiSoft,
     borderRadius: 999,
     paddingHorizontal: 13,
     paddingVertical: 7,
   },
-  explainText: { fontFamily: fonts.medium, fontSize: 13, color: colors.accent },
+  explainText: { fontFamily: fonts.medium, fontSize: 13, color: colors.ai },
 });

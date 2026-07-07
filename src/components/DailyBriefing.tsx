@@ -20,7 +20,7 @@ export function DailyBriefing() {
 
   return (
     <View style={styles.wrap}>
-      <Ionicons name="sparkles" size={14} color={colors.accent} style={styles.icon} />
+      <Ionicons name="sparkles" size={14} color={colors.ai} style={styles.icon} />
       <Text style={styles.text}>{text}</Text>
     </View>
   );

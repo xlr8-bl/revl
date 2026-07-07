@@ -1,8 +1,8 @@
 /**
- * HeroCard — the "Question of the Day" (mirrors the reference's
- * Verse of the Day card): small grey label, bold source line, large
- * serif display text over a dark image-like gradient, then an
- * engagement row (reveal / comments / share / more) with counts.
+ * HeroCard — "Tonight's Question". Rendered as an exam-paper artifact:
+ * hairline-bordered ink card, course chip + amber marks pill, the
+ * question set in serif (the paper's voice), a faint amber lamp-glow in
+ * the corner, and a stats line + Reveal CTA instead of any social row.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,49 +15,54 @@ import { MathRichText } from './MathRichText';
 
 export function HeroCard() {
   const router = useRouter();
-  const { label, sourceLine, question, stats } = questionOfTheDay;
+  const { sourceLine, question, stats } = questionOfTheDay;
 
   return (
-    <Pressable onPress={() => router.push('/paper/cec420-2023')} style={styles.card}>
-      {/* Dark botanical-feel backdrop, built from layered gradients so no
-          remote image is needed. Swap for an <ImageBackground/> later. */}
-      <LinearGradient colors={['#0E1F17', '#0A1410', '#050807']} style={StyleSheet.absoluteFill} />
+    <View style={styles.card}>
+      {/* Faint amber desk-lamp glow, top corner — Revl's signature. */}
       <LinearGradient
-        colors={['rgba(38,84,58,0.55)', 'transparent']}
-        start={{ x: 1, y: 1 }}
-        end={{ x: 0.2, y: 0 }}
+        colors={['rgba(242,169,59,0.14)', 'rgba(242,169,59,0.03)', 'transparent']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.25, y: 0.9 }}
         style={StyleSheet.absoluteFill}
       />
-      {/* Legibility scrim behind the type, like the reference photo treatment. */}
-      <LinearGradient colors={['rgba(0,0,0,0.45)', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)']} style={StyleSheet.absoluteFill} />
 
       <View style={styles.inner}>
-        <Text style={type.label}>{label}</Text>
-        <Text style={styles.source}>{sourceLine}</Text>
+        <Text style={type.kicker}>Tonight’s question</Text>
 
-        <View style={styles.heroTextWrap}>
-          <MathRichText style={{ fontFamily: fonts.serif, fontSize: 27, lineHeight: 40, color: colors.text }}>
-            {question.text}
-          </MathRichText>
+        {/* Paper header row: source + marks pill */}
+        <View style={styles.headerRow}>
+          <Text style={styles.source}>{sourceLine}</Text>
+          <View style={styles.marksPill}>
+            <Text style={styles.marksText}>{question.marks} MARKS</Text>
+          </View>
         </View>
 
-        {/* Engagement row — reveal / comments / share / more (reference: ♥ 💬 ↑ ⋯). */}
-        <View style={styles.engageRow}>
-          <Engage icon="eye-outline" value={stats.reveals} />
-          <Engage icon="chatbubble-outline" value={stats.comments} />
-          <Engage icon="share-outline" value={stats.shares} />
-          <Engage icon="ellipsis-horizontal" value="More" />
+        {/* The question — serif, the voice of the paper. */}
+        <View style={styles.questionWrap}>
+          <MathRichText style={{ ...type.question }}>{question.text}</MathRichText>
+        </View>
+
+        <View style={styles.rule} />
+
+        {/* Attempt stats + Reveal CTA — study data, not social counts. */}
+        <View style={styles.footerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statLine}>
+              <Text style={styles.statStrong}>{stats.reveals}</Text> attempts tonight
+            </Text>
+            <Text style={styles.statLine}>
+              <Text style={styles.statStrong}>38%</Text> got it before revealing
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/paper/cec420-2023')}
+            style={({ pressed }) => [styles.revealBtn, pressed && { transform: [{ scale: 0.96 }] }]}>
+            <Ionicons name="flash" size={15} color={colors.onAccent} />
+            <Text style={styles.revealText}>Attempt</Text>
+          </Pressable>
         </View>
       </View>
-    </Pressable>
-  );
-}
-
-function Engage({ icon, value }: { icon: keyof typeof Ionicons.glyphMap; value: string }) {
-  return (
-    <View style={styles.engageItem}>
-      <Ionicons name={icon} size={24} color={colors.text} />
-      <Text style={styles.engageText}>{value}</Text>
     </View>
   );
 }
@@ -66,12 +71,35 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: spacing.gutter,
     borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.card,
     overflow: 'hidden',
   },
-  inner: { padding: spacing.cardPad, paddingBottom: 24 },
-  source: { fontFamily: fonts.bold, fontSize: 20, color: colors.text, marginTop: 4 },
-  heroTextWrap: { marginTop: 34, marginBottom: 38 },
-  engageRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18 },
-  engageItem: { alignItems: 'center', gap: 8 },
-  engageText: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
+  inner: { padding: spacing.cardPad, paddingTop: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  source: { fontFamily: fonts.bold, fontSize: 16, color: colors.text, flex: 1, paddingRight: 10 },
+  marksPill: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  marksText: { fontFamily: fonts.medium, fontSize: 10, letterSpacing: 1, color: colors.accent },
+  questionWrap: { marginTop: 20, marginBottom: 22 },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 14 },
+  statLine: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.textSecondary },
+  statStrong: { fontFamily: fonts.medium, color: colors.text },
+  revealBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  revealText: { fontFamily: fonts.medium, fontSize: 14, color: colors.onAccent },
 });

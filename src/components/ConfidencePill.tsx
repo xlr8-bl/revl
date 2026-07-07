@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   prompt: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, flexShrink: 1 },
   row: { flexDirection: 'row', gap: 4 },
   pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  pillActive: { backgroundColor: '#FFFFFF' },
+  pillActive: { backgroundColor: colors.accent },
   pillText: { fontFamily: fonts.medium, fontSize: 13, color: colors.text },
-  pillTextActive: { color: '#111111' },
+  pillTextActive: { color: colors.onAccent },
 });

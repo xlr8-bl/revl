@@ -65,7 +65,7 @@ export function ExplainSheet({ question, visible, onClose, onPrerequisites }: Pr
 
         {!explain ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={colors.accent} />
+            <ActivityIndicator color={colors.ai} />
             <Text style={styles.loadingText}>Reading your notes…</Text>
           </View>
         ) : (
@@ -83,9 +83,9 @@ export function ExplainSheet({ question, visible, onClose, onPrerequisites }: Pr
               <Layer label="FROM YOUR NOTES" accent>
                 <MathRichText>{explain.notesBridge.text}</MathRichText>
                 <Pressable style={styles.refChip}>
-                  <Ionicons name="document-text-outline" size={14} color={colors.accent} />
+                  <Ionicons name="document-text-outline" size={14} color={colors.ai} />
                   <Text style={styles.refChipText}>{explain.notesBridge.reference.label}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.accent} />
+                  <Ionicons name="chevron-forward" size={14} color={colors.ai} />
                 </Pressable>
               </Layer>
             )}
@@ -132,7 +132,7 @@ export function ExplainSheet({ question, visible, onClose, onPrerequisites }: Pr
 function Layer({ label, accent, children }: { label: string; accent?: boolean; children: React.ReactNode }) {
   return (
     <View style={[styles.layer, accent && styles.layerAccent]}>
-      <Text style={[styles.layerLabel, accent && { color: colors.accent }]}>{label}</Text>
+      <Text style={[styles.layerLabel, accent && { color: colors.ai }]}>{label}</Text>
       {children}
     </View>
   );
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   loading: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   loadingText: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   layer: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 10 },
-  layerAccent: { borderWidth: 1, borderColor: colors.accentSoft, backgroundColor: 'rgba(94,107,255,0.06)' },
+  layerAccent: { borderWidth: 1, borderColor: 'rgba(157,151,245,0.35)', backgroundColor: 'rgba(157,151,245,0.06)' },
   layerLabel: {
     fontFamily: fonts.medium,
     fontSize: 11,
@@ -157,19 +157,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 6,
     marginTop: 12,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.aiSoft,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  refChipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.accent },
+  refChipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.ai },
   prereqRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4, marginBottom: 8 },
   prereqLabel: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary, marginRight: 2 },
   prereqTag: { backgroundColor: colors.surface, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   prereqTagText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
   chatDivider: { height: 1, backgroundColor: colors.border, marginVertical: 14 },
   bubble: { borderRadius: 16, padding: 12, marginBottom: 8, maxWidth: '88%' },
-  bubbleUser: { alignSelf: 'flex-end', backgroundColor: colors.accent },
+  bubbleUser: { alignSelf: 'flex-end', backgroundColor: colors.surface },
   bubbleAi: { alignSelf: 'flex-start', backgroundColor: colors.card },
   bubbleText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.text },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10 },

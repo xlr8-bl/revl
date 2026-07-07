@@ -1,19 +1,26 @@
 /**
- * FloatingTabBar — the reference's floating, rounded, translucent pill
- * tab bar. Not edge-to-edge: it floats above content with side margins,
- * dark blur behind it, icon + label per tab, and the last tab is a
- * circular avatar with the user's initial. The active tab sits on a
- * subtle lighter pill.
+ * Bottom dock — Revl's tab bar. A full-width translucent dock with a
+ * hairline top border; the active tab is marked by an amber icon and a
+ * small amber tick above it. (Deliberately NOT a floating pill with an
+ * avatar — that pattern belongs to another app.)
  */
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { currentUser } from '../data/user';
 import { colors, fonts } from '../theme';
 
 type TabSpec = { icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; label: string };
+
+const TABS: Record<string, TabSpec> = {
+  index: { icon: 'moon-outline', iconActive: 'moon', label: 'Tonight' },
+  papers: { icon: 'reader-outline', iconActive: 'reader', label: 'Papers' },
+  courses: { icon: 'library-outline', iconActive: 'library', label: 'Courses' },
+  discover: { icon: 'search-outline', iconActive: 'search', label: 'Discover' },
+  you: { icon: 'person-outline', iconActive: 'person', label: 'You' },
+};
 
 /**
  * Minimal slice of react-navigation's BottomTabBarProps that we use —
@@ -28,50 +35,34 @@ type TabBarProps = {
   };
 };
 
-/** Route name → icon/label (mirrors reference order: Home Bible Plans Discover You). */
-const TABS: Record<string, TabSpec> = {
-  index: { icon: 'home-outline', iconActive: 'home', label: 'Home' },
-  papers: { icon: 'reader-outline', iconActive: 'reader', label: 'Papers' },
-  courses: { icon: 'checkbox-outline', iconActive: 'checkbox', label: 'Courses' },
-  discover: { icon: 'search-outline', iconActive: 'search', label: 'Discover' },
-  you: { icon: 'person-outline', iconActive: 'person', label: 'You' },
-};
-
 export function FloatingTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) }]}>
-      <BlurView intensity={40} tint="dark" style={styles.bar}>
-        {/* Extra dark tint so content scrolling underneath stays legible. */}
+    <View pointerEvents="box-none" style={styles.wrap}>
+      <BlurView intensity={36} tint="dark" style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <View style={styles.tintOverlay} pointerEvents="none" />
         {state.routes.map((route, index) => {
           const spec = TABS[route.name];
           if (!spec) return null;
           const focused = state.index === index;
-          const isYou = route.name === 'you';
 
           const onPress = () => {
+            if (Platform.OS !== 'web') Haptics.selectionAsync();
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
           return (
             <Pressable key={route.key} onPress={onPress} style={styles.tab} hitSlop={6}>
-              <View style={[styles.tabInner, focused && styles.tabInnerActive]}>
-                {isYou ? (
-                  <View style={[styles.avatar, focused && styles.avatarActive]}>
-                    <Text style={styles.avatarText}>{currentUser.initial}</Text>
-                  </View>
-                ) : (
-                  <Ionicons
-                    name={focused ? spec.iconActive : spec.icon}
-                    size={23}
-                    color={focused ? colors.text : colors.textSecondary}
-                  />
-                )}
-                <Text style={[styles.label, focused && styles.labelActive]}>{spec.label}</Text>
-              </View>
+              {/* Amber tick marks the active tab. */}
+              <View style={[styles.tick, focused && styles.tickActive]} />
+              <Ionicons
+                name={focused ? spec.iconActive : spec.icon}
+                size={22}
+                color={focused ? colors.accent : colors.textSecondary}
+              />
+              <Text style={[styles.label, focused && styles.labelActive]}>{spec.label}</Text>
             </Pressable>
           );
         })}
@@ -81,39 +72,20 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  bar: {
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  dock: {
     flexDirection: 'row',
-    marginHorizontal: 36,
-    borderRadius: 36,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderStrong,
+    // Android has no real blur behind BlurView in Expo Go — tint carries it.
+    backgroundColor: Platform.OS === 'android' ? 'rgba(8,8,11,0.96)' : 'transparent',
     overflow: 'hidden',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    alignSelf: 'stretch',
-    // Android has no real blur behind BlurView in Expo Go — the tint overlay carries it.
-    backgroundColor: Platform.OS === 'android' ? 'rgba(24,24,26,0.94)' : 'transparent',
   },
-  tintOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.tabBarTint },
-  tab: { flex: 1, alignItems: 'center' },
-  tabInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 26,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    minWidth: 58,
-  },
-  tabInnerActive: { backgroundColor: colors.tabActivePill },
-  label: { fontFamily: fonts.regular, fontSize: 11, color: colors.textSecondary, marginTop: 3 },
+  tintOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.dockTint },
+  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+  tick: { width: 16, height: 3, borderRadius: 2, backgroundColor: 'transparent', marginBottom: 2 },
+  tickActive: { backgroundColor: colors.accent },
+  label: { fontFamily: fonts.regular, fontSize: 10.5, color: colors.textSecondary },
   labelActive: { color: colors.text, fontFamily: fonts.medium },
-  avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E5E5EA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarActive: { backgroundColor: '#FFFFFF' },
-  avatarText: { fontFamily: fonts.bold, fontSize: 13, color: '#1C1C1E' },
 });

@@ -1,48 +1,63 @@
 /**
- * Revl design system — extracted from the reference screenshots.
+ * Revl design system — "night study" identity.
  *
- * The whole look is: pure black, very dark grey cards with big radii,
- * white/grey type set in SF Pro, a serif ONLY for hero display text,
- * and one restrained accent (electric indigo) used for the active-tab
- * underline and tiny highlights. Nothing else gets color except the
- * faculty tiles.
+ * Direction (built with the ui-ux-pro-max design-intelligence skill,
+ * cinematic-dark style + dark/warm-accent palette):
+ *
+ * - Cinematic near-black, not flat pure black: a whisper of blue keeps
+ *   depth on OLED without looking like every other dark app.
+ * - Ink cards: dark surfaces defined by HAIRLINE BORDERS, not floating
+ *   grey blobs — the exam-paper artifact look.
+ * - One warm accent: AMBER (highlighter on paper, brass desk lamp).
+ *   Used for primary actions, active nav, and marks.
+ * - VIOLET is reserved exclusively for AI moments (briefing, explain),
+ *   GREEN exclusively for verified/success. Color = meaning.
+ * - Serif appears only in one place: the question text itself — the
+ *   "voice of the paper". Everything else is SF Pro.
  */
 import { Platform } from 'react-native';
 
 export const colors = {
-  /** Pure black app background (reference is #000, not near-black). */
-  bg: '#000000',
-  /** Card surface — the very dark grey of the reference cards. */
-  card: '#1C1C1E',
-  /** Slightly lighter surface for chips / nested surfaces on cards. */
-  surface: '#2C2C2E',
-  /** Hairline separators. */
-  border: '#2A2A2C',
+  /** App background — near-black with a cool cast (cinematic dark). */
+  bg: '#060608',
+  /** Deepest layer (gradient bottoms, wells). */
+  bgDeep: '#020203',
+  /** Ink card surface. */
+  card: '#111114',
+  /** Raised surface on cards (chips, inputs, nested wells). */
+  surface: '#1D1D23',
+  /** Hairline borders — THE structural element of this design. */
+  border: 'rgba(255,255,255,0.08)',
+  /** Slightly stronger hairline for emphasized cards. */
+  borderStrong: 'rgba(255,255,255,0.14)',
 
-  text: '#FFFFFF',
-  /** Medium grey for labels, meta rows, secondary copy. */
-  textSecondary: '#8E8E93',
-  /** Dimmer grey for tertiary hints. */
-  textTertiary: '#636366',
+  /** Slightly warm paper-white for primary text. */
+  text: '#F5F4F0',
+  textSecondary: '#98979E',
+  textTertiary: '#5D5C64',
 
-  /** Revl accent — cool electric indigo. Active tab underline + small highlights only. */
-  accent: '#5E6BFF',
-  accentSoft: 'rgba(94, 107, 255, 0.16)',
+  /** Amber — the Revl accent. Primary actions, active nav, marks. */
+  accent: '#F2A93B',
+  accentSoft: 'rgba(242,169,59,0.14)',
+  /** Text/icon color placed ON amber fills. */
+  onAccent: '#1C1204',
 
-  /** Notification badge red (matches the reference bell badge). */
-  badge: '#FF3B30',
+  /** Violet — AI voice only (briefing, explain, ask). */
+  ai: '#9D97F5',
+  aiSoft: 'rgba(157,151,245,0.14)',
 
-  /** Semantic bits used sparingly in the reader. */
-  success: '#30D158',
-  warning: '#FFD60A',
-  danger: '#FF453A',
+  /** Green — verified answers + success only. */
+  verified: '#4ADE80',
+  verifiedSoft: 'rgba(74,222,128,0.12)',
 
-  /** Verified-answer badge green + AI tag grey. */
-  verified: '#30D158',
+  /** Semantic feedback. */
+  success: '#4ADE80',
+  warning: '#F2A93B',
+  danger: '#F87171',
+  badge: '#F87171',
 
-  /** Floating tab bar translucency (sits on top of a BlurView). */
-  tabBarTint: 'rgba(28, 28, 30, 0.72)',
-  tabActivePill: 'rgba(118, 118, 128, 0.28)',
+  /** Bottom dock translucency (sits over BlurView). */
+  dockTint: 'rgba(10,10,13,0.82)',
 
   /** Mobile-money brand colors (unlock flow). */
   mtn: '#FFCC08',
@@ -50,41 +65,44 @@ export const colors = {
 } as const;
 
 /**
- * SF Pro Display is loaded from the bundled OTFs (see app/_layout.tsx).
- * The uploaded set has Regular / Medium / Bold uprights, so "semibold"
- * roles map to Medium or Bold, matching how tight the reference type is.
+ * SF Pro Display from the bundled OTFs (loaded in app/_layout.tsx).
+ * Serif = the paper's voice; used for question text only.
  */
 export const fonts = {
   regular: 'SFProDisplay-Regular',
   medium: 'SFProDisplay-Medium',
   bold: 'SFProDisplay-Bold',
-  /** Serif for hero display text only — New York on iOS, a serif elsewhere. */
   serif: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia' })!,
 } as const;
 
-/** Reference-derived type scale. */
 export const type = {
   /** Big screen titles ("Courses") */
-  display: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 40, color: colors.text },
-  /** Section headers ("More for you") */
-  h1: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 32, color: colors.text },
-  /** Card titles ("The Eternal Rock") */
-  cardTitle: { fontFamily: fonts.bold, fontSize: 19, lineHeight: 24, color: colors.text },
-  /** Small grey label above card titles ("Guided Scripture") */
-  label: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 18, color: colors.textSecondary },
-  /** Body copy */
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.text },
-  /** Meta rows (durations, counts) */
-  meta: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 16, color: colors.textSecondary },
-  /** Hero serif display (Question of the Day) */
-  hero: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 40, color: colors.text },
+  display: { fontFamily: fonts.bold, fontSize: 32, lineHeight: 38, color: colors.text },
+  /** Section headers */
+  h1: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, color: colors.text },
+  /** Card titles */
+  cardTitle: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 23, color: colors.text },
+  /**
+   * Kicker — small caps, letterspaced. Revl's editorial label style
+   * (replaces the reference app's plain grey labels).
+   */
+  kicker: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.4,
+    color: colors.textSecondary,
+    textTransform: 'uppercase' as const,
+  },
+  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.text },
+  meta: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 17, color: colors.textSecondary },
+  /** The paper's voice — question text. */
+  question: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 36, color: colors.text },
 } as const;
 
 export const spacing = {
-  /** Screen horizontal gutter (reference uses a generous ~16–20px). */
-  gutter: 16,
-  /** Card internal padding. */
-  cardPad: 20,
+  gutter: 18,
+  cardPad: 18,
   xs: 4,
   s: 8,
   m: 12,
@@ -94,14 +112,12 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  /** Cards. The reference sits around 20–24. */
-  card: 22,
-  /** Thumbnails inside cards. */
-  thumb: 14,
-  /** Pills / chips are fully rounded. */
+  /** Cards — tighter than typical dark apps; crisp, editorial. */
+  card: 18,
+  thumb: 12,
   pill: 999,
   tile: 14,
 } as const;
 
-/** Height reserved so scroll content clears the floating tab bar. */
-export const TAB_BAR_CLEARANCE = 108;
+/** Height reserved so scroll content clears the bottom dock. */
+export const TAB_BAR_CLEARANCE = 96;

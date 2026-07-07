@@ -10,6 +10,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentUser } from '../../data/user';
 import { useRevealLogs, weakTopics } from '../../lib/selectors';
+import { signOut } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
@@ -48,9 +49,9 @@ export default function YouScreen() {
 
       {isWrappedLive() && (
         <Pressable onPress={() => router.push('/wrapped')} style={[styles.row, styles.wrappedRow]}>
-          <Ionicons name="sparkles" size={20} color="#9F8FFF" />
-          <Text style={[styles.rowLabel, { color: '#CFC6FF' }]}>Your semester, wrapped ✨</Text>
-          <Ionicons name="chevron-forward" size={18} color="#9F8FFF" />
+          <Ionicons name="sparkles" size={20} color={colors.ai} />
+          <Text style={[styles.rowLabel, { color: colors.ai }]}>Your semester, wrapped</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.ai} />
         </Pressable>
       )}
 
@@ -67,6 +68,11 @@ export default function YouScreen() {
           </Pressable>
         ))}
       </View>
+
+      <Pressable onPress={signOut} style={[styles.card, styles.row]}>
+        <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+        <Text style={[styles.rowLabel, { color: colors.danger }]}>Sign out</Text>
+      </Pressable>
 
       <View style={styles.card}>
         {['Notifications', 'Appearance', 'Help & feedback'].map((label, i) => (
@@ -130,7 +136,7 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   rowDetail: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   wrappedRow: {
-    backgroundColor: 'rgba(94,80,220,0.14)',
+    backgroundColor: colors.aiSoft,
     borderRadius: 20,
     marginHorizontal: spacing.gutter,
     marginTop: 18,

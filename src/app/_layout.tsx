@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { seedDemoDataIfEmpty } from '../lib/revealLog';
+import { useSession } from '../lib/session';
 import { colors } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -28,6 +29,7 @@ const RevlTheme = {
 };
 
 export default function RootLayout() {
+  const { signedIn } = useSession();
   const [fontsLoaded] = useFonts({
     'SFProDisplay-Regular': require('../../assets/fonts/SFProDisplay-Regular.otf'),
     'SFProDisplay-Medium': require('../../assets/fonts/SFProDisplay-Medium.otf'),
@@ -54,9 +56,16 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: colors.bg },
           }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
+          {/* Signed-out: onboarding/auth only. Signed-in: the app. */}
+          <Stack.Protected guard={!signedIn}>
+            <Stack.Screen name="(auth)/welcome" />
+            <Stack.Screen name="(auth)/momo" />
+          </Stack.Protected>
+          <Stack.Protected guard={signedIn}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
+          </Stack.Protected>
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
