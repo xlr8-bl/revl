@@ -10,7 +10,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentUser } from '../../data/user';
 import { useRevealLogs, weakTopics } from '../../lib/selectors';
-import { signOut } from '../../lib/session';
+import { signOut, useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
@@ -19,6 +19,7 @@ export default function YouScreen() {
   const router = useRouter();
   const logs = useRevealLogs();
   const weakest = weakTopics(logs)[0];
+  const { profile } = useSession();
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; detail?: string; route: string }[] = [
     { icon: 'planet-outline', label: 'Study DNA', detail: weakest ? `weakest: ${weakest.tag}` : undefined, route: '/dna' },
@@ -33,18 +34,21 @@ export default function YouScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: TAB_BAR_CLEARANCE }}>
       <View style={styles.profile}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{currentUser.initial}</Text>
+        <View style={[styles.avatar, profile && { backgroundColor: profile.avatarColor }]}>
+          <Text style={styles.avatarText}>{(profile?.name[0] ?? currentUser.initial).toUpperCase()}</Text>
         </View>
-        <Text style={styles.name}>{currentUser.name}</Text>
-        <Text style={styles.meta}>Computer Engineering · L400</Text>
+        <Text style={styles.name}>{profile?.name ?? currentUser.name}</Text>
+        {profile && <Text style={styles.username}>@{profile.username}</Text>}
+        <Text style={styles.meta}>
+          {profile ? `${profile.departmentName} · ${profile.level} · ${profile.school === 'ub' ? 'UB' : 'HND'}` : ''}
+        </Text>
       </View>
 
       {/* Quick stats */}
       <View style={styles.statsRow}>
         <Stat value={String(logs.length)} label="reveals" />
         <Stat value={String(logs.filter((l) => l.resolution === 'got-it').length)} label="got it" />
-        <Stat value={String(currentUser.enrolledCourseCodes.length)} label="courses" />
+        <Stat value={String(profile?.enrolledCourseCodes.length ?? 0)} label="courses" />
       </View>
 
       {isWrappedLive() && (
@@ -113,6 +117,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontFamily: fonts.bold, fontSize: 36, color: '#1C1C1E' },
   name: { fontFamily: fonts.bold, fontSize: 26, color: colors.text, marginTop: 6 },
+  username: { fontFamily: fonts.regular, fontSize: 14, color: colors.accent },
   meta: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
   statsRow: {
     flexDirection: 'row',

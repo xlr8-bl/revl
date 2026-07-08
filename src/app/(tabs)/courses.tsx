@@ -1,236 +1,157 @@
 /**
- * Courses ("Plans" in the reference, screenshot 2):
- * big title + search, filter chips, featured carousel, bright faculty
- * tiles (2-row horizontal grid), outline chips, then course sections
- * with thumbnail / meta / title / stars / Start rows.
+ * Courses — the landing tab. Fully dynamic: everything on this screen
+ * derives from the student's profile (school → faculty → department →
+ * level) and the UB/HND catalogue. Working search over the scoped
+ * catalogue, enrolled courses first, then the rest of the department.
  */
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CategoryTile } from '../../components/CategoryTile';
+import { CourseCard } from '../../components/CourseCard';
 import { FilterChips } from '../../components/FilterChips';
-import { SectionHeader } from '../../components/SectionHeader';
-import { Stars } from '../../components/Stars';
-import { browseChips, courses, faculties, featuredCourses } from '../../data/courses';
-import { unlockedPaperIds } from '../../data/papers';
-import { currentUser } from '../../data/user';
+import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
+import type { CatalogCourse } from '../../data/catalog/types';
+import { papers } from '../../data/papers';
 import { useSession } from '../../lib/session';
-import type { Course } from '../../types';
-import { colors, fonts, radius, spacing, TAB_BAR_CLEARANCE } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
-const FILTERS = ['My Courses', 'Browse', 'Saved', 'Completed'];
+const FILTERS = ['My courses', 'Department', 'With papers'];
 
 export default function CoursesScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const [filter, setFilter] = useState('Browse');
-  const [subFilter, setSubFilter] = useState<string | null>(null);
+  const { profile } = useSession();
+  const [filter, setFilter] = useState('My courses');
+  const [query, setQuery] = useState('');
 
-  const featuredWidth = width - spacing.gutter * 2 - 36;
+  const enrolled = useMemo(
+    () =>
+      (profile?.enrolledCourseCodes ?? [])
+        .map((code) => courseByCode(code))
+        .filter((c): c is CatalogCourse => !!c),
+    [profile]
+  );
 
-  // The catalogue is scoped to the student's own department (set at
-  // onboarding). Other faculties stay reachable through the tiles above.
-  const profile = useSession().profile;
-  const dept = profile?.department ?? 'Computer Engineering';
-  const level = profile?.level ?? 'L400';
-  const myCourses = courses.filter((c) => currentUser.enrolledCourseCodes.includes(c.code));
-  const deptCourses = courses.filter((c) => c.department === dept);
-  const shownSections =
-    filter === 'My Courses'
-      ? [{ title: 'My Courses', data: myCourses }]
-      : [{ title: `${dept} ${level}`, data: deptCourses.length ? deptCourses : myCourses }];
+  const departmentCourses = useMemo(
+    () => (profile ? coursesFor(profile.school, profile.departmentId, profile.level) : []),
+    [profile]
+  );
+
+  const searchResults = useMemo(
+    () => (profile && query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : []),
+    [profile, query]
+  );
+
+  if (!profile) return null;
+
+  const enrolledSet = new Set(profile.enrolledCourseCodes);
+  const rest = departmentCourses.filter((c) => !enrolledSet.has(c.code));
+  const withPapers = [...enrolled, ...rest].filter((c) => papers.some((p) => p.courseCode === c.code));
+
+  const list: { title: string; data: CatalogCourse[] }[] = query.trim()
+    ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
+    : filter === 'My courses'
+      ? [
+          { title: 'Your courses', data: enrolled },
+          ...(rest.length ? [{ title: 'Also in your department', data: rest }] : []),
+        ]
+      : filter === 'Department'
+        ? [{ title: profile.departmentName, data: departmentCourses }]
+        : [{ title: 'Courses with past papers', data: withPapers }];
 
   return (
     <ScrollView
       style={styles.root}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
-      {/* Search — floated top right like the reference */}
-      <View style={styles.searchRow}>
-        <Pressable onPress={() => router.push('/discover')} style={styles.searchBtn} hitSlop={6}>
-          <Ionicons name="search" size={21} color={colors.text} />
-        </Pressable>
-      </View>
-
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE }}>
+      {/* Placement header — this screen is scoped to who you are */}
+      <Text style={styles.placement}>
+        {profile.departmentName} · {profile.level} · {profile.school === 'ub' ? 'UB' : 'HND'}
+      </Text>
       <Text style={styles.title}>Courses</Text>
 
-      <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
-
-      {/* Featured carousel */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={featuredWidth + 12}
-        decelerationRate="fast"
-        contentContainerStyle={styles.carousel}>
-        {featuredCourses.map((f) => (
-          <View key={f.id} style={{ width: featuredWidth }}>
-            <View style={[styles.featureCard, { width: featuredWidth, backgroundColor: f.gradient[0] }]}>
-              <View style={styles.featureBadge}>
-                <Text style={styles.featureBadgeText}>{f.badge}</Text>
-              </View>
-              <Text style={styles.featureTitle}>{f.title}</Text>
-            </View>
-            <Text style={styles.featureCaption} numberOfLines={1}>
-              {f.subtitle}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Faculty tiles — 2-row horizontal grid, reference LOVE/HEALING style */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
-        <View style={styles.tileGrid}>
-          {[0, 1].map((row) => (
-            <View key={row} style={styles.tileRow}>
-              {faculties.filter((_, i) => i % 2 === row).map((f) => (
-                <CategoryTile key={f.id} faculty={f} />
-              ))}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      <View style={{ marginTop: 22 }}>
-        <FilterChips options={browseChips} selected={subFilter} onSelect={(v) => setSubFilter(v === subFilter ? null : v)} variant="outline" />
+      {/* Working search over the scoped catalogue */}
+      <View style={styles.searchBox}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search code or title, e.g. BCH301"
+          placeholderTextColor={colors.textTertiary}
+          style={styles.searchInput}
+          autoCapitalize="characters"
+        />
+        {query.length > 0 && (
+          <Text onPress={() => setQuery('')} style={styles.clear}>
+            Clear
+          </Text>
+        )}
       </View>
 
-      {shownSections.map((section) => (
-        <View key={section.title} style={{ marginTop: 34 }}>
-          <SectionHeader title={section.title} onSeeAll={() => {}} />
-          <View style={styles.sectionList}>
-            {section.data.map((course) => (
-              <CourseRow key={course.code} course={course} />
-            ))}
+      {!query.trim() && (
+        <View style={{ marginTop: 4, marginBottom: 8 }}>
+          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
+        </View>
+      )}
+
+      {list.map((section) => (
+        <View key={section.title} style={{ marginTop: 18 }}>
+          <View style={styles.sectionRow}>
+            <View style={styles.sectionTick} />
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionCount}>{section.data.length}</Text>
+          </View>
+          <View style={{ paddingHorizontal: spacing.gutter }}>
+            {section.data.length === 0 ? (
+              <Text style={styles.empty}>Nothing here yet.</Text>
+            ) : (
+              section.data.map((c, i) => <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} />)
+            )}
           </View>
         </View>
       ))}
+
+      <Text style={styles.footnote}>
+        Catalogue built from the official UB 2023/24 teaching timetable and the current national HND program.
+        Spot an error? Long-press a course to report it (coming soon).
+      </Text>
     </ScrollView>
-  );
-}
-
-/**
- * CourseCard — an index card, not a list row. Course-color spine on the
- * left, code set against it, title with the rating on the baseline,
- * then a hairline footer: paper count and years on one side, the
- * Start/Unlock action on the other.
- */
-function CourseRow({ course }: { course: Course }) {
-  const router = useRouter();
-  const paperId = course.paperIds[0];
-  const unlocked = paperId && unlockedPaperIds.has(paperId);
-  const years = course.paperIds
-    .map((id) => parseInt(id.slice(-4), 10))
-    .filter((y) => !isNaN(y))
-    .sort((a, b) => a - b);
-  const yearsLabel =
-    years.length > 1 ? `${years[0]}\u2013${years[years.length - 1]}` : String(years[0] ?? '');
-
-  const open = () => {
-    if (!paperId) return;
-    router.push(unlocked ? `/paper/${paperId}` : (`/unlock/${paperId}` as never));
-  };
-
-  return (
-    <Pressable onPress={open} style={({ pressed }) => [styles.courseCard, pressed && { opacity: 0.85 }]}>
-      <View style={[styles.courseSpine, { backgroundColor: course.gradient[0] }]} />
-      <View style={styles.courseBody}>
-        <View style={styles.courseTopRow}>
-          <Text style={styles.courseCode}>{course.code}</Text>
-          <Stars rating={course.rating} />
-        </View>
-        <Text style={styles.courseTitle} numberOfLines={1}>
-          {course.title}
-        </Text>
-        <Text style={styles.courseMeta}>
-          {course.department} · {course.level}
-        </Text>
-        <View style={styles.courseRule} />
-        <View style={styles.courseFooter}>
-          <Text style={styles.courseMeta}>
-            {course.paperIds.length} {course.paperIds.length === 1 ? 'paper' : 'papers'}
-            {yearsLabel ? ` · ${yearsLabel}` : ''}
-          </Text>
-          <Text style={[styles.courseAction, !unlocked && { color: colors.textSecondary }]}>
-            {unlocked ? 'Start ›' : 'Unlock ›'}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  searchRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.gutter },
-  searchBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontFamily: fonts.bold,
-    fontSize: 40,
-    color: colors.text,
-    paddingHorizontal: spacing.gutter,
-    marginTop: 14,
-    marginBottom: 20,
-  },
-  carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 22 },
-  featureCard: {
-    height: 200,
-    borderRadius: radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    overflow: 'hidden',
-    padding: 18,
-    justifyContent: 'center',
-  },
-  featureBadge: {
-    position: 'absolute',
-    top: 14,
-    left: 14,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  featureBadgeText: { fontFamily: fonts.medium, fontSize: 10, letterSpacing: 1.2, color: colors.text },
-  featureTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    letterSpacing: 1,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  featureCaption: { fontFamily: fonts.regular, fontSize: 15, color: colors.text, marginTop: 10 },
-  tileScroll: { paddingHorizontal: spacing.gutter, marginTop: 26 },
-  tileGrid: { gap: 10 },
-  tileRow: { flexDirection: 'row', gap: 10 },
-  sectionList: { marginTop: 12, gap: 10, paddingHorizontal: spacing.gutter },
-  courseCard: {
+  placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.gutter },
+  title: { fontFamily: fonts.bold, fontSize: 36, color: colors.text, paddingHorizontal: spacing.gutter, marginTop: 4, marginBottom: 16 },
+  searchBox: {
     flexDirection: 'row',
-    borderRadius: 14,
+    alignItems: 'center',
+    marginHorizontal: spacing.gutter,
+    marginBottom: 14,
+    backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.card,
-    overflow: 'hidden',
+    borderRadius: 10,
+    paddingHorizontal: 14,
   },
-  courseSpine: { width: 5 },
-  courseBody: { flex: 1, padding: 16, paddingBottom: 13 },
-  courseTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  courseCode: { fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.8, color: colors.accent },
-  courseTitle: { fontFamily: fonts.bold, fontSize: 18, color: colors.text, marginTop: 6 },
-  courseMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
-  courseRule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 12, marginBottom: 10 },
-  courseFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  courseAction: { fontFamily: fonts.medium, fontSize: 14, color: colors.accent },
+  searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
+  clear: { fontFamily: fonts.medium, fontSize: 13, color: colors.textSecondary, paddingLeft: 10 },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    paddingHorizontal: spacing.gutter + 2,
+    marginBottom: 10,
+  },
+  sectionTick: { width: 16, height: 3, borderRadius: 1.5, backgroundColor: colors.accent, alignSelf: 'center' },
+  sectionTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 17, color: colors.text },
+  sectionCount: { fontFamily: fonts.regular, fontSize: 13, color: colors.textTertiary },
+  empty: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textTertiary, paddingVertical: 8 },
+  footnote: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: colors.textTertiary,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 20,
+  },
 });

@@ -2,28 +2,34 @@
  * Session store, persisted to AsyncStorage.
  *
  * UX contract:
- *  - First ever sign-in → profile setup runs once.
- *  - Sign out → back to welcome, but the profile is REMEMBERED.
- *  - Sign back in → straight to the app, no repeated onboarding.
- *  - Profile can be redone from You → (future) "Edit course list".
- *
- * Real providers replace signIn's body; persistence moves to
- * expo-secure-store for tokens when auth is wired.
+ *  - First ever sign-in → the onboarding wizard runs once
+ *    (identity → school → placement → courses → personalize).
+ *  - Sign out → welcome, but the profile is REMEMBERED.
+ *  - Sign back in → straight to the app (Courses tab).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
+import type { SchoolId } from '../data/catalog/types';
 
 export type AuthMethod = 'google' | 'apple' | 'momo' | 'orange';
 
 export type StudentProfile = {
-  university: string;
-  faculty: string;
-  department: string;
+  name: string;
+  username: string; // @handle, lowercase
+  avatarColor: string;
+  school: SchoolId;
+  facultyId: string;
+  facultyName: string;
+  departmentId: string;
+  departmentName: string;
   level: string;
+  enrolledCourseCodes: string[];
+  /** ISO date of the next exam sitting — drives the home countdown. */
+  examDate: string;
+  studyTime: 'morning' | 'evening' | 'night';
 };
 
 type Session = {
-  /** False until AsyncStorage has been read; gate rendering on this. */
   hydrated: boolean;
   signedIn: boolean;
   method: AuthMethod | null;
@@ -31,7 +37,7 @@ type Session = {
   profile: StudentProfile | null;
 };
 
-const KEY = 'revl.session.v1';
+const KEY = 'revl.session.v2';
 
 let session: Session = { hydrated: false, signedIn: false, method: null, profile: null };
 const listeners = new Set<() => void>();
@@ -42,7 +48,6 @@ function persist() {
   AsyncStorage.setItem(KEY, JSON.stringify(toSave)).catch(() => {});
 }
 
-// Hydrate once at module load.
 AsyncStorage.getItem(KEY)
   .then((raw) => {
     if (raw) session = { ...session, ...JSON.parse(raw) };
@@ -55,7 +60,6 @@ AsyncStorage.getItem(KEY)
   });
 
 export function signIn(method: AuthMethod, phone?: string) {
-  // Profile survives sign-out, so a returning student skips setup.
   session = { ...session, signedIn: true, method, phone };
   persist();
   emit();
@@ -68,6 +72,7 @@ export function setProfile(profile: StudentProfile) {
 }
 
 export function signOut() {
+  // Profile survives sign-out so returning students skip onboarding.
   session = { ...session, signedIn: false, method: null, phone: undefined };
   persist();
   emit();
@@ -80,3 +85,11 @@ export function useSession(): Session {
     () => session
   );
 }
+
+/** Mocked username availability — a reserved list until the backend exists. */
+const TAKEN = new Set(['revl', 'admin', 'ashley', 'test', 'support']);
+export function isUsernameAvailable(u: string): boolean {
+  return u.length >= 3 && !TAKEN.has(u.toLowerCase());
+}
+
+export const AVATAR_COLORS = ['#F2A93B', '#9D97F5', '#4ADE80', '#7EA8FF', '#FF8FA3', '#5EEAD4'];

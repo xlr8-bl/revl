@@ -62,7 +62,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)/momo" />
           </Stack.Protected>
           <Stack.Protected guard={signedIn && !profile}>
-            <Stack.Screen name="(auth)/setup" />
+            <Stack.Screen name="(auth)/onboarding" />
           </Stack.Protected>
           <Stack.Protected guard={signedIn && !!profile}>
             <Stack.Screen name="(tabs)" />

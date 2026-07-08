@@ -30,15 +30,18 @@ import { SessionCard } from '../../components/SessionCard';
 import { communityFeed, todaySession } from '../../data/home';
 import { currentUser } from '../../data/user';
 import { getGreeting } from '../../lib/greeting';
+import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type } from '../../theme';
-
-/** Days until the next exam — drives the header countdown chip. */
-const EXAM_IN_DAYS = 21;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { profile } = useSession();
+  const firstName = profile?.name.split(' ')[0] || currentUser.name;
+  const examDays = profile?.examDate
+    ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000))
+    : null;
   const [headerHeight, setHeaderHeight] = useState(120);
 
   const scrollY = useSharedValue(0);
@@ -71,11 +74,11 @@ export default function HomeScreen() {
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
         <View style={styles.kickerRow}>
           <Text style={styles.dateLine}>{dateLine}</Text>
-          <Text style={styles.countdownText}>Exams in {EXAM_IN_DAYS} days</Text>
+          {examDays !== null && <Text style={styles.countdownText}>Exams in {examDays} days</Text>}
         </View>
         <View style={styles.greetingRow}>
           <Text style={styles.greeting}>
-            {getGreeting()}, {currentUser.name}
+            {getGreeting()}, {firstName}
           </Text>
           <View style={styles.headerIcons}>
             <Pressable onPress={() => router.push('/wallet')} style={styles.creditChip} hitSlop={8}>

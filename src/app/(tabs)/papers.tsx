@@ -9,12 +9,15 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { courses } from '../../data/courses';
+import { useSession } from '../../lib/session';
 import { initiallyDownloadedPaperIds, papers, unlockedPaperIds } from '../../data/papers';
 import type { Paper } from '../../types';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
 export default function PapersScreen() {
   const insets = useSafeAreaInsets();
+  const { profile } = useSession();
+  const enrolled = new Set(profile?.enrolledCourseCodes ?? []);
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set(initiallyDownloadedPaperIds));
 
   const toggleDownload = (id: string) =>
@@ -35,6 +38,8 @@ export default function PapersScreen() {
       {courses.map((course) => {
         const coursePapers = papers.filter((p) => p.courseCode === course.code);
         if (coursePapers.length === 0) return null;
+        // Scope: only papers for courses the student is enrolled in (all shown if none match).
+        if (enrolled.size > 0 && ![...enrolled].some((c) => c.startsWith(course.code.slice(0, 3))) && !enrolled.has(course.code)) return null;
         return (
           <View key={course.code} style={{ marginTop: 26 }}>
             <Text style={styles.groupTitle}>

@@ -11,14 +11,15 @@ import { colors } from '../../theme';
 export default function TabLayout() {
   return (
     <Tabs
+      initialRouteName="courses"
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
       }}>
+      <Tabs.Screen name="courses" />
       <Tabs.Screen name="index" />
       <Tabs.Screen name="papers" />
-      <Tabs.Screen name="courses" />
       <Tabs.Screen name="discover" />
       <Tabs.Screen name="you" />
     </Tabs>
