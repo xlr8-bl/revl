@@ -11,7 +11,7 @@ import { colors, fonts } from '../theme';
 
 const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
   index: { label: 'Tonight', icon: 'moon-outline', iconActive: 'moon' },
-  papers: { label: 'Papers', icon: 'reader-outline', iconActive: 'reader' },
+  community: { label: 'Class', icon: 'people-outline', iconActive: 'people' },
   courses: { label: 'Courses', icon: 'library-outline', iconActive: 'library' },
   discover: { label: 'Search', icon: 'search-outline', iconActive: 'search' },
   you: { label: 'You', icon: 'person-outline', iconActive: 'person' },

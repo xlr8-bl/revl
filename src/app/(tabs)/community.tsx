@@ -7,10 +7,9 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { communityFeed } from '../data/home';
-import { useSession } from '../lib/session';
-import { colors, fonts, spacing } from '../theme';
+import { communityFeed } from '../../data/home';
+import { useSession } from '../../lib/session';
+import { colors, fonts, spacing } from '../../theme';
 
 type Post = { id: string; user: string; initial: string; color: string; text: string; time: string };
 
@@ -37,7 +36,7 @@ export default function CommunityScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScreenHeader title={roomName} />
+      <Text style={[styles.roomTitle, { paddingTop: insets.top + 16 }]}>{roomName}</Text>
       <Text style={styles.memberLine}>128 classmates in this room</Text>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: 16 }}>
@@ -57,7 +56,7 @@ export default function CommunityScreen() {
         ))}
       </ScrollView>
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) + 74 }]}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
@@ -77,6 +76,13 @@ export default function CommunityScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  roomTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 24,
+    color: colors.text,
+    paddingHorizontal: spacing.gutter,
+    marginBottom: 4,
+  },
   memberLine: {
     fontFamily: fonts.regular,
     fontSize: 12.5,

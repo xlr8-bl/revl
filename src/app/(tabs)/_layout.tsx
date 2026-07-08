@@ -19,7 +19,7 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen name="courses" />
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="papers" />
+      <Tabs.Screen name="community" />
       <Tabs.Screen name="discover" />
       <Tabs.Screen name="you" />
     </Tabs>
