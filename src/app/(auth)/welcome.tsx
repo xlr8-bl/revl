@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RevlLogo } from '../../components/RevlLogo';
 import { signIn } from '../../lib/session';
 import { colors, fonts, spacing, type } from '../../theme';
 
@@ -18,7 +19,10 @@ export default function WelcomeScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + 30, paddingBottom: insets.bottom + 22 }]}>
       <View>
-        <Text style={styles.wordmark}>revl</Text>
+        <View style={styles.brandRow}>
+          <RevlLogo size={46} />
+          <Text style={styles.wordmark}>revl</Text>
+        </View>
         <View style={styles.rule} />
         <Text style={styles.tagline}>
           The past papers your exam will be set from, worked and explained.
@@ -69,7 +73,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter + 6,
     justifyContent: 'space-between',
   },
-  wordmark: { fontFamily: fonts.bold, fontSize: 32, color: colors.text, letterSpacing: -0.5, marginTop: 34 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 34 },
+  wordmark: { fontFamily: fonts.bold, fontSize: 32, color: colors.text, letterSpacing: -0.5 },
   rule: { width: 34, height: 3, backgroundColor: colors.accent, marginTop: 14, marginBottom: 30 },
   tagline: { fontFamily: fonts.serif, fontSize: 31, lineHeight: 42, color: colors.text },
   sub: { ...type.body, color: colors.textSecondary, marginTop: 18, maxWidth: 330 },
