@@ -66,7 +66,9 @@ export default function CoursesScreen() {
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE }}>
       {/* Placement header — this screen is scoped to who you are */}
       <Text style={styles.placement}>
-        {profile.departmentName} · {profile.level} · {profile.school === 'ub' ? 'UB' : 'HND'}
+        {profile.school === 'hnd'
+          ? `${profile.departmentName} · HND`
+          : `${profile.departmentName} · ${profile.level} · UB`}
       </Text>
       <Text style={styles.title}>Courses</Text>
 

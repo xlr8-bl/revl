@@ -128,8 +128,10 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* Class activity — community as a strip, not a tab */}
-        <SectionTitle title="Class activity" />
+        {/* Class activity — the department room (community scoped to your class) */}
+        <Pressable onPress={() => router.push('/community' as never)}>
+          <SectionTitle title={profile ? `${profile.departmentName} room` : 'Class activity'} />
+        </Pressable>
         <View style={styles.feedCard}>
           {communityFeed.slice(0, 3).map((item, i) => (
             <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>

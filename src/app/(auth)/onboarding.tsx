@@ -1,30 +1,43 @@
 /**
- * Onboarding wizard — runs once after first sign-in.
+ * Onboarding wizard — one decision per screen, no layout shift.
  *
- *   1 identity      name, @username (mock availability), avatar color
- *   2 school        University of Buea | HND
- *   3 placement     faculty/domain → department/specialty → level
- *   4 courses       auto-derived list, pre-checked; HND general papers locked
- *   5 personalize   next exam date + preferred study time
- *   6 done          "your library is ready" → lands on Courses
+ *   identity → school → faculty → department → level (UB only)
+ *            → courses → personalize → done
  *
- * Progressive profiling: one decision per screen, progress bar, back
- * support. Everything writes into the persisted profile at the end.
+ * Design rules applied here:
+ *  - Calm 220ms fades between steps. No springs: springs overshoot and
+ *    read as "shaking".
+ *  - Every dynamic text (username hint) has RESERVED height so typing
+ *    never shifts the layout.
+ *  - KeyboardAvoidingView + return-key chaining + delayed focus (focus
+ *    after the step transition, not during) keep inputs visible and the
+ *    screen still while the keyboard appears.
+ *  - Placement is tappable full-width ROWS (not chip clouds); tapping
+ *    advances automatically; a breadcrumb shows where you are and each
+ *    crumb jumps back.
+ *  - HND has a single level: the level step is skipped and set to 'HND'.
  */
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { coursesFor, departmentsFor, facultiesFor, schools } from '../../data/catalog';
 import type { SchoolId } from '../../data/catalog/types';
 import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing } from '../../theme';
 
-const STEPS = ['identity', 'school', 'placement', 'courses', 'personalize', 'done'] as const;
-type Step = (typeof STEPS)[number];
+type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'personalize' | 'done';
 
-/** Upcoming exam-sitting choices (config-worthy; fine hardcoded for launch). */
 const EXAM_DATES = [
   { label: 'First semester exams (February)', iso: '2027-02-15' },
   { label: 'Second semester exams (June)', iso: '2027-06-14' },
@@ -45,29 +58,65 @@ export default function OnboardingScreen() {
   const [facultyId, setFacultyId] = useState<string | null>(null);
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
+  const [deptFilter, setDeptFilter] = useState('');
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [examDate, setExamDate] = useState<string | null>(null);
   const [studyTime, setStudyTime] = useState<'morning' | 'evening' | 'night' | null>(null);
 
-  const stepIndex = STEPS.indexOf(step);
+  const usernameRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInput>(null);
+
+  // Focus AFTER the step transition settles — focusing mid-animation is
+  // what makes the screen jump.
+  useEffect(() => {
+    if (step === 'identity') {
+      const t = setTimeout(() => nameRef.current?.focus(), 320);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
+
   const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
   const usernameOk = cleanUsername.length >= 3 && isUsernameAvailable(cleanUsername);
+  const usernameHint =
+    cleanUsername.length >= 3 ? (usernameOk ? `@${cleanUsername} is available` : `@${cleanUsername} is taken`) : ' ';
+
+  // Step order depends on school (HND skips level).
+  const stepOrder: Step[] = useMemo(
+    () =>
+      school === 'hnd'
+        ? ['identity', 'school', 'faculty', 'department', 'courses', 'personalize', 'done']
+        : ['identity', 'school', 'faculty', 'department', 'level', 'courses', 'personalize', 'done'],
+    [school]
+  );
+  const stepIndex = stepOrder.indexOf(step);
 
   const faculties = school ? facultiesFor(school) : [];
   const departments = facultyId ? departmentsFor(facultyId) : [];
+  const filteredDepartments = deptFilter.trim()
+    ? departments.filter((d) => d.name.toLowerCase().includes(deptFilter.trim().toLowerCase()))
+    : departments;
   const levels = school ? schools.find((sc) => sc.id === school)!.levels : [];
   const derivedCourses = useMemo(
     () => (school && departmentId && level ? coursesFor(school, departmentId, level) : []),
     [school, departmentId, level]
   );
 
-  const goTo = (s: Step) => setStep(s);
-  const back = () => (stepIndex > 0 ? goTo(STEPS[stepIndex - 1]) : router.back());
+  const back = () => (stepIndex > 0 ? setStep(stepOrder[stepIndex - 1]) : router.back());
 
-  const enterCourses = () => {
-    // Pre-check everything; HND general papers stay locked on.
-    setSelectedCodes(new Set(derivedCourses.map((c) => c.code)));
-    goTo('courses');
+  const pickDepartment = (id: string) => {
+    setDepartmentId(id);
+    if (school === 'hnd') {
+      setLevel('HND'); // single level: skip the step entirely
+      openCourses(id, 'HND');
+    } else {
+      setStep('level');
+    }
+  };
+
+  const openCourses = (deptId: string, lvl: string) => {
+    const list = coursesFor(school!, deptId, lvl);
+    setSelectedCodes(new Set(list.map((c) => c.code)));
+    setStep('courses');
   };
 
   const finish = () => {
@@ -90,244 +139,326 @@ export default function OnboardingScreen() {
     router.replace('/courses');
   };
 
+  /** Breadcrumb of confirmed choices; tap a crumb to change it. */
+  const crumbs: { label: string; goto: Step }[] = [];
+  if (school) crumbs.push({ label: school === 'ub' ? 'UB' : 'HND', goto: 'school' });
+  if (facultyId) crumbs.push({ label: faculties.find((f) => f.id === facultyId)?.name ?? '', goto: 'faculty' });
+  if (departmentId && (step === 'level' || step === 'courses'))
+    crumbs.push({ label: departments.find((d) => d.id === departmentId)?.name ?? '', goto: 'department' });
+
+  const showCrumbs = ['faculty', 'department', 'level', 'courses'].includes(step) && crumbs.length > 0;
+
   return (
     <View style={[styles.root, { paddingTop: insets.top + 10 }]}>
-      {/* Progress + back */}
       <View style={styles.topBar}>
         <Pressable onPress={back} hitSlop={10}>
           <Text style={styles.back}>Back</Text>
         </Pressable>
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${((stepIndex + 1) / STEPS.length) * 100}%` }]} />
+          <View style={[styles.progressFill, { width: `${((stepIndex + 1) / stepOrder.length) * 100}%` }]} />
         </View>
         <Text style={styles.stepCount}>
-          {stepIndex + 1}/{STEPS.length}
+          {stepIndex + 1}/{stepOrder.length}
         </Text>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}>
+      {showCrumbs && (
+        <View style={styles.crumbs}>
+          {crumbs.map((c, i) => (
+            <React.Fragment key={c.goto}>
+              {i > 0 && <Text style={styles.crumbSep}>›</Text>}
+              <Pressable onPress={() => setStep(c.goto)} hitSlop={6}>
+                <Text style={styles.crumb} numberOfLines={1}>
+                  {c.label}
+                </Text>
+              </Pressable>
+            </React.Fragment>
+          ))}
+        </View>
+      )}
+
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {step === 'identity' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
-            <Text style={styles.title}>First, who are you?</Text>
-            <Text style={styles.sub}>Signed in with {method ?? 'your account'}. This is how classmates will see you.</Text>
+          <Animated.View key="identity" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+              <Text style={styles.title}>First, who are you?</Text>
+              <Text style={styles.sub}>Signed in with {method ?? 'your account'}. This is how classmates see you.</Text>
 
-            <Text style={styles.fieldLabel}>Full name</Text>
-            <TextInput value={name} onChangeText={setName} placeholder="Ashley Mbah" placeholderTextColor={colors.textTertiary} style={styles.input} autoFocus />
-
-            <Text style={styles.fieldLabel}>Username</Text>
-            <View style={styles.handleRow}>
-              <Text style={styles.at}>@</Text>
+              <Text style={styles.fieldLabel}>Full name</Text>
               <TextInput
-                value={username}
-                onChangeText={setUsername}
-                placeholder="ashleym"
+                ref={nameRef}
+                value={name}
+                onChangeText={setName}
+                placeholder="Ashley Mbah"
                 placeholderTextColor={colors.textTertiary}
-                autoCapitalize="none"
-                style={[styles.input, { flex: 1, marginTop: 0 }]}
+                style={styles.input}
+                returnKeyType="next"
+                autoComplete="name"
+                textContentType="name"
+                onSubmitEditing={() => usernameRef.current?.focus()}
               />
-            </View>
-            {cleanUsername.length >= 3 && (
-              <Text style={[styles.hint, { color: usernameOk ? colors.verified : colors.danger }]}>
-                {usernameOk ? `@${cleanUsername} is available` : `@${cleanUsername} is taken`}
-              </Text>
-            )}
 
-            <Text style={styles.fieldLabel}>Avatar</Text>
-            <View style={styles.avatarRow}>
-              <View style={[styles.avatarPreview, { backgroundColor: avatarColor }]}>
-                <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
+              <Text style={styles.fieldLabel}>Username</Text>
+              <View style={styles.handleRow}>
+                <Text style={styles.at}>@</Text>
+                <TextInput
+                  ref={usernameRef}
+                  value={username}
+                  onChangeText={setUsername}
+                  placeholder="ashleym"
+                  placeholderTextColor={colors.textTertiary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  style={[styles.input, { flex: 1 }]}
+                />
               </View>
-              <View style={styles.swatches}>
-                {AVATAR_COLORS.map((c) => (
-                  <Pressable key={c} onPress={() => setAvatarColor(c)} style={[styles.swatch, { backgroundColor: c }, avatarColor === c && styles.swatchActive]} />
-                ))}
-              </View>
-            </View>
+              {/* Reserved height: this line ALWAYS renders, so typing never shifts the layout. */}
+              <Text style={[styles.hintLine, { color: usernameOk ? colors.verified : colors.danger }]}>{usernameHint}</Text>
 
-            <Cta label="Continue" enabled={!!name.trim() && usernameOk} onPress={() => goTo('school')} />
+              <Text style={styles.fieldLabel}>Avatar</Text>
+              <View style={styles.avatarRow}>
+                <View style={[styles.avatarPreview, { backgroundColor: avatarColor }]}>
+                  <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
+                </View>
+                <View style={styles.swatches}>
+                  {AVATAR_COLORS.map((c) => (
+                    <Pressable key={c} onPress={() => setAvatarColor(c)} style={[styles.swatch, { backgroundColor: c }, avatarColor === c && styles.swatchActive]} />
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+            {/* CTA pinned above the keyboard, always reachable */}
+            <Cta label="Continue" enabled={!!name.trim() && usernameOk} onPress={() => setStep('school')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
 
         {step === 'school' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
+          <Animated.View key="school" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Where do you study?</Text>
-            <Text style={styles.sub}>Revl launches with these two. More schools are coming.</Text>
-            {schools.map((sc) => (
-              <Pressable
-                key={sc.id}
-                onPress={() => {
-                  setSchool(sc.id);
-                  setFacultyId(null);
-                  setDepartmentId(null);
-                  setLevel(null);
-                }}
-                style={[styles.schoolCard, school === sc.id && styles.schoolCardActive]}>
-                <Text style={styles.schoolShort}>{sc.shortName}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.schoolName}>{sc.name}</Text>
-                  <Text style={styles.schoolMeta}>
-                    {sc.id === 'ub' ? '10 faculties · 53 departments' : '7 domains · 53 specialties · national final exam'}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-            <Cta label="Continue" enabled={!!school} onPress={() => goTo('placement')} />
+            <Text style={styles.sub}>Revl launches with these two. Tap one to continue.</Text>
+            <View style={{ marginTop: 16 }}>
+              {schools.map((sc) => (
+                <Pressable
+                  key={sc.id}
+                  onPress={() => {
+                    setSchool(sc.id);
+                    setFacultyId(null);
+                    setDepartmentId(null);
+                    setLevel(null);
+                    setStep('faculty');
+                  }}
+                  style={({ pressed }) => [styles.bigRow, pressed && styles.rowPressed]}>
+                  <Text style={styles.bigRowBadge}>{sc.shortName}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{sc.name}</Text>
+                    <Text style={styles.rowMeta}>
+                      {sc.id === 'ub' ? '10 faculties · 53 departments' : '7 domains · 53 specialties · one national exam'}
+                    </Text>
+                  </View>
+                  <Text style={styles.rowChevron}>›</Text>
+                </Pressable>
+              ))}
+            </View>
           </Animated.View>
         )}
 
-        {step === 'placement' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
-            <Text style={styles.title}>{school === 'hnd' ? 'Your specialty' : 'Your department'}</Text>
-            <Text style={styles.sub}>You will only see papers and courses that belong to you.</Text>
-
-            <Text style={styles.fieldLabel}>{school === 'hnd' ? 'Domain' : 'Faculty / school'}</Text>
-            <View style={styles.chips}>
+        {step === 'faculty' && (
+          <Animated.View key="faculty" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <Text style={styles.title}>{school === 'hnd' ? 'Your domain' : 'Your faculty'}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 14, paddingBottom: 30 }}>
               {faculties.map((f) => (
-                <Chip key={f.id} label={f.name} selected={facultyId === f.id} onPress={() => { setFacultyId(f.id); setDepartmentId(null); }} />
+                <Pressable
+                  key={f.id}
+                  onPress={() => {
+                    setFacultyId(f.id);
+                    setDeptFilter('');
+                    setStep('department');
+                  }}
+                  style={({ pressed }) => [styles.listRow, pressed && styles.rowPressed]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{f.name}</Text>
+                    <Text style={styles.rowMeta}>
+                      {departmentsFor(f.id).length} {school === 'hnd' ? 'specialties' : 'departments'}
+                    </Text>
+                  </View>
+                  <Text style={styles.rowChevron}>›</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
+
+        {step === 'department' && (
+          <Animated.View key="department" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <Text style={styles.title}>{school === 'hnd' ? 'Your specialty' : 'Your department'}</Text>
+            {departments.length > 8 && (
+              <TextInput
+                value={deptFilter}
+                onChangeText={setDeptFilter}
+                placeholder="Type to filter…"
+                placeholderTextColor={colors.textTertiary}
+                style={[styles.input, { marginTop: 12 }]}
+              />
+            )}
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 30 }}>
+              {filteredDepartments.map((d) => (
+                <Pressable
+                  key={d.id}
+                  onPress={() => pickDepartment(d.id)}
+                  style={({ pressed }) => [styles.listRow, pressed && styles.rowPressed]}>
+                  <Text style={[styles.rowTitle, { flex: 1 }]}>{d.name}</Text>
+                  <Text style={styles.rowChevron}>›</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
+
+        {step === 'level' && (
+          <Animated.View key="level" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <Text style={styles.title}>Your level</Text>
+            <View style={{ marginTop: 16 }}>
+              {levels.map((l) => (
+                <Pressable
+                  key={l}
+                  onPress={() => {
+                    setLevel(l);
+                    openCourses(departmentId!, l);
+                  }}
+                  style={({ pressed }) => [styles.listRow, pressed && styles.rowPressed]}>
+                  <Text style={[styles.rowTitle, { flex: 1 }]}>{l}</Text>
+                  <Text style={styles.rowChevron}>›</Text>
+                </Pressable>
               ))}
             </View>
-
-            {facultyId && (
-              <>
-                <Text style={styles.fieldLabel}>{school === 'hnd' ? 'Specialty' : 'Department'}</Text>
-                <View style={styles.chips}>
-                  {departments.map((d) => (
-                    <Chip key={d.id} label={d.name} selected={departmentId === d.id} onPress={() => setDepartmentId(d.id)} />
-                  ))}
-                </View>
-              </>
-            )}
-
-            {departmentId && (
-              <>
-                <Text style={styles.fieldLabel}>Level</Text>
-                <View style={styles.chips}>
-                  {levels.map((l) => (
-                    <Chip key={l} label={l} selected={level === l} onPress={() => setLevel(l)} />
-                  ))}
-                </View>
-              </>
-            )}
-
-            <Cta label="Continue" enabled={!!(facultyId && departmentId && level)} onPress={enterCourses} />
           </Animated.View>
         )}
 
         {step === 'courses' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
+          <Animated.View key="courses" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Your courses</Text>
             <Text style={styles.sub}>
               {school === 'hnd'
-                ? 'These are your final-exam papers. General papers are written by everyone, so they stay on.'
-                : 'Everything taught in your department at your level. Untick anything you are not taking.'}
+                ? 'Your final-exam papers. General papers are written by everyone, so they stay on.'
+                : 'Taught in your department at your level. Untick what you are not taking.'}
             </Text>
-            {derivedCourses.map((c) => {
-              const locked = school === 'hnd' && c.general;
-              const on = selectedCodes.has(c.code);
-              return (
-                <Pressable
-                  key={c.code}
-                  disabled={locked}
-                  onPress={() =>
-                    setSelectedCodes((prev) => {
-                      const next = new Set(prev);
-                      on ? next.delete(c.code) : next.add(c.code);
-                      return next;
-                    })
-                  }
-                  style={[styles.courseRow, !on && { opacity: 0.45 }]}>
-                  <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.courseTitle}>{c.title}</Text>
-                    <Text style={styles.courseMeta}>
-                      {c.code}
-                      {c.general ? ' · general paper' : ''}
-                      {locked ? ' · required' : ''}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-            <Cta label={`Continue with ${selectedCodes.size} courses`} enabled={selectedCodes.size > 0} onPress={() => goTo('personalize')} />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}>
+              {derivedCourses.map((c) => {
+                const locked = school === 'hnd' && c.general;
+                const on = selectedCodes.has(c.code);
+                return (
+                  <Pressable
+                    key={c.code}
+                    disabled={locked}
+                    onPress={() =>
+                      setSelectedCodes((prev) => {
+                        const next = new Set(prev);
+                        on ? next.delete(c.code) : next.add(c.code);
+                        return next;
+                      })
+                    }
+                    style={[styles.courseRow, !on && { opacity: 0.45 }]}>
+                    <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
+                    <View style={{ flex: 1 }}>
+                      {/* Code-first when the official title is unpublished — never show an invented title. */}
+                      <Text style={styles.courseTitle}>{c.title || c.code}</Text>
+                      <Text style={styles.courseMeta}>
+                        {c.title ? c.code : 'title pending confirmation'}
+                        {c.general ? ' · general paper' : ''}
+                        {locked ? ' · required' : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Cta label={`Continue with ${selectedCodes.size} courses`} enabled={selectedCodes.size > 0} onPress={() => setStep('personalize')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
 
         {step === 'personalize' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
-            <Text style={styles.title}>Make it yours</Text>
+          <Animated.View key="personalize" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.title}>Make it yours</Text>
 
-            <Text style={styles.fieldLabel}>When is your next exam sitting?</Text>
-            <View style={styles.chips}>
+              <Text style={styles.fieldLabel}>When is your next exam sitting?</Text>
               {EXAM_DATES.map((d) => (
-                <Chip key={d.iso} label={d.label} selected={examDate === d.iso} onPress={() => setExamDate(d.iso)} />
+                <Pressable
+                  key={d.iso}
+                  onPress={() => setExamDate(d.iso)}
+                  style={({ pressed }) => [styles.listRow, examDate === d.iso && styles.listRowActive, pressed && styles.rowPressed]}>
+                  <Text style={[styles.rowTitle, { flex: 1 }, examDate === d.iso && { color: colors.accent }]}>{d.label}</Text>
+                  {examDate === d.iso && <Text style={{ color: colors.accent }}>✓</Text>}
+                </Pressable>
               ))}
-            </View>
 
-            <Text style={styles.fieldLabel}>When do you actually study?</Text>
-            <View style={styles.chips}>
-              {(['morning', 'evening', 'night'] as const).map((t) => (
-                <Chip key={t} label={t[0].toUpperCase() + t.slice(1)} selected={studyTime === t} onPress={() => setStudyTime(t)} />
-              ))}
-            </View>
-
-            <Text style={styles.hint}>
-              Revl will time reminders and your daily plan around this. You can change everything later.
-            </Text>
-            <Cta label="Continue" enabled={!!(examDate && studyTime)} onPress={() => goTo('done')} />
+              <Text style={styles.fieldLabel}>When do you actually study?</Text>
+              <View style={styles.timeRow}>
+                {(['morning', 'evening', 'night'] as const).map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setStudyTime(t)}
+                    style={[styles.timeChip, studyTime === t && styles.timeChipActive]}>
+                    <Text style={[styles.rowTitle, studyTime === t && { color: colors.accent }]}>
+                      {t[0].toUpperCase() + t.slice(1)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.hintLine}>Reminders and your daily plan follow this. Change anytime.</Text>
+            </ScrollView>
+            <Cta label="Continue" enabled={!!(examDate && studyTime)} onPress={() => setStep('done')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
 
         {step === 'done' && (
-          <Animated.View entering={FadeInDown.springify().damping(15)}>
-            <View style={[styles.avatarPreview, { backgroundColor: avatarColor, alignSelf: 'center', marginTop: 30 }]}>
-              <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
+          <Animated.View key="done" entering={FadeIn.duration(300)} style={{ flex: 1 }}>
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <View style={[styles.avatarPreview, { backgroundColor: avatarColor, alignSelf: 'center' }]}>
+                <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
+              </View>
+              <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>Your library is ready</Text>
+              <Text style={[styles.sub, { textAlign: 'center' }]}>
+                @{cleanUsername} · {departments.find((d) => d.id === departmentId)?.name} · {level}
+                {'\n'}
+                {selectedCodes.size} courses set up. Past papers appear as they are structured.
+              </Text>
             </View>
-            <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>Your library is ready</Text>
-            <Text style={[styles.sub, { textAlign: 'center' }]}>
-              @{cleanUsername} · {departments.find((d) => d.id === departmentId)?.name} · {level}
-              {'\n'}
-              {selectedCodes.size} courses set up. Past papers appear as they are structured.
-            </Text>
-            <Cta label="Start revising" enabled onPress={finish} />
+            <Cta label="Start revising" enabled onPress={finish} bottomInset={insets.bottom} />
           </Animated.View>
         )}
-      </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+function Cta({ label, enabled, onPress, bottomInset }: { label: string; enabled: boolean; onPress: () => void; bottomInset: number }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, selected && styles.chipActive]}>
-      <Text style={[styles.chipText, selected && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function Cta({ label, enabled, onPress }: { label: string; enabled: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      disabled={!enabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.cta, !enabled && styles.ctaDisabled, pressed && { opacity: 0.85 }]}>
-      <Text style={[styles.ctaText, !enabled && { color: colors.textTertiary }]}>{label}</Text>
-    </Pressable>
+    <View style={{ paddingBottom: Math.max(bottomInset, 12), paddingTop: 8 }}>
+      <Pressable
+        disabled={!enabled}
+        onPress={onPress}
+        style={({ pressed }) => [styles.cta, !enabled && styles.ctaDisabled, pressed && { opacity: 0.85 }]}>
+        <Text style={[styles.ctaText, !enabled && { color: colors.textTertiary }]}>{label}</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.gutter + 6 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
-  back: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
+  topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
+  back: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary, paddingVertical: 4 },
   progressTrack: { flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.surface },
   progressFill: { height: 3, borderRadius: 2, backgroundColor: colors.accent },
   stepCount: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
-  title: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
+  crumbs: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' },
+  crumb: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent, maxWidth: 150 },
+  crumbSep: { fontFamily: fonts.regular, fontSize: 13, color: colors.textTertiary },
+  title: { fontFamily: fonts.bold, fontSize: 26, color: colors.text },
   sub: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, marginTop: 8 },
-  fieldLabel: { fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 24, marginBottom: 10 },
+  fieldLabel: { fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 22, marginBottom: 10 },
   input: {
     backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
@@ -341,14 +472,15 @@ const styles = StyleSheet.create({
   },
   handleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   at: { fontFamily: fonts.medium, fontSize: 18, color: colors.textSecondary },
-  hint: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, marginTop: 10 },
+  /** Always-rendered hint line: fixed height, no layout shift. */
+  hintLine: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, height: 18, marginTop: 8 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatarPreview: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontFamily: fonts.bold, fontSize: 24, color: '#141414' },
   swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },
   swatch: { width: 26, height: 26, borderRadius: 13 },
   swatchActive: { borderWidth: 2.5, borderColor: colors.text },
-  schoolCard: {
+  bigRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -356,25 +488,28 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: 14,
     backgroundColor: colors.card,
-    padding: 16,
-    marginTop: 12,
+    padding: 18,
+    marginBottom: 10,
   },
-  schoolCardActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  schoolShort: { fontFamily: fonts.bold, fontSize: 18, color: colors.accent, width: 48 },
-  schoolName: { fontFamily: fonts.bold, fontSize: 16.5, color: colors.text },
-  schoolMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 3 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    borderWidth: 1,
+  bigRowBadge: { fontFamily: fonts.bold, fontSize: 17, color: colors.accent, width: 46 },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 58,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
+    borderRadius: 12,
     backgroundColor: colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
-  chipActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  chipText: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.text },
-  chipTextActive: { fontFamily: fonts.medium, color: colors.accent },
+  listRowActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  rowPressed: { opacity: 0.75 },
+  rowTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
+  rowMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 3 },
+  rowChevron: { fontFamily: fonts.regular, fontSize: 20, color: colors.textTertiary },
   courseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   checkbox: {
     width: 22,
@@ -389,7 +524,18 @@ const styles = StyleSheet.create({
   checkMark: { fontFamily: fonts.bold, fontSize: 13, color: colors.onAccent },
   courseTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
   courseMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  cta: { marginTop: 30, backgroundColor: colors.accent, borderRadius: 10, alignItems: 'center', paddingVertical: 15 },
+  timeRow: { flexDirection: 'row', gap: 8 },
+  timeChip: {
+    flex: 1,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 10,
+    paddingVertical: 13,
+    backgroundColor: colors.card,
+  },
+  timeChipActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  cta: { backgroundColor: colors.accent, borderRadius: 10, alignItems: 'center', paddingVertical: 15 },
   ctaDisabled: { backgroundColor: colors.surface },
   ctaText: { fontFamily: fonts.medium, fontSize: 16, color: colors.onAccent },
 });

@@ -9,7 +9,7 @@ import { ubCourses, ubDepartments, ubFaculties } from './ub';
 
 export const schools: School[] = [
   { id: 'ub', name: 'University of Buea', shortName: 'UB', levels: ['L200', 'L300', 'L400', 'L500', 'L600'] },
-  { id: 'hnd', name: 'Higher National Diploma', shortName: 'HND', levels: ['HND1', 'HND2'] },
+  { id: 'hnd', name: 'Higher National Diploma', shortName: 'HND', levels: ['HND'] },
 ];
 
 export function facultiesFor(school: SchoolId): Faculty[] {

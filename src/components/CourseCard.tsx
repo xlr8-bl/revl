@@ -34,20 +34,21 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
   };
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 60).springify().damping(16)}>
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)}>
       <Pressable onPress={open} disabled={!hasPapers} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
         <View style={[styles.tile, { backgroundColor: tileColor(course.code) }]}>
           <Text style={styles.tileText}>{prefix}</Text>
         </View>
         <View style={styles.body}>
           <View style={styles.topRow}>
-            <Text style={styles.code}>{course.code}</Text>
-            <Text style={styles.level}>{course.level}</Text>
+            <Text style={styles.code}>{course.title ? course.code : course.level}</Text>
+            <Text style={styles.level}>{course.title ? course.level : ''}</Text>
           </View>
+          {/* Code-first when the official title is unpublished; never invent one. */}
           <Text style={styles.title} numberOfLines={2}>
-            {course.title}
+            {course.title || course.code}
           </Text>
-          {!course.verified && <Text style={styles.pending}>title pending registry check</Text>}
+          {!course.title && <Text style={styles.pending}>Know this course? Confirm its title, earn credits</Text>}
           <View style={styles.rule} />
           <View style={styles.footer}>
             {hasPapers ? (

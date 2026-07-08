@@ -14,7 +14,7 @@
  */
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signIn } from '../../lib/session';
 import { colors, fonts, spacing, type } from '../../theme';
@@ -40,7 +40,9 @@ export default function MomoSignInScreen() {
   const providerName = provider === 'momo' ? 'MTN MoMo' : 'Orange Money';
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+    <KeyboardAvoidingView
+      style={[styles.root, { paddingTop: insets.top + 8 }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Pressable onPress={() => router.back()} hitSlop={10}>
         <Text style={styles.back}>Back</Text>
       </Pressable>
@@ -101,7 +103,7 @@ export default function MomoSignInScreen() {
           </Pressable>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
