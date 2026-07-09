@@ -1,85 +1,127 @@
 /**
- * PostCard — one community post: author row, body, optional snapped
- * solution photo, optional QuestionAnchor, and the action row
- * (upvote as "useful", comments, share). Solve posts that crossed the
- * community threshold carry the verified tag — those answers get
- * promoted into the paper itself.
+ * PostCard — one feed post, in the layout every student already knows
+ * from Instagram/Twitter: full-width post with hairline separators (no
+ * boxes), avatar + bold name header, edge-to-edge photo, heart/reply/
+ * share action row, bold count line, "View all replies". Revl-specific
+ * parts ride on top of the familiar frame: the verified check on solve
+ * posts and the referenced exam question rendered like a quoted post.
  */
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { toggleUpvote, type CommunityPost } from '../lib/communityStore';
-import { colors, fonts } from '../theme';
+import { colors, fonts, spacing } from '../theme';
 import { QuestionAnchor } from './QuestionAnchor';
 
 export function PostCard({ post }: { post: CommunityPost }) {
+  const meta = [post.author.level, post.courseCode, post.time].filter(Boolean).join(' · ');
+
   return (
-    <View style={styles.card}>
-      {/* Author row */}
-      <View style={styles.authorRow}>
+    <View style={styles.post}>
+      {/* Header: avatar · bold name (+ verified check) · meta · more */}
+      <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: post.author.color }]}>
           <Text style={styles.avatarText}>{post.author.initial}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.author}>
-            {post.author.name} <Text style={styles.authorMeta}>· {post.author.level} · {post.time}</Text>
-          </Text>
-          <Text style={styles.kind}>
-            {post.kind === 'solve' ? 'posted a solution' : 'asked the class'}
-            {post.courseCode ? ` · ${post.courseCode}` : ''}
-          </Text>
-        </View>
-        {post.communityVerified && (
-          <View style={styles.verifiedTag}>
-            <Text style={styles.verifiedText}>✓ Class verified</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{post.author.name}</Text>
+            {post.communityVerified && (
+              <Ionicons name="checkmark-circle" size={15} color={colors.verified} />
+            )}
           </View>
-        )}
+          <Text style={styles.meta}>{meta}</Text>
+        </View>
+        <Pressable hitSlop={10}>
+          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+        </Pressable>
       </View>
 
       <Text style={styles.body}>{post.text}</Text>
 
-      {post.imageUri && <Image source={{ uri: post.imageUri }} style={styles.snap} resizeMode="cover" />}
+      {/* Snapped work: edge-to-edge, like feed media */}
+      {post.imageUri && <Image source={{ uri: post.imageUri }} style={styles.media} resizeMode="cover" />}
 
-      {post.questionRef && post.courseCode && <QuestionAnchor refr={post.questionRef} courseCode={post.courseCode} />}
+      {/* The referenced exam question, framed like a quoted post */}
+      {post.questionRef && post.courseCode && (
+        <View style={styles.anchorWrap}>
+          <QuestionAnchor refr={post.questionRef} courseCode={post.courseCode} />
+        </View>
+      )}
 
-      {/* Action row */}
+      {/* Action row: heart · reply · share */}
       <View style={styles.actions}>
-        <Pressable onPress={() => toggleUpvote(post.id)} hitSlop={8} style={styles.action}>
-          <Text style={[styles.actionText, post.upvotedByMe && { color: colors.accent, fontFamily: fonts.bold }]}>
-            ▲ {post.upvotes} useful
-          </Text>
+        <Pressable onPress={() => toggleUpvote(post.id)} hitSlop={8}>
+          <Ionicons
+            name={post.upvotedByMe ? 'heart' : 'heart-outline'}
+            size={25}
+            color={post.upvotedByMe ? colors.accent : colors.text}
+          />
         </Pressable>
-        <Text style={styles.actionText}>{post.comments} replies</Text>
-        <Text style={styles.actionText}>Share</Text>
+        <Pressable hitSlop={8}>
+          <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+        </Pressable>
+        <Pressable hitSlop={8}>
+          <Ionicons name="paper-plane-outline" size={22} color={colors.text} />
+        </Pressable>
       </View>
+
+      <Text style={styles.countLine}>
+        {post.upvotes} found this useful
+        {post.communityVerified ? ' · Class verified answer' : ''}
+      </Text>
+      {post.comments > 0 && <Text style={styles.replies}>View all {post.comments} replies</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    borderRadius: 16,
-    backgroundColor: colors.card,
-    padding: 16,
-    marginBottom: 12,
+  post: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: fonts.bold, fontSize: 15, color: '#141414' },
-  author: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.text },
-  authorMeta: { fontFamily: fonts.regular, color: colors.textTertiary, fontSize: 12.5 },
-  kind: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  verifiedTag: {
-    backgroundColor: colors.verifiedSoft,
-    borderRadius: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: spacing.gutter,
+    marginBottom: 10,
   },
-  verifiedText: { fontFamily: fonts.medium, fontSize: 11, color: colors.verified },
-  body: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.text, marginTop: 11 },
-  snap: { width: '100%', height: 190, borderRadius: 12, marginTop: 12, backgroundColor: colors.surface },
-  actions: { flexDirection: 'row', gap: 22, marginTop: 13, paddingTop: 11, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  action: {},
-  actionText: { fontFamily: fonts.medium, fontSize: 13, color: colors.textSecondary },
+  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: fonts.bold, fontSize: 16, color: '#141414' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  name: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.text },
+  meta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 1 },
+  body: {
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: colors.text,
+    paddingHorizontal: spacing.gutter,
+  },
+  media: { width: '100%', height: 280, marginTop: 12, backgroundColor: colors.surface },
+  anchorWrap: { paddingHorizontal: spacing.gutter },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 12,
+  },
+  countLine: {
+    fontFamily: fonts.medium,
+    fontSize: 13.5,
+    color: colors.text,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 9,
+  },
+  replies: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 5,
+  },
 });

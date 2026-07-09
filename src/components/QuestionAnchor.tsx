@@ -53,9 +53,7 @@ const styles = StyleSheet.create({
   anchor: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.02)',
     padding: 14,
     marginTop: 12,

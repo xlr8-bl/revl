@@ -84,7 +84,7 @@ export default function ClassScreen() {
         </ScrollView>
 
         {view === 'foryou' ? (
-          <View style={{ paddingHorizontal: spacing.gutter, marginTop: 14 }}>
+          <View style={styles.feed}>
             {feed.map((p) => (
               <PostCard key={p.id} post={p} />
             ))}
@@ -171,6 +171,11 @@ const styles = StyleSheet.create({
   },
   filterActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.text },
+  feed: {
+    marginTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   wantedIntro: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary, marginBottom: 14 },
   wantedCard: { marginBottom: 18 },
   wantedRank: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
