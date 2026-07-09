@@ -10,16 +10,19 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
+import { sentenceCase } from '../lib/format';
 import { colors, fonts } from '../theme';
 
 const COURSE_COLORS = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
-function courseColor(code: string) {
+export function courseColor(code: string) {
+  // Hash the full code: a student's courses mostly share one prefix, and
+  // the whole point of the color is telling their courses apart at a glance.
   let h = 0;
-  for (const ch of code.slice(0, 3)) h = h * 31 + ch.charCodeAt(0);
+  for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return COURSE_COLORS[h % COURSE_COLORS.length];
 }
 /** 12% alpha wash of the course color for the header band. */
-const wash = (hex: string) => hex + '1F';
+export const wash = (hex: string) => hex + '1F';
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   const router = useRouter();
@@ -41,7 +44,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
           {/* Serif title — the catalogue voice. Code-first when unpublished. */}
           {course.title ? (
             <Text style={styles.title} numberOfLines={2}>
-              {course.title}
+              {sentenceCase(course.title)}
             </Text>
           ) : (
             <>

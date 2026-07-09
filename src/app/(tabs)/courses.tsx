@@ -9,14 +9,16 @@
  * past papers inline (Papers and Courses are one page).
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CourseCard } from '../../components/CourseCard';
+import { CourseCard, courseColor, wash } from '../../components/CourseCard';
 import { FilterChips } from '../../components/FilterChips';
 import { courseByCode, coursesFor, departmentsFor, facultiesFor, searchCatalog } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
-import { papers } from '../../data/papers';
+import { papers, unlockedPaperIds } from '../../data/papers';
+import { sentenceCase } from '../../lib/format';
 import { useSession } from '../../lib/session';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
@@ -29,12 +31,15 @@ const TILE_COLORS = ['#9D2450', '#4A3D63', '#E04B2F', '#3C6FE8', '#357F84', '#4D
 export default function CoursesScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const router = useRouter();
   const { profile } = useSession();
   const [filter, setFilter] = useState('My courses');
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [tileFacultyId, setTileFacultyId] = useState<string | null>(null);
+  /** One of my courses, focused from the quick tiles — narrows the list below. */
+  const [focusedCode, setFocusedCode] = useState<string | null>(null);
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
 
@@ -58,10 +63,11 @@ export default function CoursesScreen() {
 
   /** Featured carousel: course sets that actually have extracted papers. */
   const featured = useMemo(() => {
-    const byCourse = new Map<string, { code: string; title: string; years: number[] }>();
+    const byCourse = new Map<string, { code: string; title: string; years: number[]; newestId: string }>();
     papers.forEach((p) => {
-      const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [] };
+      const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [], newestId: p.id };
       e.years.push(p.year);
+      if (p.year >= Math.max(...e.years)) e.newestId = p.id;
       byCourse.set(p.courseCode, e);
     });
     return [...byCourse.values()].filter((f) => f.years.length > 0).slice(0, 4);
@@ -84,7 +90,12 @@ export default function CoursesScreen() {
   const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
     ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
     : filter === 'My courses'
-      ? [{ title: `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(), data: refine(enrolled) }]
+      ? [
+          {
+            title: focusedCode ?? `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(),
+            data: refine(enrolled).filter((c) => !focusedCode || c.code === focusedCode),
+          },
+        ]
       : filter === 'Browse'
         ? [
             { title: `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(), data: refine(departmentCourses) },
@@ -134,7 +145,14 @@ export default function CoursesScreen() {
 
       {!query.trim() && (
         <>
-          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
+          <FilterChips
+            options={FILTERS}
+            selected={filter}
+            onSelect={(v) => {
+              setFilter(v);
+              setFocusedCode(null);
+            }}
+          />
 
           {/* Featured carousel — paper sets that are live today */}
           <ScrollView
@@ -145,55 +163,108 @@ export default function CoursesScreen() {
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
               const years = [...new Set(f.years)].sort();
+              const unlocked = unlockedPaperIds.has(f.newestId);
               return (
-                <View key={f.code} style={{ width: featuredWidth }}>
-                  <View style={[styles.featureCard, { width: featuredWidth, backgroundColor: TILE_COLORS[(i + 3) % TILE_COLORS.length] }]}>
-                    <View style={styles.featureBadge}>
-                      <Text style={styles.featureBadgeText}>FEATURED SET</Text>
-                    </View>
-                    <Text style={styles.featureTitle}>{f.title.toUpperCase()}</Text>
+                <Pressable
+                  key={f.code}
+                  onPress={() => router.push(unlocked ? `/paper/${f.newestId}` : (`/unlock/${f.newestId}` as never))}
+                  style={({ pressed }) => [
+                    styles.featureCard,
+                    { width: featuredWidth, backgroundColor: TILE_COLORS[(i + 3) % TILE_COLORS.length] },
+                    pressed && { opacity: 0.92 },
+                  ]}>
+                  {/* Oversized ghost year — background typography, not decoration */}
+                  <Text style={styles.featureGhost}>{years[years.length - 1]}</Text>
+
+                  <View style={styles.featureTop}>
+                    <Text style={styles.featureCode}>{f.code}</Text>
+                    <Text style={styles.featureKicker}>Featured set</Text>
                   </View>
-                  <Text style={styles.featureCaption} numberOfLines={1}>
-                    {f.code} · Complete past-paper set · {years[0]}–{years[years.length - 1]}
-                  </Text>
-                </View>
+
+                  <View>
+                    <Text style={styles.featureTitle} numberOfLines={2}>
+                      {sentenceCase(f.title)}
+                    </Text>
+                    <View style={styles.featureRule} />
+                    <View style={styles.featureMetaRow}>
+                      <Text style={styles.featureMeta}>
+                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {years[0]}–{years[years.length - 1]}
+                      </Text>
+                      <Text style={styles.featureOpen}>{unlocked ? 'Open ›' : 'Unlock ›'}</Text>
+                    </View>
+                  </View>
+                </Pressable>
               );
             })}
           </ScrollView>
 
-          {/* Bright faculty tiles — 2-row horizontal grid */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
-            <View style={styles.tileGrid}>
-              {[0, 1].map((row) => (
-                <View key={row} style={styles.tileRow}>
-                  {faculties
-                    .filter((_, i) => i % 2 === row)
-                    .map((f, i) => {
-                      const idx = faculties.indexOf(f);
-                      const active = tileFacultyId === f.id;
-                      return (
-                        <Pressable
-                          key={f.id}
-                          onPress={() => {
-                            setTileFacultyId(active ? null : f.id);
-                            setFilter('Browse');
-                          }}
-                          style={({ pressed }) => [
-                            styles.tile,
-                            { backgroundColor: TILE_COLORS[idx % TILE_COLORS.length] },
-                            active && styles.tileActive,
-                            pressed && { opacity: 0.85 },
-                          ]}>
-                          <Text style={styles.tileText} numberOfLines={2}>
-                            {f.name.toUpperCase()}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                </View>
-              ))}
-            </View>
-          </ScrollView>
+          {/* Quick tiles: my courses at a glance (tap to focus one) — or
+              faculty tiles when browsing the wider catalogue. */}
+          {filter === 'My courses' && enrolled.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
+              <View style={styles.tileGrid}>
+                {[0, 1].map((row) => (
+                  <View key={row} style={styles.tileRow}>
+                    {enrolled
+                      .filter((_, i) => i % 2 === row)
+                      .map((c) => {
+                        const tint = courseColor(c.code);
+                        const active = focusedCode === c.code;
+                        const count = papers.filter((p) => p.courseCode === c.code).length;
+                        return (
+                          <Pressable
+                            key={c.code}
+                            onPress={() => setFocusedCode(active ? null : c.code)}
+                            style={({ pressed }) => [
+                              styles.myTile,
+                              { backgroundColor: wash(tint), borderColor: active ? tint : 'transparent' },
+                              pressed && { opacity: 0.85 },
+                            ]}>
+                            <Text style={[styles.myTileCode, { color: tint }]}>{c.code}</Text>
+                            <Text style={styles.myTileTitle} numberOfLines={2}>
+                              {c.title ? sentenceCase(c.title) : 'Title pending'}
+                            </Text>
+                            <Text style={[styles.myTileMeta, count > 0 && { color: colors.textSecondary }]}>
+                              {count > 0 ? `${count} paper${count > 1 ? 's' : ''}` : 'No papers yet'}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : filter === 'Browse' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
+              <View style={styles.tileGrid}>
+                {[0, 1].map((row) => (
+                  <View key={row} style={styles.tileRow}>
+                    {faculties
+                      .filter((_, i) => i % 2 === row)
+                      .map((f) => {
+                        const idx = faculties.indexOf(f);
+                        const active = tileFacultyId === f.id;
+                        return (
+                          <Pressable
+                            key={f.id}
+                            onPress={() => setTileFacultyId(active ? null : f.id)}
+                            style={({ pressed }) => [
+                              styles.tile,
+                              { backgroundColor: TILE_COLORS[idx % TILE_COLORS.length] },
+                              active && styles.tileActive,
+                              pressed && { opacity: 0.85 },
+                            ]}>
+                            <Text style={styles.tileText} numberOfLines={2}>
+                              {f.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          ) : null}
 
           <View style={{ marginTop: 22 }}>
             <FilterChips
@@ -276,26 +347,42 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     padding: 18,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
-  featureBadge: {
+  featureGhost: {
     position: 'absolute',
-    top: 14,
-    left: 14,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 7,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    right: -8,
+    bottom: -26,
+    fontFamily: fonts.bold,
+    fontSize: 110,
+    color: 'rgba(255,255,255,0.10)',
+    fontVariant: ['tabular-nums'],
   },
-  featureBadgeText: { fontFamily: fonts.medium, fontSize: 10, letterSpacing: 1.2, color: colors.text },
-  featureTitle: { fontFamily: fonts.bold, fontSize: 30, letterSpacing: 0.5, color: '#FFFFFF', textAlign: 'center' },
-  featureCaption: { fontFamily: fonts.regular, fontSize: 14.5, color: colors.text, marginTop: 10 },
+  featureTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: '#FFFFFF' },
+  featureKicker: { fontFamily: fonts.regular, fontSize: 12.5, color: 'rgba(255,255,255,0.75)' },
+  featureTitle: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 33, color: '#FFFFFF', paddingRight: 40 },
+  featureRule: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)', marginTop: 12 },
+  featureMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: '#FFFFFF' },
   tileScroll: { paddingHorizontal: spacing.gutter, marginTop: 24 },
   tileGrid: { gap: 10 },
   tileRow: { flexDirection: 'row', gap: 10 },
   tile: { width: 168, height: 74, borderRadius: 13, justifyContent: 'flex-end', padding: 13 },
   tileActive: { borderWidth: 2, borderColor: '#FFFFFF' },
   tileText: { fontFamily: fonts.bold, fontSize: 14.5, letterSpacing: 0.4, color: '#FFFFFF' },
+  myTile: {
+    width: 158,
+    minHeight: 96,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  myTileCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.8 },
+  myTileTitle: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, color: colors.text, marginTop: 5 },
+  myTileMeta: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary, marginTop: 7 },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
