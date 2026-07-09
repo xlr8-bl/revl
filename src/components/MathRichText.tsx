@@ -121,7 +121,7 @@ export function MathRichText({ children, style, mathColor }: Props) {
               );
               return bullet ? (
                 <View key={li} style={styles.bulletRow}>
-                  <Text style={[base, styles.bulletDot]}>•</Text>
+                  <Text style={[styles.bulletDot, base]}>•</Text>
                   <View style={styles.bulletBody}>{text}</View>
                 </View>
               ) : (
