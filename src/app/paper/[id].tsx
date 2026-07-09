@@ -5,20 +5,35 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MathRichText } from '../../components/MathRichText';
 import { QuestionBlock } from '../../components/QuestionBlock';
 import { noteUploads } from '../../data/notes';
 import { getPaper } from '../../data/papers';
+import type { Question } from '../../types';
 import { colors, fonts, spacing } from '../../theme';
 
+/** Is `target` this question or anywhere in its subtree? */
+function containsQuestion(q: Question, target: string): boolean {
+  return q.id === target || q.subQuestions.some((s) => containsQuestion(s, target));
+}
+
 export default function PaperReaderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `q` deep-links to a question (e.g. from a Class post) — the reader
+  // scrolls to it and frames it, so the feed card and the paper connect.
+  const { id, q: targetQuestionId } = useLocalSearchParams<{ id: string; q?: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const paper = getPaper(id);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrolledToTarget = useRef(false);
+
+  const targetTop =
+    targetQuestionId && paper
+      ? paper.questions.find((qq) => containsQuestion(qq, targetQuestionId))
+      : undefined;
 
   if (!paper) {
     return (
@@ -45,6 +60,7 @@ export default function PaperReaderScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: spacing.gutter }}>
         {/* Paper header */}
@@ -83,7 +99,21 @@ export default function PaperReaderScreen() {
           </View>
         ) : (
           paper.questions.map((q) => (
-            <QuestionBlock key={q.id} question={q} courseCode={paper.courseCode} hasNotes={hasNotes} />
+            <View
+              key={q.id}
+              onLayout={(e) => {
+                if (scrolledToTarget.current || targetTop?.id !== q.id) return;
+                scrolledToTarget.current = true;
+                const y = e.nativeEvent.layout.y;
+                setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true }), 300);
+              }}>
+              <QuestionBlock
+                question={q}
+                courseCode={paper.courseCode}
+                hasNotes={hasNotes}
+                highlightId={targetQuestionId}
+              />
+            </View>
           ))
         )}
       </ScrollView>

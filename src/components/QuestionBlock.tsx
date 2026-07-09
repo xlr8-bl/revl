@@ -34,9 +34,11 @@ type Props = {
   /** Whether the student has uploaded notes for this course (grounds the AI). */
   hasNotes: boolean;
   depth?: number;
+  /** Question deep-linked from a Class post — gets the amber frame. */
+  highlightId?: string;
 };
 
-export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Props) {
+export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highlightId }: Props) {
   useCommunity(); // re-render when raised hands change
   const hasAnswer = !!(question.answers.verified || question.answers.aiGeneral);
   const wanted = handsFor(question.id);
@@ -67,8 +69,15 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
   const answerText = question.answers.verified ?? question.answers.aiGeneral ?? '';
   const isVerified = !!question.answers.verified;
 
+  const highlighted = question.id === highlightId;
+
   return (
-    <View style={[styles.card, depth > 0 && styles.nested]}>
+    <View
+      style={[
+        styles.card,
+        depth > 0 && styles.nested,
+        highlighted && (depth === 0 ? styles.highlight : styles.highlightNested),
+      ]}>
       {/* Header row: number + marks + difficulty dot */}
       <View style={styles.headerRow}>
         <Text style={styles.number}>Q{question.number}</Text>
@@ -170,7 +179,14 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
 
       {/* Recursive sub-questions, indented */}
       {question.subQuestions.map((sub) => (
-        <QuestionBlock key={sub.id} question={sub} courseCode={courseCode} hasNotes={hasNotes} depth={depth + 1} />
+        <QuestionBlock
+          key={sub.id}
+          question={sub}
+          courseCode={courseCode}
+          hasNotes={hasNotes}
+          depth={depth + 1}
+          highlightId={highlightId}
+        />
       ))}
 
       <ExplainSheet
@@ -202,6 +218,9 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 0,
   },
+  /** Deep-link frame — matches the QuestionAnchor's amber border in the feed. */
+  highlight: { borderWidth: 1, borderColor: 'rgba(242,169,59,0.55)' },
+  highlightNested: { borderLeftColor: colors.accent },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   number: { fontFamily: fonts.bold, fontSize: 15, color: colors.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 7 },
