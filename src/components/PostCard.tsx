@@ -77,10 +77,11 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
 const styles = StyleSheet.create({
   post: {
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    paddingTop: 14,
+    paddingBottom: 18,
+    // A solid band, not a hairline: posts end unmistakably.
+    borderBottomWidth: 7,
+    borderBottomColor: colors.card,
   },
   header: {
     flexDirection: 'row',

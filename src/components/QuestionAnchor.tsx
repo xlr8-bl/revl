@@ -13,7 +13,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { findQuestion } from '../lib/selectors';
 import { handsFor, raiseHand, useCommunity, type QuestionRef } from '../lib/communityStore';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; courseCode: string }) {
@@ -65,7 +65,8 @@ const styles = StyleSheet.create({
   wrap: { marginTop: 12 },
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.card,
+    // Square corners: reads as a sheet of paper pinned into the post.
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: 'rgba(242,169,59,0.38)',
     padding: 16,
