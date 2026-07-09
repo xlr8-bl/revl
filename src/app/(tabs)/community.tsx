@@ -1,124 +1,195 @@
 /**
- * Department room — community scoped to people in the same school +
- * department. Rooms are keyed `school:departmentId` so the backend can
- * map them to real channels later. Posts are mock and local for now;
- * the composer appends to local state.
+ * Class — the department room, question-anchored (Revl's Reddit):
+ *
+ * - For You feed ranked by your courses → demand → recency
+ * - Most Wanted: questions ranked by raised hands, "Solve this" pays credits
+ * - Level filters (year cohorts), top-solvers strip
+ * - Composer: Ask or Solve (tag a question, snap handwritten work)
+ *
+ * Solve posts that cross the community threshold become the paper's
+ * "verified by top student" answer — the room feeds the reader.
  */
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { communityFeed } from '../../data/home';
+import { Composer } from '../../components/Composer';
+import { PostCard } from '../../components/PostCard';
+import { QuestionAnchor } from '../../components/QuestionAnchor';
+import { findQuestion } from '../../lib/selectors';
+import { useCommunity, type QuestionRef } from '../../lib/communityStore';
 import { useSession } from '../../lib/session';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
 
-type Post = { id: string; user: string; initial: string; color: string; text: string; time: string };
+const TOP_SOLVERS = [
+  { name: 'Brandon', initial: 'B', color: '#7EA8FF', solved: 9 },
+  { name: 'Grace', initial: 'G', color: '#F2A93B', solved: 6 },
+  { name: 'Melissa', initial: 'M', color: '#FF8FA3', solved: 4 },
+];
 
-export default function CommunityScreen() {
+export default function ClassScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useSession();
-  const [draft, setDraft] = useState('');
-  const [posts, setPosts] = useState<Post[]>(() =>
-    communityFeed.map((f) => ({ id: f.id, user: f.user, initial: f.initial, color: f.color, text: `${f.action}: ${f.detail}`, time: f.time }))
-  );
+  const { posts, wanted } = useCommunity();
+  const [view, setView] = useState<'foryou' | 'wanted'>('foryou');
+  const [levelFilter, setLevelFilter] = useState<string | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [solveRef, setSolveRef] = useState<(QuestionRef & { courseCode: string }) | null>(null);
+
+  const feed = useMemo(() => {
+    let list = posts;
+    if (levelFilter) list = list.filter((p) => p.level === levelFilter);
+    // For You: enrolled-course posts first, then demand-weighted (mock rank).
+    const enrolled = new Set(profile?.enrolledCourseCodes ?? []);
+    return [...list].sort((a, b) => {
+      const ea = a.courseCode && [...enrolled].some((c) => c.startsWith(a.courseCode!.slice(0, 3))) ? 1 : 0;
+      const eb = b.courseCode && [...enrolled].some((c) => c.startsWith(b.courseCode!.slice(0, 3))) ? 1 : 0;
+      return eb - ea || b.upvotes - a.upvotes;
+    });
+  }, [posts, levelFilter, profile]);
+
+  const mostWanted = useMemo(() => [...wanted].sort((a, b) => b.hands - a.hands), [wanted]);
 
   if (!profile) return null;
-  const roomName = `${profile.departmentName} · ${profile.school === 'ub' ? 'UB' : 'HND'}`;
-
-  const post = () => {
-    const text = draft.trim();
-    if (!text) return;
-    setDraft('');
-    setPosts((p) => [
-      { id: `p-${Date.now()}`, user: profile.name.split(' ')[0], initial: profile.name[0].toUpperCase(), color: profile.avatarColor, text, time: 'now' },
-      ...p,
-    ]);
-  };
+  const levels = profile.school === 'hnd' ? ['HND'] : ['L200', 'L300', 'L400', 'L500'];
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={[styles.roomTitle, { paddingTop: insets.top + 16 }]}>{roomName}</Text>
-      <Text style={styles.memberLine}>128 classmates in this room</Text>
+    <View style={styles.root}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE + 70 }}>
+        {/* Room header */}
+        <Text style={styles.roomKicker}>{profile.school === 'ub' ? 'University of Buea' : 'HND'} · 128 classmates</Text>
+        <Text style={styles.roomTitle}>{profile.departmentName}</Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: 16 }}>
-        {posts.map((p, i) => (
-          <View key={p.id} style={[styles.post, i > 0 && styles.postDivider]}>
-            <View style={[styles.avatar, { backgroundColor: p.color }]}>
-              <Text style={styles.avatarText}>{p.initial}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.postHead}>
-                <Text style={styles.postUser}>{p.user}</Text>
-                <Text style={styles.postTime}>{p.time}</Text>
+        {/* Top solvers strip — status for the people doing the work */}
+        <View style={styles.solversRow}>
+          <Text style={styles.solversLabel}>Top solvers this week</Text>
+          {TOP_SOLVERS.map((s) => (
+            <View key={s.name} style={styles.solver}>
+              <View style={[styles.solverAvatar, { backgroundColor: s.color }]}>
+                <Text style={styles.solverInitial}>{s.initial}</Text>
               </View>
-              <Text style={styles.postText}>{p.text}</Text>
+              <Text style={styles.solverCount}>{s.solved}</Text>
             </View>
+          ))}
+        </View>
+
+        {/* View + level filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          <Filter label="For you" active={view === 'foryou' && !levelFilter} onPress={() => { setView('foryou'); setLevelFilter(null); }} />
+          <Filter label={`Most wanted (${mostWanted.length})`} active={view === 'wanted'} onPress={() => setView('wanted')} />
+          {levels.map((l) => (
+            <Filter key={l} label={l} active={levelFilter === l && view === 'foryou'} onPress={() => { setView('foryou'); setLevelFilter(levelFilter === l ? null : l); }} />
+          ))}
+        </ScrollView>
+
+        {view === 'foryou' ? (
+          <View style={{ paddingHorizontal: spacing.gutter, marginTop: 14 }}>
+            {feed.map((p) => (
+              <PostCard key={p.id} post={p} />
+            ))}
           </View>
-        ))}
+        ) : (
+          <View style={{ paddingHorizontal: spacing.gutter, marginTop: 14 }}>
+            <Text style={styles.wantedIntro}>
+              Questions your class most wants a human solution for. Solve one, get verified, earn credits.
+            </Text>
+            {mostWanted.map((w, i) => {
+              const found = findQuestion(w.ref.questionId);
+              if (!found) return null;
+              return (
+                <View key={w.ref.questionId} style={styles.wantedCard}>
+                  <View style={styles.wantedRank}>
+                    <Text style={styles.wantedRankText}>{i + 1}</Text>
+                    <Text style={styles.wantedHands}>✋ {w.hands}</Text>
+                  </View>
+                  <QuestionAnchor refr={w.ref} courseCode={w.courseCode} />
+                  <Pressable
+                    onPress={() => {
+                      setSolveRef({ ...w.ref, courseCode: w.courseCode });
+                      setComposerOpen(true);
+                    }}
+                    style={({ pressed }) => [styles.solveBtn, pressed && { opacity: 0.85 }]}>
+                    <Text style={styles.solveText}>Solve this (+3 credits if verified)</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) + 74 }]}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={`Message ${profile.departmentName}…`}
-          placeholderTextColor={colors.textTertiary}
-          style={styles.input}
-          returnKeyType="send"
-          onSubmitEditing={post}
-        />
-        <Pressable onPress={post} disabled={!draft.trim()} style={[styles.sendBtn, !draft.trim() && { opacity: 0.4 }]}>
-          <Text style={styles.sendText}>Post</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+      {/* Composer FAB */}
+      <Pressable
+        onPress={() => {
+          setSolveRef(null);
+          setComposerOpen(true);
+        }}
+        style={({ pressed }) => [styles.fab, { bottom: TAB_BAR_CLEARANCE + Math.max(insets.bottom, 6) }, pressed && { opacity: 0.9 }]}>
+        <Text style={styles.fabText}>+ Post</Text>
+      </Pressable>
+
+      {composerOpen && (
+        <Composer visible={composerOpen} onClose={() => setComposerOpen(false)} profile={profile} initialRef={solveRef} />
+      )}
+    </View>
+  );
+}
+
+function Filter({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.filter, active && styles.filterActive]}>
+      <Text style={[styles.filterText, active && { color: colors.onAccent }]}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  roomTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 24,
-    color: colors.text,
-    paddingHorizontal: spacing.gutter,
-    marginBottom: 4,
-  },
-  memberLine: {
-    fontFamily: fonts.regular,
-    fontSize: 12.5,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  post: { flexDirection: 'row', gap: 12, paddingVertical: 14 },
-  postDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: fonts.bold, fontSize: 15, color: '#141414' },
-  postHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  postUser: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.text },
-  postTime: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
-  postText: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, marginTop: 3 },
-  composer: {
+  roomKicker: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.gutter },
+  roomTitle: { fontFamily: fonts.bold, fontSize: 30, color: colors.text, paddingHorizontal: spacing.gutter, marginTop: 3 },
+  solversRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    marginTop: 14,
   },
-  input: {
-    flex: 1,
-    backgroundColor: colors.card,
+  solversLabel: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  solver: { alignItems: 'center', gap: 2 },
+  solverAvatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  solverInitial: { fontFamily: fonts.bold, fontSize: 13, color: '#141414' },
+  solverCount: { fontFamily: fonts.medium, fontSize: 10.5, color: colors.textSecondary },
+  filters: { paddingHorizontal: spacing.gutter, gap: 8, marginTop: 18 },
+  filter: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    color: colors.text,
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    borderRadius: 999,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    backgroundColor: colors.card,
   },
-  sendBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 11 },
-  sendText: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.onAccent },
+  filterActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  filterText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.text },
+  wantedIntro: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary, marginBottom: 14 },
+  wantedCard: { marginBottom: 18 },
+  wantedRank: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  wantedRankText: { fontFamily: fonts.bold, fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] },
+  wantedHands: { fontFamily: fonts.medium, fontSize: 14, color: colors.accent },
+  solveBtn: { backgroundColor: colors.accent, borderRadius: 10, alignItems: 'center', paddingVertical: 12, marginTop: 10 },
+  solveText: { fontFamily: fonts.medium, fontSize: 14, color: colors.onAccent },
+  fab: {
+    position: 'absolute',
+    right: spacing.gutter,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  fabText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onAccent },
 });

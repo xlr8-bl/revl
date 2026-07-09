@@ -1,8 +1,8 @@
 /**
- * CourseCard — the big index-card style: course-color spine down the
- * left edge, amber code with the level on the baseline, full title,
- * then a hairline rule and the papers themselves INLINE (year rows,
- * tap to open) — Papers and Courses are one page now.
+ * CourseCard — premium index card. A tinted course-color header band
+ * carries the code and level; the title is set in serif (the catalogue
+ * voice); the course's past papers sit inline below a hairline as
+ * tappable year rows. No gradients, no icons: color, type, and rules.
  */
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -12,15 +12,18 @@ import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { colors, fonts } from '../theme';
 
-const SPINE_COLORS = ['#2E4470', '#4A2A5F', '#1F5F4A', '#5F3A1F', '#5F1F2E', '#3A3A5F', '#33565C'];
-function spineColor(code: string) {
+const COURSE_COLORS = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
+function courseColor(code: string) {
   let h = 0;
   for (const ch of code.slice(0, 3)) h = h * 31 + ch.charCodeAt(0);
-  return SPINE_COLORS[h % SPINE_COLORS.length];
+  return COURSE_COLORS[h % COURSE_COLORS.length];
 }
+/** 12% alpha wash of the course color for the header band. */
+const wash = (hex: string) => hex + '1F';
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   const router = useRouter();
+  const tint = courseColor(course.code);
   const coursePapers = papers
     .filter((p) => p.courseCode === course.code)
     .sort((a, b) => b.year - a.year);
@@ -28,14 +31,14 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)}>
       <View style={styles.card}>
-        <View style={[styles.spine, { backgroundColor: spineColor(course.code) }]} />
-        <View style={styles.body}>
-          <View style={styles.topRow}>
-            <Text style={styles.code}>{course.code}</Text>
-            <Text style={styles.level}>{course.level}</Text>
-          </View>
+        {/* Tinted header band: code + level */}
+        <View style={[styles.band, { backgroundColor: wash(tint) }]}>
+          <Text style={[styles.code, { color: tint }]}>{course.code}</Text>
+          <Text style={styles.level}>{course.level}</Text>
+        </View>
 
-          {/* Code-first when the official title is unpublished; never invent one. */}
+        <View style={styles.body}>
+          {/* Serif title — the catalogue voice. Code-first when unpublished. */}
           {course.title ? (
             <Text style={styles.title} numberOfLines={2}>
               {course.title}
@@ -49,7 +52,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
 
           <View style={styles.rule} />
 
-          {/* Papers live inside the course card now — one page, no Papers tab. */}
+          {/* Papers inline — Courses and Papers are one page. */}
           {coursePapers.length > 0 ? (
             coursePapers.map((p, i) => {
               const unlocked = unlockedPaperIds.has(p.id);
@@ -83,25 +86,29 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
     backgroundColor: colors.card,
     overflow: 'hidden',
     marginBottom: 12,
   },
-  spine: { width: 5 },
-  body: { flex: 1, padding: 16, paddingBottom: 8 },
-  topRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  code: { fontFamily: fonts.bold, fontSize: 13.5, letterSpacing: 0.8, color: colors.accent },
-  level: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
-  title: { fontFamily: fonts.bold, fontSize: 19, lineHeight: 24, color: colors.text, marginTop: 7 },
-  pending: { fontFamily: fonts.regular, fontSize: 12, fontStyle: 'italic', color: colors.textTertiary, marginTop: 4 },
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 13 },
-  paperRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  band: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  code: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1 },
+  level: { fontFamily: fonts.medium, fontSize: 12, color: colors.textSecondary },
+  body: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6 },
+  title: { fontFamily: fonts.serif, fontSize: 21, lineHeight: 27, color: colors.text },
+  pending: { fontFamily: fonts.regular, fontSize: 12, fontStyle: 'italic', color: colors.textTertiary, marginTop: 5 },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 14 },
+  paperRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
   paperRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  paperYear: { fontFamily: fonts.bold, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },
+  paperYear: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.text, fontVariant: ['tabular-nums'] },
   paperMeta: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   paperAction: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
 });

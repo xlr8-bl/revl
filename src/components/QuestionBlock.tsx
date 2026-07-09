@@ -13,6 +13,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { handsFor, raiseHand, useCommunity } from '../lib/communityStore';
 import { logReveal } from '../lib/revealLog';
 import type { Question, RevealLog } from '../types';
 import { colors, fonts, radius } from '../theme';
@@ -36,7 +37,9 @@ type Props = {
 };
 
 export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Props) {
+  useCommunity(); // re-render when raised hands change
   const hasAnswer = !!(question.answers.verified || question.answers.aiGeneral);
+  const wanted = handsFor(question.id);
   const isLeaf = question.subQuestions.length === 0;
 
   const [confidence, setConfidence] = useState<RevealLog['confidenceBefore'] | null>(null);
@@ -90,6 +93,18 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0 }: Pro
             </Text>
           ))}
         </View>
+      )}
+
+      {/* Class demand: raise a hand to ask for a human solution in the room */}
+      {isLeaf && (
+        <Pressable
+          onPress={() => raiseHand({ paperId: '', questionId: question.id }, courseCode)}
+          hitSlop={6}
+          style={styles.handRow}>
+          <Text style={[styles.handText, wanted?.raisedByMe && { color: colors.accent }]}>
+            ✋ {wanted ? `${wanted.hands} classmates want this solved` : 'Raise hand for a class solution'}
+          </Text>
+        </Pressable>
       )}
 
       {/* ---- The reveal loop (leaf questions with an answer) ---- */}
@@ -203,6 +218,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     overflow: 'hidden',
   },
+  handRow: { marginTop: 10 },
+  handText: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
   loop: { marginTop: 14, gap: 10 },
   revealBtn: {
     flexDirection: 'row',
