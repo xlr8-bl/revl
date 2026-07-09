@@ -1,22 +1,30 @@
 /**
  * QuestionAnchor — the referenced exam question rendered inside a post.
  *
- * Deliberately the SAME card the student sees in the paper reader —
- * same surface, same Q-number header, same type — so tapping it and
- * landing on the real question feels continuous. What makes it
- * distinctive in the feed is the amber frame and the "Open in paper"
- * affordance: a highlighted excerpt of the reader, not a foreign object.
- * The raise-hand demand row sits below, on the feed surface.
+ * It is the SAME card the student sees in the paper reader — same
+ * surface, Q-number header, marks, and type — distinguished only by a
+ * square amber frame and the "Open in paper" affordance, so tapping it
+ * and landing on the real question feels continuous. Demand is shown
+ * read-only here: raising a hand is now done by liking the post (♥).
  */
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { findQuestion } from '../lib/selectors';
-import { handsFor, raiseHand, useCommunity, type QuestionRef } from '../lib/communityStore';
+import { handsFor, useCommunity, type QuestionRef } from '../lib/communityStore';
 import { colors, fonts } from '../theme';
 import { MathRichText } from './MathRichText';
 
-export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; courseCode: string }) {
+export function QuestionAnchor({
+  refr,
+  courseCode,
+  postKind,
+}: {
+  refr: QuestionRef;
+  courseCode: string;
+  /** Tailors the demand hint: asks say "♥ to add your hand". */
+  postKind?: 'ask' | 'solve';
+}) {
   const router = useRouter();
   useCommunity(); // re-render when hands change
   const found = findQuestion(refr.questionId);
@@ -24,12 +32,13 @@ export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; course
   const { question, paperId } = found;
   const wanted = handsFor(refr.questionId);
 
+  const openInPaper = () =>
+    router.push({ pathname: '/paper/[id]', params: { id: paperId, q: refr.questionId } });
+
   return (
     <View style={styles.wrap}>
-      <Pressable
-        onPress={() => router.push(`/paper/${paperId}?q=${refr.questionId}` as never)}
-        style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}>
-        {/* Header row — same grammar as the reader's question card */}
+      <Pressable onPress={openInPaper} style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}>
+        {/* Header — same grammar as the reader's question card */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Text style={styles.number}>Q{question.number}</Text>
@@ -45,17 +54,14 @@ export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; course
         <Text style={styles.open}>Open in paper ›</Text>
       </Pressable>
 
-      <View style={styles.handsRow}>
-        <Pressable
-          onPress={() => raiseHand(refr, courseCode)}
-          style={({ pressed }) => [styles.handBtn, wanted?.raisedByMe && styles.handBtnRaised, pressed && { opacity: 0.8 }]}>
-          <Text style={[styles.handText, wanted?.raisedByMe && { color: colors.onAccent }]}>
-            ✋ {wanted?.raisedByMe ? 'Hand raised' : 'Raise hand'}
-          </Text>
-        </Pressable>
-        <Text style={styles.handsCount}>
-          {wanted ? `${wanted.hands} want this solved` : 'Be the first to ask for a solution'}
+      {/* Read-only demand line */}
+      <View style={styles.demandRow}>
+        <Text style={styles.demandText}>
+          {wanted && wanted.hands > 0
+            ? `✋ ${wanted.hands} want this solved`
+            : 'No hands raised yet'}
         </Text>
+        {postKind === 'ask' && <Text style={styles.demandHint}>Tap ♥ to add your hand</Text>}
       </View>
     </View>
   );
@@ -77,15 +83,7 @@ const styles = StyleSheet.create({
   course: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   marks: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   open: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent, textAlign: 'right', marginTop: 12 },
-  handsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  handBtn: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  handBtnRaised: { backgroundColor: colors.accent },
-  handText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
-  handsCount: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
+  demandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  demandText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
+  demandHint: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
 });

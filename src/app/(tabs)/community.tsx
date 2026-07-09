@@ -43,7 +43,7 @@ export default function ClassScreen() {
     return [...list].sort((a, b) => {
       const ea = a.courseCode && [...enrolled].some((c) => c.startsWith(a.courseCode!.slice(0, 3))) ? 1 : 0;
       const eb = b.courseCode && [...enrolled].some((c) => c.startsWith(b.courseCode!.slice(0, 3))) ? 1 : 0;
-      return eb - ea || b.upvotes - a.upvotes;
+      return eb - ea || b.likes - a.likes;
     });
   }, [posts, levelFilter, profile]);
 
