@@ -199,9 +199,8 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Opaque bg across the whole header so the pinned title and the sticky
-          section subtitle sit on solid ground; content dissolves in the tail. */}
-      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 96} solid={baseH + (searchOpen ? SEARCH_H : 0)} />
+      {/* Same clean scroll-blend as the Tonight page. */}
+      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 80} />
 
       {/* Pinned header */}
       <View style={styles.header}>

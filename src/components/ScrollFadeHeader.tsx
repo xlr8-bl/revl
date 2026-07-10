@@ -35,30 +35,19 @@ export function useScrollFade() {
   return { scrollY, onScroll };
 }
 
-export function TopFade({
-  scrollY,
-  height,
-  solid,
-}: {
-  scrollY: SharedValue<number>;
-  height: number;
-  /** Fully-opaque region from the top (defaults to ~60% of height). */
-  solid?: number;
-}) {
+export function TopFade({ scrollY, height }: { scrollY: SharedValue<number>; height: number }) {
   useThemeVersion();
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
   }));
-  // Opaque bg up to `solid`, then a soft dissolve over the remaining height.
-  const solidFrac = Math.min(0.96, Math.max(0, (solid ?? height * 0.6) / height));
-  const midFrac = solidFrac + (1 - solidFrac) * 0.55;
+  // The clean "Tonight" blend: opaque for the top half, then a soft dissolve.
   return (
     <Animated.View
       pointerEvents="none"
       style={[{ position: 'absolute', top: 0, left: 0, right: 0, height, zIndex: 5 }, style]}>
       <LinearGradient
-        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.85), withAlpha(colors.bg, 0)]}
-        locations={[0, solidFrac, midFrac, 1]}
+        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.7), withAlpha(colors.bg, 0)]}
+        locations={[0, 0.5, 0.75, 1]}
         style={{ flex: 1 }}
       />
     </Animated.View>
