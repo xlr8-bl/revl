@@ -29,10 +29,10 @@ import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
 import { communityFeed, todaySession } from '../../data/home';
 import { currentUser } from '../../data/user';
-import { getGreeting } from '../../lib/greeting';
+import { getGreeting, isDaytime, planWord } from '../../lib/greeting';
 import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
 export default function HomeScreen() {
   useThemeVersion();
@@ -55,6 +55,7 @@ export default function HomeScreen() {
 
   const today = new Date();
   const dateLine = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const daytime = isDaytime(today);
 
   return (
     <View style={styles.root}>
@@ -63,7 +64,7 @@ export default function HomeScreen() {
         pointerEvents="none"
         style={[styles.topFade, { height: headerHeight + 80 }, gradientStyle]}>
         <LinearGradient
-          colors={[colors.bg, colors.bg, 'rgba(6,6,8,0.7)', 'rgba(6,6,8,0)']}
+          colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.7), withAlpha(colors.bg, 0)]}
           locations={[0, 0.5, 0.75, 1]}
           style={{ flex: 1 }}
         />
@@ -74,7 +75,14 @@ export default function HomeScreen() {
         style={[styles.header, { paddingTop: insets.top + 8 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
         <View style={styles.kickerRow}>
-          <Text style={styles.dateLine}>{dateLine}</Text>
+          <View style={styles.daypartRow}>
+            <Ionicons
+              name={daytime ? 'sunny' : 'moon'}
+              size={14}
+              color={daytime ? colors.accent : colors.ai}
+            />
+            <Text style={styles.dateLine}>{dateLine}</Text>
+          </View>
           {examDays !== null && <Text style={styles.countdownText}>Exams in {examDays} days</Text>}
         </View>
         <View style={styles.greetingRow}>
@@ -106,7 +114,7 @@ export default function HomeScreen() {
         <HeroCard />
 
         {/* Tonight's plan — AI briefing + numbered study queue */}
-        <SectionTitle title="Your plan tonight" />
+        <SectionTitle title={`Your plan ${planWord(today)}`} />
         <DailyBriefing />
         <View style={styles.queueCard}>
           {todaySession.map((s, i) => (
@@ -190,6 +198,7 @@ const makeStyles = () => StyleSheet.create({
     backgroundColor: 'transparent',
   },
   kickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  daypartRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dateLine: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   countdownText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
   greetingRow: {

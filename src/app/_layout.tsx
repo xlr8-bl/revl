@@ -8,6 +8,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import { seedDemoDataIfEmpty } from '../lib/revealLog';
@@ -53,13 +54,15 @@ export default function RootLayout() {
   if (!fontsLoaded || !hydrated) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Keyed on the resolved scheme: a light↔dark flip remounts the whole
           tree, so every screen rebuilds fresh in the new theme (a full
           in-app refresh). expo-router re-derives the current route from the
-          URL, so you stay where you are. */}
+          URL, so you stay where you are. The Animated.View fades the new
+          theme in over its own background, so the switch feels alive. */}
       <ThemeProvider key={scheme} value={navTheme}>
         <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
+        <Animated.View key={scheme} entering={FadeIn.duration(320)} style={{ flex: 1, backgroundColor: colors.bg }}>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -82,6 +85,7 @@ export default function RootLayout() {
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
           </Stack.Protected>
         </Stack>
+        </Animated.View>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

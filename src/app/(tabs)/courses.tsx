@@ -12,9 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard, courseColor, wash } from '../../components/CourseCard';
 import { FilterChips } from '../../components/FilterChips';
+import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
 import { courseByCode, coursesFor, departmentsFor, facultiesFor, searchCatalog } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
@@ -41,6 +43,8 @@ export default function CoursesScreen() {
   const [tileFacultyId, setTileFacultyId] = useState<string | null>(null);
   /** One of my courses, focused from the quick tiles — narrows the list below. */
   const [focusedCode, setFocusedCode] = useState<string | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(118);
+  const { scrollY, onScroll } = useScrollFade();
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
 
@@ -105,31 +109,39 @@ export default function CoursesScreen() {
         : [{ title: filter, data: [] }];
 
   return (
-    <ScrollView
-      style={styles.root}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
-      {/* Search circle, floated top right */}
-      <View style={styles.searchRow}>
-        <Pressable
-          onPress={() => {
-            setSearchOpen((v) => !v);
-            if (searchOpen) setQuery('');
-          }}
-          style={styles.searchBtn}
-          hitSlop={6}>
-          <Ionicons name={searchOpen ? 'close' : 'search'} size={20} color={colors.text} />
-        </Pressable>
+    <View style={styles.root}>
+      {/* Scroll-linked top fade: content dissolves under the pinned title. */}
+      <TopFade scrollY={scrollY} height={headerHeight + 70} />
+
+      {/* Pinned header: search circle + placement + title */}
+      <View
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+        <View style={styles.searchRow}>
+          <Pressable
+            onPress={() => {
+              setSearchOpen((v) => !v);
+              if (searchOpen) setQuery('');
+            }}
+            style={styles.searchBtn}
+            hitSlop={6}>
+            <Ionicons name={searchOpen ? 'close' : 'search'} size={20} color={colors.text} />
+          </Pressable>
+        </View>
+        <Text style={styles.placement}>
+          {profile.school === 'hnd'
+            ? `${profile.departmentName} · HND`
+            : `${profile.departmentName} · ${profile.level} · UB`}
+        </Text>
+        <Text style={styles.title}>Courses</Text>
       </View>
 
-      <Text style={styles.placement}>
-        {profile.school === 'hnd'
-          ? `${profile.departmentName} · HND`
-          : `${profile.departmentName} · ${profile.level} · UB`}
-      </Text>
-      <Text style={styles.title}>Courses</Text>
-
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
       {searchOpen && (
         <View style={styles.searchBox}>
           <TextInput
@@ -303,16 +315,27 @@ export default function CoursesScreen() {
         </View>
       ))}
 
-      <Text style={styles.footnote}>
-        Catalogue from the official UB 2023/24 teaching timetable and the current national HND program.
-      </Text>
-    </ScrollView>
+        <Text style={styles.footnote}>
+          Catalogue from the official UB 2023/24 teaching timetable and the current national HND program.
+        </Text>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  searchRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.gutter },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 10,
+    backgroundColor: 'transparent',
+  },
+  searchRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   searchBtn: {
     width: 42,
     height: 42,
@@ -323,14 +346,12 @@ const makeStyles = () => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.gutter, marginTop: 2 },
+  placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   title: {
     fontFamily: fonts.bold,
     fontSize: 38,
     color: colors.text,
-    paddingHorizontal: spacing.gutter,
     marginTop: 4,
-    marginBottom: 18,
   },
   searchBox: {
     marginHorizontal: spacing.gutter,

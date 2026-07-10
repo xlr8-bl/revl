@@ -173,6 +173,15 @@ export function useResolvedScheme(): 'light' | 'dark' {
 /* Live palette + reactive stylesheets                                 */
 /* ------------------------------------------------------------------ */
 
+/** Convert a #RRGGBB color to rgba() with the given alpha. */
+export function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** Live palette: every read reflects the current theme. */
 export const colors = new Proxy({} as Palette, {
   get: (_t, key: string) => (active as Record<string, string>)[key],

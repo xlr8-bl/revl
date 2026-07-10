@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isDaytime } from '../lib/greeting';
 import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
@@ -16,6 +17,12 @@ const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap
   discover: { label: 'Search', icon: 'search-outline', iconActive: 'search' },
   you: { label: 'You', icon: 'person-outline', iconActive: 'person' },
 };
+
+/** The Home tab reads the clock: sun + "Today" by day, moon + "Tonight" by night. */
+const daytime = isDaytime();
+const homeTab = daytime
+  ? { label: 'Today', icon: 'sunny-outline' as const, iconActive: 'sunny' as const }
+  : { label: 'Tonight', icon: 'moon-outline' as const, iconActive: 'moon' as const };
 
 /** Minimal slice of react-navigation's tab-bar props (expo-router vendors the lib). */
 type TabBarProps = {
@@ -33,7 +40,7 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
   return (
     <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {state.routes.map((route, index) => {
-        const tab = TABS[route.name];
+        const tab = route.name === 'index' ? homeTab : TABS[route.name];
         if (!tab) return null;
         const focused = state.index === index;
 

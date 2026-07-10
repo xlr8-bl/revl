@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOfTheDay } from '../data/home';
+import { planWord } from '../lib/greeting';
 import { colors, fonts, radius, spacing, type, themedStyleSheet, useThemeVersion } from '../theme';
 import { MathRichText } from './MathRichText';
 
@@ -15,10 +16,11 @@ export function HeroCard() {
   useThemeVersion();
   const router = useRouter();
   const { sourceLine, question, stats } = questionOfTheDay;
+  const when = planWord();
 
   return (
     <View style={styles.card}>
-      <Text style={styles.kicker}>Tonight's question</Text>
+      <Text style={styles.kicker}>{when === 'today' ? "Today's question" : "Tonight's question"}</Text>
 
       <View style={styles.headerRow}>
         <Text style={styles.source}>{sourceLine}</Text>
@@ -34,7 +36,7 @@ export function HeroCard() {
       <View style={styles.footerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.statLine}>
-            <Text style={styles.statStrong}>{stats.reveals}</Text> attempts tonight
+            <Text style={styles.statStrong}>{stats.reveals}</Text> attempts {when}
           </Text>
           <Text style={styles.statLine}>
             <Text style={styles.statStrong}>38%</Text> got it before revealing
