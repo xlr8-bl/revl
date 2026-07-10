@@ -13,11 +13,11 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
-  FadeInRight,
-  FadeOutRight,
+  Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard, courseColor, wash } from '../../components/CourseCard';
@@ -59,21 +59,40 @@ export default function CoursesScreen() {
   const [tileFacultyId, setTileFacultyId] = useState<string | null>(null);
   /** One of my courses, focused from the quick tiles — narrows the list below. */
   const [focusedCode, setFocusedCode] = useState<string | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(118);
+  /** Height of the fixed part of the header (placement + title + sticky line). */
+  const [baseH, setBaseH] = useState(118);
   const { scrollY, onScroll } = useScrollFade();
   const listRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  /** Search open progress (0…1) — drives the expand, content shift and icon morph. */
+  const open = useSharedValue(0);
   /** Y of the first section title in the scroll content, for the sticky subtitle. */
   const sectionY = useSharedValue(600);
+  const SEARCH_H = 54;
+
   // The section title slides up and sticks under "Courses" as you scroll into
   // it — the fade completes right as the real title reaches the header base so
   // the hand-off is seamless (no double heading, no bleed-through).
   const stickyStyle = useAnimatedStyle(() => {
-    const end = sectionY.value - headerHeight - 4;
+    const end = sectionY.value - baseH - 4;
     return {
-      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp'),
+      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp') * (1 - open.value),
       transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') }],
     };
   });
+  // The search bar grows out of the header; the content spacer grows with it so
+  // everything below shifts down together, then back.
+  const searchWrapStyle = useAnimatedStyle(() => ({ height: open.value * SEARCH_H, opacity: open.value }));
+  const spacerStyle = useAnimatedStyle(() => ({ height: baseH + open.value * SEARCH_H + 8 }));
+  // Search icon morphs to X and back (crossfade + quarter-turn).
+  const searchIconStyle = useAnimatedStyle(() => ({
+    opacity: 1 - open.value,
+    transform: [{ rotate: `${open.value * 90}deg` }, { scale: 1 - open.value * 0.2 }],
+  }));
+  const closeIconStyle = useAnimatedStyle(() => ({
+    opacity: open.value,
+    transform: [{ rotate: `${(open.value - 1) * 90}deg` }, { scale: 0.8 + open.value * 0.2 }],
+  }));
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
   const TILE = activeScheme() === 'light' ? TILE_COLORS_LIGHT : TILE_COLORS_DARK;
@@ -166,55 +185,65 @@ export default function CoursesScreen() {
 
   const stickyTitle = sections[0]?.title ?? '';
   const toggleSearch = () => {
-    setSearchOpen((v) => {
-      const next = !v;
-      if (next) listRef.current?.scrollTo({ y: 0, animated: true });
-      else setQuery('');
-      return next;
-    });
+    const next = !searchOpen;
+    setSearchOpen(next);
+    open.value = withTiming(next ? 1 : 0, { duration: 280, easing: Easing.out(Easing.cubic) });
+    if (next) {
+      listRef.current?.scrollTo({ y: 0, animated: true });
+      setTimeout(() => inputRef.current?.focus(), 180);
+    } else {
+      setQuery('');
+      inputRef.current?.blur();
+    }
   };
 
   return (
     <View style={styles.root}>
       {/* Opaque bg across the whole header so the pinned title and the sticky
           section subtitle sit on solid ground; content dissolves in the tail. */}
-      <TopFade scrollY={scrollY} height={headerHeight + 96} solid={headerHeight} />
+      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 96} solid={baseH + (searchOpen ? SEARCH_H : 0)} />
 
-      {/* Pinned header: placement · title + search · sticky section title */}
-      <View
-        style={[styles.header, { paddingTop: insets.top + 8 }]}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <Text style={styles.placement}>
-          {profile.school === 'hnd'
-            ? `${profile.departmentName} · HND`
-            : `${profile.departmentName} · ${profile.level} · UB`}
-        </Text>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Courses</Text>
-          <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
-            <Ionicons name={searchOpen ? 'close' : 'search'} size={20} color={colors.text} />
-          </Pressable>
+      {/* Pinned header */}
+      <View style={styles.header}>
+        {/* Fixed part: placement · title + search button · sticky section title */}
+        <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
+          <Text style={styles.placement}>
+            {profile.school === 'hnd'
+              ? `${profile.departmentName} · HND`
+              : `${profile.departmentName} · ${profile.level} · UB`}
+          </Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Courses</Text>
+            <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
+              <Animated.View style={[styles.iconLayer, searchIconStyle]}>
+                <Ionicons name="search" size={20} color={colors.text} />
+              </Animated.View>
+              <Animated.View style={[styles.iconLayer, closeIconStyle]}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Animated.View>
+            </Pressable>
+          </View>
+          <Animated.Text numberOfLines={1} style={[styles.stickyTitle, stickyStyle]}>
+            {stickyTitle}
+          </Animated.Text>
         </View>
 
-        {searchOpen ? (
-          <Animated.View entering={FadeInRight.duration(240)} exiting={FadeOutRight.duration(160)} style={styles.searchBox}>
+        {/* Search bar grows out of the header */}
+        <Animated.View style={[styles.searchWrap, searchWrapStyle]}>
+          <View style={styles.searchBox}>
             <Ionicons name="search" size={16} color={colors.textTertiary} />
             <TextInput
+              ref={inputRef}
               value={query}
               onChangeText={setQuery}
               placeholder="Search code or title, e.g. BCH301"
               placeholderTextColor={colors.textTertiary}
               style={styles.searchInput}
-              autoFocus
               autoCapitalize="characters"
               returnKeyType="search"
             />
-          </Animated.View>
-        ) : (
-          <Animated.Text numberOfLines={1} style={[styles.stickyTitle, stickyStyle]}>
-            {stickyTitle}
-          </Animated.Text>
-        )}
+          </View>
+        </Animated.View>
       </View>
 
       <Animated.ScrollView
@@ -224,7 +253,10 @@ export default function CoursesScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}>
+      {/* Animated spacer clears the header and grows with the search bar so
+          everything below shifts down together. */}
+      <Animated.View style={spacerStyle} />
       {!query.trim() && (
         <>
           <FilterChips
@@ -404,16 +436,8 @@ export default function CoursesScreen() {
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 10,
-    backgroundColor: 'transparent',
-  },
+  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   searchBtn: {
     width: 44,
@@ -425,14 +449,15 @@ const makeStyles = () => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
   stickyTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.textSecondary, marginTop: 6, height: 20 },
+  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
-    marginTop: 10,
     backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
