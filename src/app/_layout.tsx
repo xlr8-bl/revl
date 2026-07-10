@@ -54,7 +54,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={navTheme}>
+      {/* Keyed on the resolved scheme: a light↔dark flip remounts the whole
+          tree, so every screen rebuilds fresh in the new theme (a full
+          in-app refresh). expo-router re-derives the current route from the
+          URL, so you stay where you are. */}
+      <ThemeProvider key={scheme} value={navTheme}>
         <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
         <Stack
           screenOptions={{
