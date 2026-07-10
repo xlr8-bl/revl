@@ -13,12 +13,13 @@ import type { CatalogCourse } from '../data/catalog/types';
 import { sentenceCase } from '../lib/format';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-// Two tuned sets that keep each course's identity hue but read correctly on
-// their background: airy pastels on the dark ink, deeper saturated tones on
-// the light paper. Same index per code, so a course's colour just shifts
-// value between themes rather than changing.
-const COURSE_COLORS_DARK = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
-const COURSE_COLORS_LIGHT = ['#2F6FE0', '#7A4FC0', '#1E9E6A', '#C07A16', '#C64F6A', '#128C8C', '#9A6B1E'];
+// One cohesive, warm-leaning jewel family (terracotta · teal · plum · gold ·
+// forest · wine · slate · violet) shared across the whole Courses page.
+// Same hue index per theme — airy on the dark ink for legible coloured text,
+// deep on the light paper — so a course keeps its identity, just shifting
+// value between themes. No bright primary blue that fights the amber accent.
+const COURSE_COLORS_DARK = ['#E8916E', '#6FC9BE', '#C79BB5', '#E0B76B', '#7FC79A', '#E08A98', '#92A6D8', '#B6A6E0'];
+const COURSE_COLORS_LIGHT = ['#A8492B', '#256E64', '#6E3A5C', '#8A6A2C', '#3B6E4E', '#9A4351', '#465C86', '#5E4E86'];
 
 export function courseColor(code: string) {
   const arr = activeScheme() === 'light' ? COURSE_COLORS_LIGHT : COURSE_COLORS_DARK;

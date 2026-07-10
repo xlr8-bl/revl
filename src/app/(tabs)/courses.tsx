@@ -34,12 +34,13 @@ const FILTERS = ['My courses', 'Browse', 'Saved', 'Completed'];
 const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
 
 /** Bright tile palette (the look from the original Courses page). */
-// Feature/faculty tile colours. Dark uses vibrant jewel tones that pop on
-// ink. Light uses DEEPER, warm-leaning tones so a card reads as a rich
-// premium surface on the warm paper instead of a bright primary that fights
-// the amber accent (the "inverted / opposite colours" look).
-const TILE_COLORS_DARK = ['#9D2450', '#4A3D63', '#E04B2F', '#3C6FE8', '#357F84', '#4D6FB5', '#8A6D2F', '#3E7A44', '#7A3A8A', '#A0522D'];
-const TILE_COLORS_LIGHT = ['#7C2540', '#3B3357', '#9C4127', '#2C4A72', '#1F5551', '#39508A', '#6E5626', '#2F5738', '#5E2E6E', '#864428'];
+// Featured-set / faculty cards carry WHITE text, so they stay mid-to-deep in
+// both themes — the same warm-leaning jewel family as the course tints, one
+// hue per index. Dark is a touch brighter to lift off the ink; light goes
+// deeper to read as a rich premium surface on the paper. Terracotta · teal ·
+// plum · gold · forest · wine · slate · violet — no bright primary blue.
+const TILE_COLORS_DARK = ['#C56A45', '#2E8E82', '#9A5E86', '#B58A38', '#4E9E72', '#B8586A', '#5E72B0', '#8A72B0'];
+const TILE_COLORS_LIGHT = ['#A8492B', '#256E64', '#6E3A5C', '#8A6A2C', '#3B6E4E', '#9A4351', '#465C86', '#5E4E86'];
 
 export default function CoursesScreen() {
   useThemeVersion();
