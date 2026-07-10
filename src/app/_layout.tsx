@@ -81,6 +81,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings" />
             <Stack.Screen name="account/edit" />
             <Stack.Screen name="account/courses" />
+            <Stack.Screen name="account/mobile-money" />
             <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
           </Stack.Protected>

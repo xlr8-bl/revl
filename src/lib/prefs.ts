@@ -9,13 +9,24 @@ import { useSyncExternalStore } from 'react';
 
 export type Prefs = {
   notifications: boolean;
+  notifyExams: boolean;
+  notifyClass: boolean;
   reduceMotion: boolean;
   offlineDownloads: boolean;
   privateProfile: boolean;
+  preferredNetwork: 'mtn' | 'orange';
 };
 
 const KEY = 'revl.prefs.v1';
-let prefs: Prefs = { notifications: true, reduceMotion: false, offlineDownloads: true, privateProfile: false };
+let prefs: Prefs = {
+  notifications: true,
+  notifyExams: true,
+  notifyClass: true,
+  reduceMotion: false,
+  offlineDownloads: true,
+  privateProfile: false,
+  preferredNetwork: 'mtn',
+};
 const listeners = new Set<() => void>();
 const emit = () => {
   prefs = { ...prefs };

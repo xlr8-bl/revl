@@ -1,14 +1,17 @@
 /**
- * Bottom dock — icon + label on an ink bar with a hairline top rule.
- * The active tab gets the amber tick above an amber icon.
+ * Bottom dock — a floating "liquid glass" bar: a rounded, translucent,
+ * blurred capsule that lets content pass under it, with a hairline glass
+ * edge. The active tab gets the amber tick above an amber icon. The Home
+ * tab reads the clock (sun + "Today" by day, moon + "Tonight" by night).
  */
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isDaytime } from '../lib/greeting';
-import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
+import { colors, fonts, themedStyleSheet, useResolvedScheme, useThemeVersion, withAlpha } from '../theme';
 
 const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
   index: { label: 'Tonight', icon: 'moon-outline', iconActive: 'moon' },
@@ -35,46 +38,67 @@ type TabBarProps = {
 
 export function FloatingTabBar({ state, navigation }: TabBarProps) {
   useThemeVersion(); // the navigator renders this, so subscribe to re-render on theme change
+  const scheme = useResolvedScheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {state.routes.map((route, index) => {
-        const tab = route.name === 'index' ? homeTab : TABS[route.name];
-        if (!tab) return null;
-        const focused = state.index === index;
+    <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 10) }]} pointerEvents="box-none">
+      <View style={styles.dock}>
+        <BlurView
+          intensity={scheme === 'light' ? 40 : 30}
+          tint={scheme === 'light' ? 'light' : 'dark'}
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Glass wash: keeps labels legible over whatever scrolls beneath. */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.card, scheme === 'light' ? 0.55 : 0.5) }]} />
 
-        const onPress = () => {
-          if (Platform.OS !== 'web') Haptics.selectionAsync();
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-        };
+        <View style={styles.row}>
+          {state.routes.map((route, index) => {
+            const tab = route.name === 'index' ? homeTab : TABS[route.name];
+            if (!tab) return null;
+            const focused = state.index === index;
 
-        return (
-          <Pressable key={route.key} onPress={onPress} style={styles.tab} hitSlop={8}>
-            <View style={[styles.tick, focused && styles.tickActive]} />
-            <Ionicons name={focused ? tab.iconActive : tab.icon} size={21} color={focused ? colors.accent : colors.textSecondary} />
-            <Text style={[styles.label, focused && styles.labelActive]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
+            const onPress = () => {
+              if (Platform.OS !== 'web') Haptics.selectionAsync();
+              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+            };
+
+            return (
+              <Pressable key={route.key} onPress={onPress} style={styles.tab} hitSlop={8}>
+                <View style={[styles.tick, focused && styles.tickActive]} />
+                <Ionicons name={focused ? tab.iconActive : tab.icon} size={21} color={focused ? colors.accent : colors.textSecondary} />
+                <Text style={[styles.label, focused && styles.labelActive]}>{tab.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
-  dock: {
+  wrap: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderStrong,
-    backgroundColor: colors.dockTint,
+    left: 12,
+    right: 12,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+  dock: {
+    borderRadius: 26,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    // Soft lift so the glass reads as floating.
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  row: { flexDirection: 'row', paddingTop: 9, paddingBottom: 11 },
+  tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 2 },
   tick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
   tickActive: { backgroundColor: colors.accent },
   label: { fontFamily: fonts.regular, fontSize: 10.5, color: colors.textSecondary },

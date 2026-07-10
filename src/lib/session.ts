@@ -79,6 +79,13 @@ export function updateProfile(patch: Partial<StudentProfile>) {
   emit();
 }
 
+/** Link or update the Mobile Money number used to unlock papers. */
+export function linkMobileMoney(phone: string) {
+  session = { ...session, phone };
+  persist();
+  emit();
+}
+
 export function signOut() {
   // Profile survives sign-out so returning students skip onboarding.
   session = { ...session, signedIn: false, method: null, phone: undefined };
