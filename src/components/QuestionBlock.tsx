@@ -16,7 +16,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { handsFor, raiseHand, useCommunity } from '../lib/communityStore';
 import { logReveal } from '../lib/revealLog';
 import type { Question, RevealLog } from '../types';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts, radius, themedStyleSheet } from '../theme';
 import { ConfidencePill } from './ConfidencePill';
 import { DiagramView } from './DiagramView';
 import { ExplainSheet } from './ExplainSheet';
@@ -199,7 +199,7 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.card,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   revealBtnDisabled: { backgroundColor: colors.surface },
   revealText: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAccent },
-  answerBox: { backgroundColor: '#111113', borderRadius: 14, padding: 14 },
+  answerBox: { backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
   answerHeader: { marginBottom: 10 },
   verifiedText: { fontFamily: fonts.medium, fontSize: 12, color: colors.verified },
   aiTagText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
@@ -281,3 +281,4 @@ const styles = StyleSheet.create({
   },
   explainText: { fontFamily: fonts.medium, fontSize: 13, color: colors.ai },
 });
+const styles = themedStyleSheet(makeStyles);

@@ -8,9 +8,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 export default function ContributeScreen() {
+  useThemeVersion();
   const [courseCode, setCourseCode] = useState('');
   const [year, setYear] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
@@ -88,7 +89,7 @@ export default function ContributeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontFamily: fonts.bold, fontSize: 26, color: colors.text },
   body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.textSecondary, marginTop: 8, marginBottom: 10 },
@@ -143,3 +144,4 @@ const styles = StyleSheet.create({
   },
   rewardText: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

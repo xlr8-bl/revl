@@ -17,12 +17,13 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signIn } from '../../lib/session';
-import { colors, fonts, spacing, type } from '../../theme';
+import { colors, fonts, spacing, type, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'momo' | 'orange';
 type Step = 'number' | 'prompt';
 
 export default function MomoSignInScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [provider, setProvider] = useState<Provider>('momo');
@@ -116,7 +117,7 @@ function ProviderCard({ label, color, selected, onPress }: { label: string; colo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.gutter + 6 },
   back: { fontFamily: fonts.regular, fontSize: 15, color: colors.textSecondary, paddingVertical: 6 },
   title: { fontFamily: fonts.bold, fontSize: 30, lineHeight: 36, color: colors.text, marginTop: 14 },
@@ -156,3 +157,4 @@ const styles = StyleSheet.create({
   promptBody: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, textAlign: 'center' },
   changeNumber: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textSecondary, marginTop: 12, textDecorationLine: 'underline' },
 });
+const styles = themedStyleSheet(makeStyles);

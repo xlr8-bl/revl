@@ -12,9 +12,10 @@ import { currentUser } from '../../data/user';
 import { useRevealLogs, weakTopics } from '../../lib/selectors';
 import { signOut, useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
 
 export default function YouScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const logs = useRevealLogs();
@@ -73,23 +74,17 @@ export default function YouScreen() {
         ))}
       </View>
 
-      <Pressable onPress={signOut} style={[styles.card, styles.row]}>
-        <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-        <Text style={[styles.rowLabel, { color: colors.danger }]}>Sign out</Text>
-      </Pressable>
-
       <View style={styles.card}>
-        {['Notifications', 'Appearance', 'Help & feedback'].map((label, i) => (
-          <View key={label} style={[styles.row, i > 0 && styles.rowBorder]}>
-            <Ionicons
-              name={label === 'Notifications' ? 'notifications-outline' : label === 'Appearance' ? 'contrast-outline' : 'help-circle-outline'}
-              size={20}
-              color={colors.text}
-            />
-            <Text style={styles.rowLabel}>{label}</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-          </View>
-        ))}
+        <Pressable onPress={() => router.push('/settings' as never)} style={styles.row}>
+          <Ionicons name="settings-outline" size={20} color={colors.text} />
+          <Text style={styles.rowLabel}>Settings</Text>
+          <Text style={styles.rowDetail}>appearance, notifications</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+        </Pressable>
+        <Pressable onPress={signOut} style={[styles.row, styles.rowBorder]}>
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+          <Text style={[styles.rowLabel, { color: colors.danger }]}>Sign out</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -104,7 +99,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   profile: { alignItems: 'center', gap: 8 },
   avatar: {
@@ -147,3 +142,4 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
 });
+const styles = themedStyleSheet(makeStyles);

@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet } from '../theme';
 
 type Props = {
   options: string[];
@@ -40,7 +40,7 @@ export function FilterChips({ options, selected, onSelect, variant = 'filled' }:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   row: { paddingHorizontal: spacing.gutter, gap: 8 },
   chip: {
     backgroundColor: colors.card,
@@ -59,3 +59,4 @@ const styles = StyleSheet.create({
   text: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.text },
   textActive: { color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

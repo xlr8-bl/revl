@@ -11,7 +11,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getPaper, unlockedPaperIds } from '../../data/papers';
 import { currentUser } from '../../data/user';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'mtn' | 'orange';
 type Stage = 'choose' | 'confirming' | 'done';
@@ -20,6 +20,7 @@ const PRICE_XAF = 500;
 const PRICE_CREDITS = 3;
 
 export default function UnlockScreen() {
+  useThemeVersion();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const paper = getPaper(id);
@@ -139,7 +140,7 @@ function ProviderCard({ label, color, selected, onPress }: { label: string; colo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontFamily: fonts.bold, fontSize: 23, color: colors.text },
   meta: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary, marginTop: 8, textAlign: 'left' },
@@ -205,3 +206,4 @@ const styles = StyleSheet.create({
   doneWrap: { alignItems: 'center', gap: 12, paddingVertical: 60 },
   doneTitle: { fontFamily: fonts.bold, fontSize: 24, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

@@ -11,7 +11,7 @@ import { Image, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } 
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Diagram } from '../types';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts, radius, themedStyleSheet } from '../theme';
 
 export function DiagramView({ diagram }: { diagram: Diagram }) {
   const [failed, setFailed] = useState(false);
@@ -102,7 +102,7 @@ function ZoomModal({ uri, onClose }: { uri: string; onClose: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   wrap: { marginTop: 14 },
   imageBox: { borderRadius: radius.thumb, overflow: 'hidden', backgroundColor: colors.surface },
   image: { width: '100%', height: 180 },
@@ -127,3 +127,4 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 });
+const styles = themedStyleSheet(makeStyles);

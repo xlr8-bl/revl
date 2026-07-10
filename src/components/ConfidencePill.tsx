@@ -6,7 +6,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RevealLog } from '../types';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 
 type Confidence = RevealLog['confidenceBefore'];
 
@@ -42,7 +42,7 @@ export function ConfidencePill({ value, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -60,3 +60,4 @@ const styles = StyleSheet.create({
   pillText: { fontFamily: fonts.medium, fontSize: 13, color: colors.text },
   pillTextActive: { color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

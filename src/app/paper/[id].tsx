@@ -13,7 +13,7 @@ import { QuestionBlock } from '../../components/QuestionBlock';
 import { noteUploads } from '../../data/notes';
 import { getPaper } from '../../data/papers';
 import type { Question } from '../../types';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 /** Is `target` this question or anywhere in its subtree? */
 function containsQuestion(q: Question, target: string): boolean {
@@ -21,6 +21,7 @@ function containsQuestion(q: Question, target: string): boolean {
 }
 
 export default function PaperReaderScreen() {
+  useThemeVersion();
   // `q` deep-links to a question (e.g. from a Class post) — the reader
   // scrolls to it and frames it, so the feed card and the paper connect.
   const { id, q: targetQuestionId } = useLocalSearchParams<{ id: string; q?: string }>();
@@ -130,7 +131,7 @@ function MetaChip({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
   topBar: {
@@ -181,3 +182,4 @@ const styles = StyleSheet.create({
   notesNudgeText: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.accent },
   processing: { alignItems: 'center', gap: 10, paddingVertical: 60 },
 });
+const styles = themedStyleSheet(makeStyles);

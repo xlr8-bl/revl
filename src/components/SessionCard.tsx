@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SessionCardData } from '../data/home';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 
 export function SessionCard({ data, index, last }: { data: SessionCardData; index: number; last?: boolean }) {
   const router = useRouter();
@@ -26,7 +26,7 @@ export function SessionCard({ data, index, last }: { data: SessionCardData; inde
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 16 },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   number: {
@@ -41,3 +41,4 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
   chevron: { fontFamily: fonts.regular, fontSize: 20, color: colors.textTertiary, marginTop: -2 },
 });
+const styles = themedStyleSheet(makeStyles);

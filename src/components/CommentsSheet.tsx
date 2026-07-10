@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { addComment, toggleCommentLike, useCommunity } from '../lib/communityStore';
 import { useSession } from '../lib/session';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 import { BottomSheet } from './BottomSheet';
 
 export function CommentsSheet({ postId, visible, onClose }: { postId: string; visible: boolean; onClose: () => void }) {
@@ -85,7 +85,7 @@ export function CommentsSheet({ postId, visible, onClose }: { postId: string; vi
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 17, color: colors.text, marginBottom: 12 },
   empty: { fontFamily: fonts.regular, fontSize: 14, color: colors.textTertiary, paddingVertical: 20, textAlign: 'center' },
   commentRow: { flexDirection: 'row', gap: 10, marginBottom: 16, alignItems: 'flex-start' },
@@ -126,3 +126,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+const styles = themedStyleSheet(makeStyles);

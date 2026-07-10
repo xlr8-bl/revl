@@ -18,7 +18,7 @@ import {
   useRevealLogs,
   weakTopics,
 } from '../lib/selectors';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 /** Deterministic star position from the tag name (stable across renders). */
 function starPosition(tag: string, width: number, height: number) {
@@ -31,6 +31,7 @@ function starPosition(tag: string, width: number, height: number) {
 }
 
 export default function StudyDnaScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -189,7 +190,7 @@ function LegendDot({ color, label, ring }: { color: string; label: string; ring?
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row',
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.gutter,
     marginTop: 18,
     borderRadius: 22,
-    backgroundColor: '#0A0A0E',
+    backgroundColor: colors.bgDeep,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -237,3 +238,4 @@ const styles = StyleSheet.create({
   edgeText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary },
   edgeStrong: { fontFamily: fonts.medium, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

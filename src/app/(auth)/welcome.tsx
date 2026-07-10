@@ -10,9 +10,10 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RevlLogo } from '../../components/RevlLogo';
 import { signIn } from '../../lib/session';
-import { colors, fonts, spacing, type } from '../../theme';
+import { colors, fonts, spacing, type, themedStyleSheet, useThemeVersion } from '../../theme';
 
 export default function WelcomeScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -66,7 +67,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -100,3 +101,4 @@ const styles = StyleSheet.create({
   momoHint: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.textTertiary, textAlign: 'center', marginTop: 2 },
   terms: { fontFamily: fonts.regular, fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginTop: 8 },
 });
+const styles = themedStyleSheet(makeStyles);

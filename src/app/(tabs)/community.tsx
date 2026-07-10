@@ -18,7 +18,7 @@ import { QuestionAnchor } from '../../components/QuestionAnchor';
 import { findQuestion } from '../../lib/selectors';
 import { useCommunity, type QuestionRef } from '../../lib/communityStore';
 import { useSession } from '../../lib/session';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const TOP_SOLVERS = [
   { name: 'Brandon', initial: 'B', color: '#7EA8FF', solved: 9 },
@@ -27,6 +27,7 @@ const TOP_SOLVERS = [
 ];
 
 export default function ClassScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const { profile } = useSession();
   const { posts, wanted } = useCommunity();
@@ -144,7 +145,7 @@ function Filter({ label, active, onPress }: { label: string; active: boolean; on
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   roomKicker: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.gutter },
   roomTitle: { fontFamily: fonts.bold, fontSize: 30, color: colors.text, paddingHorizontal: spacing.gutter, marginTop: 3 },
@@ -198,3 +199,4 @@ const styles = StyleSheet.create({
   },
   fabText: { fontFamily: fonts.bold, fontSize: 15, color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

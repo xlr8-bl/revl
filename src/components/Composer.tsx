@@ -10,7 +10,7 @@ import { papers } from '../data/papers';
 import { addPost, type QuestionRef } from '../lib/communityStore';
 import type { StudentProfile } from '../lib/session';
 import type { Question } from '../types';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 import { BottomSheet } from './BottomSheet';
 
 type Props = {
@@ -132,7 +132,7 @@ export function Composer({ visible, onClose, profile, initialRef }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 20, color: colors.text, marginBottom: 14 },
   kindRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   kindBtn: {
@@ -178,3 +178,4 @@ const styles = StyleSheet.create({
   ctaDisabled: { backgroundColor: colors.surface },
   ctaText: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

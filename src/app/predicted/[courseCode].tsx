@@ -9,7 +9,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { appConfig } from '../../data/config';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 /** Mock predicted questions with per-question confidence. */
 const MOCK_PREDICTIONS = [
@@ -21,6 +21,7 @@ const MOCK_PREDICTIONS = [
 ];
 
 export default function PredictedPaperScreen() {
+  useThemeVersion();
   const { courseCode } = useLocalSearchParams<{ courseCode: string }>();
 
   return (
@@ -58,7 +59,7 @@ export default function PredictedPaperScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   badge: {
     flexDirection: 'row',
@@ -81,3 +82,4 @@ const styles = StyleSheet.create({
   rowPct: { fontFamily: fonts.medium, fontSize: 14, color: colors.textSecondary, width: 42, textAlign: 'right' },
   disclaimer: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.textTertiary, marginTop: 20 },
 });
+const styles = themedStyleSheet(makeStyles);

@@ -12,7 +12,7 @@
  */
 import React from 'react';
 import { StyleSheet, Text, TextStyle, View } from 'react-native';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 
 const SUP: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', i: 'ⁱ', n: 'ⁿ', '+': '⁺', '-': '⁻' };
 const SUB: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', i: 'ᵢ', j: 'ⱼ', n: 'ₙ', a: 'ₐ', v: 'ᵥ', x: 'ₓ', '+': '₊', '-': '₋' };
@@ -135,9 +135,10 @@ export function MathRichText({ children, style, mathColor }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   paraGap: { marginTop: 10 },
   bulletRow: { flexDirection: 'row', marginTop: 2 },
   bulletDot: { marginRight: 8, color: colors.textSecondary },
   bulletBody: { flex: 1 },
 });
+const styles = themedStyleSheet(makeStyles);

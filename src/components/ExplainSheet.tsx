@@ -17,7 +17,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { askAboutQuestion, explainQuestion } from '../data/ai';
 import type { ChatMessage, ExplainResponse, Question } from '../types';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 import { BottomSheet } from './BottomSheet';
 import { MathRichText } from './MathRichText';
 
@@ -138,7 +138,7 @@ function Layer({ label, accent, children }: { label: string; accent?: boolean; c
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   sheetTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.text, marginBottom: 14 },
   loading: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   loadingText: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
@@ -192,3 +192,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+const styles = themedStyleSheet(makeStyles);

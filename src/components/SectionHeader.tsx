@@ -2,7 +2,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet } from '../theme';
 
 export function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
   return (
@@ -18,7 +18,7 @@ export function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: (
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -29,3 +29,4 @@ const styles = StyleSheet.create({
   seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   seeAllText: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

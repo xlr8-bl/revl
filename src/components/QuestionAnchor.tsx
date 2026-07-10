@@ -11,7 +11,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { findQuestion } from '../lib/selectors';
 import { type QuestionRef } from '../lib/communityStore';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; courseCode: string }) {
@@ -45,7 +45,7 @@ export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; course
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     // Square corners: reads as a sheet of paper pinned into the post.
@@ -63,3 +63,4 @@ const styles = StyleSheet.create({
   goRow: { alignSelf: 'flex-end', marginTop: 12, paddingVertical: 4, paddingLeft: 20 },
   goText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
 });
+const styles = themedStyleSheet(makeStyles);

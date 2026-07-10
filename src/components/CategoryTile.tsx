@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Faculty } from '../types';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts, radius, themedStyleSheet } from '../theme';
 
 export function CategoryTile({ faculty, onPress }: { faculty: Faculty; onPress?: () => void }) {
   return (
@@ -25,7 +25,7 @@ export function CategoryTile({ faculty, onPress }: { faculty: Faculty; onPress?:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   tile: {
     width: 158,
     height: 64,
@@ -41,3 +41,4 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4 },
   text: { flex: 1, fontFamily: fonts.medium, fontSize: 13.5, letterSpacing: 0.6, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

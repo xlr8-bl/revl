@@ -10,9 +10,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CreditMark } from '../components/CreditMark';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { currentUser, ledger } from '../data/user';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 export default function WalletScreen() {
+  useThemeVersion();
   const router = useRouter();
   return (
     <View style={styles.root}>
@@ -52,7 +53,7 @@ export default function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   balanceCard: {
     alignItems: 'center',
@@ -93,3 +94,4 @@ const styles = StyleSheet.create({
   rowDate: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   rowAmount: { fontFamily: fonts.bold, fontSize: 17 },
 });
+const styles = themedStyleSheet(makeStyles);

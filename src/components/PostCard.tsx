@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useRef, useState } from 'react';
 import { Image, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { likeOn, sharePost, toggleLike, type CommunityPost } from '../lib/communityStore';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet } from '../theme';
 import { CommentsSheet } from './CommentsSheet';
 import { QuestionAnchor } from './QuestionAnchor';
 import { TapBurst } from './TapBurst';
@@ -138,13 +138,16 @@ export function PostCard({ post }: { post: CommunityPost }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   post: {
-    paddingTop: 14,
+    paddingTop: 16,
     paddingBottom: 18,
-    // A solid band, not a hairline: posts end unmistakably.
-    borderBottomWidth: 7,
-    borderBottomColor: colors.card,
+    // A recessed groove (the deep background) plus a hairline edge, so the
+    // boundary between one post and the next is unmistakable in either theme.
+    borderBottomWidth: 9,
+    borderBottomColor: colors.bgDeep,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   header: {
     flexDirection: 'row',
@@ -192,3 +195,4 @@ const styles = StyleSheet.create({
   subCountLink: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   subCount: { fontFamily: fonts.regular, fontSize: 13, color: colors.textTertiary },
 });
+const styles = themedStyleSheet(makeStyles);

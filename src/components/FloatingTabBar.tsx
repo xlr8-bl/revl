@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
   index: { label: 'Tonight', icon: 'moon-outline', iconActive: 'moon' },
@@ -27,6 +27,7 @@ type TabBarProps = {
 };
 
 export function FloatingTabBar({ state, navigation }: TabBarProps) {
+  useThemeVersion(); // the navigator renders this, so subscribe to re-render on theme change
   const insets = useSafeAreaInsets();
 
   return (
@@ -54,7 +55,7 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   dock: {
     position: 'absolute',
     left: 0,
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderStrong,
-    backgroundColor: 'rgba(8,8,11,0.97)',
+    backgroundColor: colors.dockTint,
   },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
   tick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: 'transparent' },
@@ -72,3 +73,4 @@ const styles = StyleSheet.create({
   label: { fontFamily: fonts.regular, fontSize: 10.5, color: colors.textSecondary },
   labelActive: { color: colors.text, fontFamily: fonts.bold },
 });
+const styles = themedStyleSheet(makeStyles);

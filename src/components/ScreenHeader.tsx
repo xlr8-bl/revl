@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 
 export function ScreenHeader({ title }: { title: string }) {
   const router = useRouter();
@@ -20,7 +20,7 @@ export function ScreenHeader({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -31,3 +31,4 @@ const styles = StyleSheet.create({
   back: { width: 40, alignItems: 'center' },
   title: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

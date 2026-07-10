@@ -12,7 +12,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { noteUploads as initialNotes } from '../data/notes';
 import { currentUser } from '../data/user';
 import type { NoteUpload } from '../types';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 const KIND_ICON: Record<NoteUpload['kind'], keyof typeof Ionicons.glyphMap> = {
   pdf: 'document-text-outline',
@@ -21,6 +21,7 @@ const KIND_ICON: Record<NoteUpload['kind'], keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function NotesScreen() {
+  useThemeVersion();
   const [notes, setNotes] = useState<NoteUpload[]>(initialNotes);
 
   /** Stubbed upload: picks a file and adds it as "processing". */
@@ -98,7 +99,7 @@ export default function NotesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   intro: {
     fontFamily: fonts.regular,
@@ -135,3 +136,4 @@ const styles = StyleSheet.create({
   indexedText: { fontFamily: fonts.regular, fontSize: 12, color: colors.success },
   processingText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
 });
+const styles = themedStyleSheet(makeStyles);

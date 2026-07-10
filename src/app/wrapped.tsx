@@ -41,7 +41,7 @@ import Svg, { Circle } from 'react-native-svg';
 import ViewShot from 'react-native-view-shot';
 import { wrappedStats } from '../data/wrapped';
 import { daysUntilWrapped, isWrappedLive } from '../lib/wrappedGate';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 const s = wrappedStats;
 const AnimatedText = Animated.createAnimatedComponent(TextInput);
@@ -425,6 +425,7 @@ const CARDS: Card[] = [
 /* ------------------------------------------------------------------ */
 
 export default function WrappedScreen() {
+  useThemeVersion();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -519,7 +520,7 @@ export default function WrappedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0B0B10' },
   card: { flex: 1, paddingHorizontal: 34, paddingTop: 130, paddingBottom: 120, justifyContent: 'space-between' },
   centerBlock: { flex: 1, justifyContent: 'center', gap: 6 },
@@ -579,3 +580,4 @@ const styles = StyleSheet.create({
   lockedBtn: { backgroundColor: colors.card, borderRadius: 10, paddingHorizontal: 26, paddingVertical: 12, marginTop: 10 },
   lockedBtnText: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
 });
+const styles = themedStyleSheet(makeStyles);

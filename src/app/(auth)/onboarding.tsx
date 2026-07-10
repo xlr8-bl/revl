@@ -34,7 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { coursesFor, departmentsFor, facultiesFor, schools } from '../../data/catalog';
 import type { SchoolId } from '../../data/catalog/types';
 import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'personalize' | 'done';
 
@@ -46,6 +46,7 @@ const EXAM_DATES = [
 ];
 
 export default function OnboardingScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { method } = useSession();
@@ -446,7 +447,7 @@ function Cta({ label, enabled, onPress, bottomInset }: { label: string; enabled:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.gutter + 6 },
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
   back: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary, paddingVertical: 4 },
@@ -539,3 +540,4 @@ const styles = StyleSheet.create({
   ctaDisabled: { backgroundColor: colors.surface },
   ctaText: { fontFamily: fonts.medium, fontSize: 16, color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

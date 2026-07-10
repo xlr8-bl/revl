@@ -20,7 +20,7 @@ import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { sentenceCase } from '../../lib/format';
 import { useSession } from '../../lib/session';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const FILTERS = ['My courses', 'Browse', 'Saved', 'Completed'];
 const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
@@ -29,6 +29,7 @@ const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
 const TILE_COLORS = ['#9D2450', '#4A3D63', '#E04B2F', '#3C6FE8', '#357F84', '#4D6FB5', '#8A6D2F', '#3E7A44', '#7A3A8A', '#A0522D'];
 
 export default function CoursesScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -309,7 +310,7 @@ export default function CoursesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   searchRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.gutter },
   searchBtn: {
@@ -404,3 +405,4 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
 });
+const styles = themedStyleSheet(makeStyles);

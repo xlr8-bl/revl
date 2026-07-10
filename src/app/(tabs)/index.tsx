@@ -32,9 +32,10 @@ import { currentUser } from '../../data/user';
 import { getGreeting } from '../../lib/greeting';
 import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion } from '../../theme';
 
 export default function HomeScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profile } = useSession();
@@ -175,7 +176,7 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
   header: {
@@ -297,3 +298,4 @@ const styles = StyleSheet.create({
   },
   beginBtnText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

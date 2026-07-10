@@ -6,7 +6,7 @@
 import React from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../theme';
+import { colors, themedStyleSheet } from '../theme';
 
 type Props = {
   visible: boolean;
@@ -33,11 +33,11 @@ export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88 }:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   backdropWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: '#161618',
+    backgroundColor: colors.card,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     paddingHorizontal: 20,
@@ -52,3 +52,4 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 });
+const styles = themedStyleSheet(makeStyles);

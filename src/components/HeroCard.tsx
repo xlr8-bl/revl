@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOfTheDay } from '../data/home';
-import { colors, fonts, radius, spacing, type } from '../theme';
+import { colors, fonts, radius, spacing, type, themedStyleSheet } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function HeroCard() {
@@ -49,7 +49,7 @@ export function HeroCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   card: {
     marginHorizontal: spacing.gutter,
     borderRadius: radius.card,
@@ -80,3 +80,4 @@ const styles = StyleSheet.create({
   },
   attemptText: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.onAccent },
 });
+const styles = themedStyleSheet(makeStyles);

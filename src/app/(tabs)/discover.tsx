@@ -7,11 +7,12 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE } from '../../theme';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const TRENDING = ['information gain', 'apriori', 'k-means', 'entropy', 'CEC420 2023', 'precision & recall'];
 
 export default function DiscoverScreen() {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -52,7 +53,7 @@ export default function DiscoverScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontFamily: fonts.bold, fontSize: 40, color: colors.text, paddingHorizontal: spacing.gutter },
   searchBox: {
@@ -102,3 +103,4 @@ const styles = StyleSheet.create({
   predictMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3 },
   predictChevron: { fontFamily: fonts.regular, fontSize: 19, color: colors.textTertiary },
 });
+const styles = themedStyleSheet(makeStyles);

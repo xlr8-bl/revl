@@ -11,7 +11,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { sentenceCase } from '../lib/format';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themedStyleSheet } from '../theme';
 
 const COURSE_COLORS = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
 export function courseColor(code: string) {
@@ -87,7 +87,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   card: {
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
@@ -115,3 +115,4 @@ const styles = StyleSheet.create({
   paperMeta: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   paperAction: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
 });
+const styles = themedStyleSheet(makeStyles);

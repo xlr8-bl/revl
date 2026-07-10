@@ -9,7 +9,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { getDailyBriefing } from '../data/ai';
 import { useRevealLogs } from '../lib/selectors';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet } from '../theme';
 
 /** Below this many logged reveals we show the honest "still learning" state. */
 const MIN_DATA = 8;
@@ -26,7 +26,7 @@ export function DailyBriefing() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = () => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     marginHorizontal: spacing.gutter,
@@ -36,3 +36,4 @@ const styles = StyleSheet.create({
   icon: { marginTop: 3 },
   text: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary },
 });
+const styles = themedStyleSheet(makeStyles);
