@@ -13,7 +13,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useRef, useState } from 'react';
-import { Image, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, Image, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { likeOn, sharePost, toggleLike, type CommunityPost } from '../lib/communityStore';
 import { colors, fonts, spacing, themedStyleSheet } from '../theme';
 import { CommentsSheet } from './CommentsSheet';
@@ -24,19 +24,26 @@ export function PostCard({ post }: { post: CommunityPost }) {
   const meta = [post.author.level, post.courseCode, post.time].filter(Boolean).join(' · ');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0);
+  const [tapPos, setTapPos] = useState({ x: 0, y: 0 });
   const lastTap = useRef(0);
 
-  // Manual double-tap detector (RN Pressable has no native double-tap).
-  const onContentTap = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTap.current < 280) {
-      lastTap.current = 0;
-      likeOn(post.id); // double-tap always likes, never unlikes
-      setBurst((b) => b + 1);
-    } else {
-      lastTap.current = now;
-    }
-  }, [post.id]);
+  // Manual double-tap detector (RN Pressable has no native double-tap). The
+  // burst fires at the exact point the finger landed.
+  const onContentTap = useCallback(
+    (e: GestureResponderEvent) => {
+      const { locationX, locationY } = e.nativeEvent;
+      const now = Date.now();
+      if (now - lastTap.current < 280) {
+        lastTap.current = 0;
+        setTapPos({ x: locationX, y: locationY });
+        likeOn(post.id); // double-tap always likes, never unlikes
+        setBurst((b) => b + 1);
+      } else {
+        lastTap.current = now;
+      }
+    },
+    [post.id]
+  );
 
   const share = async () => {
     sharePost(post.id);
@@ -71,18 +78,12 @@ export function PostCard({ post }: { post: CommunityPost }) {
       </View>
 
       {/* Double-tappable content: text + media + the question card. Only the
-          nested "Go to question" link inside the card navigates. */}
+          nested "Go to question" link inside the card navigates. One burst
+          overlay covers the whole region and pops at the exact tap point. */}
       <Pressable onPress={onContentTap}>
         <Text style={styles.body}>{post.text}</Text>
 
-        {post.imageUri && (
-          <View>
-            <Image source={{ uri: post.imageUri }} style={styles.media} resizeMode="cover" />
-            <TapBurst trigger={burst}>
-              <Ionicons name="heart" size={92} color="#FFFFFF" />
-            </TapBurst>
-          </View>
-        )}
+        {post.imageUri && <Image source={{ uri: post.imageUri }} style={styles.media} resizeMode="cover" />}
 
         {post.questionRef && post.courseCode && (
           <View style={styles.anchorWrap}>
@@ -90,11 +91,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
           </View>
         )}
 
-        {!post.imageUri && (
-          <TapBurst trigger={burst}>
-            <Ionicons name="heart" size={72} color={colors.accent} />
-          </TapBurst>
-        )}
+        <TapBurst trigger={burst} x={tapPos.x} y={tapPos.y} color={post.imageUri ? '#FFFFFF' : colors.accent} />
       </Pressable>
 
       {/* Actions */}

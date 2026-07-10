@@ -103,6 +103,9 @@ const lightColors: Palette = {
 /* Theme store — module state + useSyncExternalStore                   */
 /* ------------------------------------------------------------------ */
 
+/** Raw palettes, for previews (theme-picker swatches). */
+export const palettes = { light: lightColors, dark: darkColors };
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 const THEME_KEY = 'revl.theme.v1';

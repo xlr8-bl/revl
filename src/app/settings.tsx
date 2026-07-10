@@ -1,7 +1,13 @@
 /**
- * Settings — real, working preferences. Appearance (System / Light /
- * Dark) switches the theme app-wide instantly; the toggles persist to
- * AsyncStorage. Also the account actions (edit profile, sign out).
+ * Settings — designed to the night-study / exam-stationery system, not
+ * a stack of plain rows:
+ *
+ *  - A profile plate grounds the top.
+ *  - Appearance is chosen from three live THEME-PREVIEW cards (each a
+ *    tiny mock of the app rendered in that theme's real colors), so the
+ *    choice is visual, not a word next to a radio.
+ *  - Preferences sit in a grouped card with tinted icon chips and real
+ *    persisted switches. Account actions and sign-out below.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,19 +19,15 @@ import { signOut, useSession } from '../lib/session';
 import {
   colors,
   fonts,
+  palettes,
+  setThemeMode,
   spacing,
   themedStyleSheet,
   useThemeMode,
   useThemeVersion,
+  type Palette,
   type ThemeMode,
-  setThemeMode,
 } from '../theme';
-
-const APPEARANCE: { mode: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { mode: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { mode: 'light', label: 'Light', icon: 'sunny-outline' },
-  { mode: 'dark', label: 'Dark', icon: 'moon-outline' },
-];
 
 export default function SettingsScreen() {
   useThemeVersion();
@@ -48,38 +50,46 @@ export default function SettingsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: spacing.gutter }}>
-        {/* Appearance */}
-        <Text style={styles.sectionLabel}>APPEARANCE</Text>
-        <View style={styles.segment}>
-          {APPEARANCE.map((opt) => {
-            const active = mode === opt.mode;
-            return (
-              <Pressable
-                key={opt.mode}
-                onPress={() => setThemeMode(opt.mode)}
-                style={[styles.segmentBtn, active && styles.segmentBtnActive]}>
-                <Ionicons name={opt.icon} size={18} color={active ? colors.onAccent : colors.text} />
-                <Text style={[styles.segmentText, active && { color: colors.onAccent }]}>{opt.label}</Text>
-              </Pressable>
-            );
-          })}
+        {/* Profile plate */}
+        {profile && (
+          <View style={styles.plate}>
+            <View style={[styles.plateAvatar, { backgroundColor: profile.avatarColor }]}>
+              <Text style={styles.plateInitial}>{profile.name[0].toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.plateName}>{profile.name}</Text>
+              <Text style={styles.plateMeta}>
+                {profile.departmentName} · {profile.school === 'ub' ? profile.level + ' · UB' : 'HND'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Appearance — live theme-preview cards */}
+        <Text style={styles.sectionLabel}>Appearance</Text>
+        <View style={styles.themeRow}>
+          <ThemeCard mode="system" label="System" active={mode === 'system'} onPress={() => setThemeMode('system')} />
+          <ThemeCard mode="light" label="Light" active={mode === 'light'} onPress={() => setThemeMode('light')} />
+          <ThemeCard mode="dark" label="Dark" active={mode === 'dark'} onPress={() => setThemeMode('dark')} />
         </View>
         <Text style={styles.hint}>
           {mode === 'system' ? 'Following your phone’s light or dark setting.' : `Always ${mode}.`}
         </Text>
 
         {/* Preferences */}
-        <Text style={styles.sectionLabel}>PREFERENCES</Text>
+        <Text style={styles.sectionLabel}>Preferences</Text>
         <View style={styles.card}>
           <ToggleRow
-            icon="notifications-outline"
+            icon="notifications"
+            tint={colors.accent}
             label="Notifications"
             detail="Exam reminders and class replies"
             value={prefs.notifications}
             onChange={(v) => setPref('notifications', v)}
           />
           <ToggleRow
-            icon="cloud-download-outline"
+            icon="cloud-download"
+            tint={colors.ai}
             label="Offline downloads"
             detail="Keep unlocked papers on device"
             value={prefs.offlineDownloads}
@@ -87,7 +97,8 @@ export default function SettingsScreen() {
             bordered
           />
           <ToggleRow
-            icon="contract-outline"
+            icon="contract"
+            tint={colors.verified}
             label="Reduce motion"
             detail="Calmer transitions and effects"
             value={prefs.reduceMotion}
@@ -97,35 +108,71 @@ export default function SettingsScreen() {
         </View>
 
         {/* Account */}
-        <Text style={styles.sectionLabel}>ACCOUNT</Text>
+        <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
-          <Pressable onPress={() => router.push('/notes')} style={styles.row}>
-            <Ionicons name="document-text-outline" size={20} color={colors.text} />
-            <Text style={styles.rowLabel}>My notes</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-          </Pressable>
-          <Pressable onPress={() => router.push('/wallet')} style={[styles.row, styles.rowBorder]}>
-            <Ionicons name="wallet-outline" size={20} color={colors.text} />
-            <Text style={styles.rowLabel}>Credits & wallet</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-          </Pressable>
+          <LinkRow icon="document-text" tint={colors.accent} label="My notes" onPress={() => router.push('/notes')} />
+          <LinkRow icon="wallet" tint={colors.accent} label="Credits & wallet" onPress={() => router.push('/wallet')} bordered />
+          <LinkRow icon="cloud-upload" tint={colors.accent} label="Upload a paper, earn credits" onPress={() => router.push('/contribute')} bordered />
         </View>
 
-        <Pressable onPress={signOut} style={[styles.card, styles.row]}>
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-          <Text style={[styles.rowLabel, { color: colors.danger }]}>Sign out</Text>
+        <Pressable onPress={signOut} style={styles.signOut}>
+          <Ionicons name="log-out-outline" size={19} color={colors.danger} />
+          <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
 
-        <Text style={styles.version}>
-          Revl · {profile?.school === 'ub' ? 'University of Buea' : 'HND'} · v1.0.0
-        </Text>
+        <Text style={styles.version}>Revl · v1.0.0</Text>
       </ScrollView>
     </View>
   );
 }
 
+/** A miniature of the app rendered in a theme's real colors. */
+function ThemePreview({ palette }: { palette: Palette }) {
+  return (
+    <View style={[styles.preview, { backgroundColor: palette.bg }]}>
+      <View style={[styles.previewBar, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <View style={[styles.previewDot, { backgroundColor: palette.accent }]} />
+        <View style={[styles.previewBarLine, { backgroundColor: palette.textSecondary }]} />
+      </View>
+      <View style={[styles.previewLine, { backgroundColor: palette.text, width: '70%' }]} />
+      <View style={[styles.previewLine, { backgroundColor: palette.textTertiary, width: '52%' }]} />
+      <View style={[styles.previewPill, { backgroundColor: palette.accent }]} />
+    </View>
+  );
+}
+
+function ThemeCard({ mode, label, active, onPress }: { mode: ThemeMode; label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.themeCard, active && styles.themeCardActive]}>
+      <View style={styles.previewClip}>
+        {mode === 'system' ? (
+          <View style={styles.systemSplit}>
+            <View style={styles.systemHalf}>
+              <ThemePreview palette={palettes.light} />
+            </View>
+            <View style={[styles.systemHalf, styles.systemHalfRight]}>
+              <ThemePreview palette={palettes.dark} />
+            </View>
+          </View>
+        ) : (
+          <ThemePreview palette={mode === 'light' ? palettes.light : palettes.dark} />
+        )}
+      </View>
+      <View style={styles.themeCardFoot}>
+        <Text style={[styles.themeCardLabel, active && { color: colors.accent }]}>{label}</Text>
+        <Ionicons
+          name={active ? 'radio-button-on' : 'radio-button-off'}
+          size={16}
+          color={active ? colors.accent : colors.textTertiary}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
 function ToggleRow({
   icon,
+  tint,
   label,
   detail,
   value,
@@ -133,6 +180,7 @@ function ToggleRow({
   bordered,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
   label: string;
   detail: string;
   value: boolean;
@@ -141,7 +189,9 @@ function ToggleRow({
 }) {
   return (
     <View style={[styles.row, bordered && styles.rowBorder]}>
-      <Ionicons name={icon} size={20} color={colors.text} />
+      <View style={[styles.iconChip, { backgroundColor: tint + '22' }]}>
+        <Ionicons name={icon} size={16} color={tint} />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowDetail}>{detail}</Text>
@@ -156,6 +206,30 @@ function ToggleRow({
   );
 }
 
+function LinkRow({
+  icon,
+  tint,
+  label,
+  onPress,
+  bordered,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  label: string;
+  onPress: () => void;
+  bordered?: boolean;
+}) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, bordered && styles.rowBorder, pressed && { opacity: 0.6 }]}>
+      <View style={[styles.iconChip, { backgroundColor: tint + '22' }]}>
+        <Ionicons name={icon} size={16} color={tint} />
+      </View>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+    </Pressable>
+  );
+}
+
 const makeStyles = () =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bg },
@@ -167,47 +241,90 @@ const makeStyles = () =>
       paddingBottom: 8,
     },
     backBtn: { width: 40, alignItems: 'center' },
-    topTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
-    sectionLabel: {
-      fontFamily: fonts.medium,
-      fontSize: 11,
-      letterSpacing: 1.4,
-      color: colors.textSecondary,
-      marginTop: 24,
-      marginBottom: 10,
-    },
-    segment: {
-      flexDirection: 'row',
-      gap: 8,
-      backgroundColor: colors.card,
-      borderRadius: 14,
-      padding: 6,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-    },
-    segmentBtn: {
-      flex: 1,
+    topTitle: { fontFamily: fonts.bold, fontSize: 17, color: colors.text },
+
+    plate: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7,
-      paddingVertical: 11,
-      borderRadius: 10,
+      gap: 14,
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      padding: 16,
+      marginTop: 8,
     },
-    segmentBtnActive: { backgroundColor: colors.accent },
-    segmentText: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
-    hint: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, marginTop: 8, paddingHorizontal: 2 },
+    plateAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+    plateInitial: { fontFamily: fonts.bold, fontSize: 22, color: '#141414' },
+    plateName: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
+    plateMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+
+    sectionLabel: {
+      fontFamily: fonts.bold,
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 26,
+      marginBottom: 12,
+    },
+
+    themeRow: { flexDirection: 'row', gap: 10 },
+    themeCard: {
+      flex: 1,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      padding: 7,
+    },
+    themeCardActive: { borderColor: colors.accent },
+    previewClip: { borderRadius: 10, overflow: 'hidden', height: 104 },
+    preview: { flex: 1, padding: 8, gap: 6, justifyContent: 'flex-start' },
+    previewBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: 5,
+      borderWidth: StyleSheet.hairlineWidth,
+      paddingHorizontal: 5,
+      paddingVertical: 5,
+    },
+    previewDot: { width: 8, height: 8, borderRadius: 4 },
+    previewBarLine: { flex: 1, height: 3, borderRadius: 2, opacity: 0.5 },
+    previewLine: { height: 5, borderRadius: 2.5, marginTop: 1, opacity: 0.85 },
+    previewPill: { width: 34, height: 10, borderRadius: 5, marginTop: 4 },
+    systemSplit: { flex: 1, flexDirection: 'row' },
+    systemHalf: { width: '50%', overflow: 'hidden' },
+    systemHalfRight: { marginLeft: -8 },
+    themeCardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingTop: 9, paddingBottom: 2 },
+    themeCardLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.text },
+    hint: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, marginTop: 10, paddingHorizontal: 2 },
+
     card: {
       backgroundColor: colors.card,
-      borderRadius: 16,
+      borderRadius: 18,
       overflow: 'hidden',
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
     },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 15 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 15, paddingVertical: 14 },
     rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+    iconChip: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
     rowLabel: { flex: 1, fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
     rowDetail: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-    version: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginTop: 28 },
+
+    signOut: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingVertical: 15,
+      marginTop: 18,
+    },
+    signOutText: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.danger },
+    version: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginTop: 22 },
   });
 const styles = themedStyleSheet(makeStyles);
