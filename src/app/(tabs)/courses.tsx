@@ -60,12 +60,14 @@ export default function CoursesScreen() {
   const listRef = useRef<ScrollView>(null);
   /** Y of the first section title in the scroll content, for the sticky subtitle. */
   const sectionY = useSharedValue(600);
-  // The section title slides up and sticks under "Courses" as you scroll into it.
+  // The section title slides up and sticks under "Courses" as you scroll into
+  // it — the fade completes right as the real title reaches the header base so
+  // the hand-off is seamless (no double heading, no bleed-through).
   const stickyStyle = useAnimatedStyle(() => {
-    const start = sectionY.value - headerHeight - 24;
+    const end = sectionY.value - headerHeight - 4;
     return {
-      opacity: interpolate(scrollY.value, [start, start + 32], [0, 1], 'clamp'),
-      transform: [{ translateY: interpolate(scrollY.value, [start, start + 32], [6, 0], 'clamp') }],
+      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp'),
+      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') }],
     };
   });
 
@@ -144,8 +146,9 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Scroll-linked top fade: content dissolves under the pinned title. */}
-      <TopFade scrollY={scrollY} height={headerHeight + 70} />
+      {/* Opaque bg across the whole header so the pinned title and the sticky
+          section subtitle sit on solid ground; content dissolves in the tail. */}
+      <TopFade scrollY={scrollY} height={headerHeight + 96} solid={headerHeight} />
 
       {/* Pinned header: placement · title + search · sticky section title */}
       <View
