@@ -15,12 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useRef, useState } from 'react';
 import { GestureResponderEvent, Image, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { likeOn, sharePost, toggleLike, type CommunityPost } from '../lib/communityStore';
-import { colors, fonts, spacing, themedStyleSheet } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 import { CommentsSheet } from './CommentsSheet';
 import { QuestionAnchor } from './QuestionAnchor';
 import { TapBurst } from './TapBurst';
 
 export function PostCard({ post }: { post: CommunityPost }) {
+  useThemeVersion();
   const meta = [post.author.level, post.courseCode, post.time].filter(Boolean).join(' · ');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0);

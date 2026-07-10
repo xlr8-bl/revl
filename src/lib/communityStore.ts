@@ -13,6 +13,7 @@
  *   ↗ Share    — hands off to the OS share sheet; counted.
  */
 import { useSyncExternalStore } from 'react';
+import { localWorkImage } from '../data/assets';
 
 export type QuestionRef = { paperId: string; questionId: string };
 
@@ -57,7 +58,7 @@ const seed: State = {
       kind: 'solve',
       author: { name: 'Brandon', initial: 'B', color: '#7EA8FF', level: 'L400' },
       text: 'Finally cracked the Apriori question everyone keeps raising hands on. Full working below. The trick is counting {diapers, beer} BEFORE pruning. Snapped my working.',
-      imageUri: 'https://picsum.photos/seed/revl-solution/640/420',
+      imageUri: localWorkImage,
       questionRef: { paperId: 'cec420-2023', questionId: 'q4' },
       courseCode: 'CEC420',
       likes: 47,

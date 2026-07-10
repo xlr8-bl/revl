@@ -10,7 +10,7 @@ import { papers } from '../data/papers';
 import { addPost, type QuestionRef } from '../lib/communityStore';
 import type { StudentProfile } from '../lib/session';
 import type { Question } from '../types';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 import { BottomSheet } from './BottomSheet';
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
 };
 
 export function Composer({ visible, onClose, profile, initialRef }: Props) {
+  useThemeVersion();
   const [kind, setKind] = useState<'ask' | 'solve'>(initialRef ? 'solve' : 'ask');
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);

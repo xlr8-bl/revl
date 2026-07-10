@@ -8,9 +8,10 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SessionCardData } from '../data/home';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function SessionCard({ data, index, last }: { data: SessionCardData; index: number; last?: boolean }) {
+  useThemeVersion();
   const router = useRouter();
   return (
     <Pressable

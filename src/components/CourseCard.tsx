@@ -11,7 +11,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { sentenceCase } from '../lib/format';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 const COURSE_COLORS = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
 export function courseColor(code: string) {
@@ -25,6 +25,7 @@ export function courseColor(code: string) {
 export const wash = (hex: string) => hex + '1F';
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
+  useThemeVersion();
   const router = useRouter();
   const tint = courseColor(course.code);
   const coursePapers = papers

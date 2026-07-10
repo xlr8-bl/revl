@@ -6,7 +6,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RevealLog } from '../types';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 type Confidence = RevealLog['confidenceBefore'];
 
@@ -22,6 +22,7 @@ type Props = {
 };
 
 export function ConfidencePill({ value, onSelect }: Props) {
+  useThemeVersion();
   return (
     <View style={styles.wrap}>
       <Text style={styles.prompt}>Could you answer this?</Text>

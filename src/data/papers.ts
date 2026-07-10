@@ -1,4 +1,5 @@
 import type { Paper } from '../types';
+import { localDiagramImage } from './assets';
 
 /**
  * Mock papers — this is the structured-JSON format the extraction
@@ -119,7 +120,7 @@ export const papers: Paper[] = [
         diagrams: [
           {
             id: 'd1',
-            imageUrl: 'https://picsum.photos/seed/revl-dendrogram/640/360',
+            imageUrl: localDiagramImage,
             caption: 'Fig. 1 — Dendrogram for points A–F (single linkage).',
             bbox: [42, 118, 560, 402],
           },
@@ -180,7 +181,7 @@ export const papers: Paper[] = [
         diagrams: [
           {
             id: 'd2',
-            imageUrl: 'https://picsum.photos/seed/revl-confusion/640/400',
+            imageUrl: localDiagramImage,
             caption: 'Fig. 2 — Confusion matrix: TP=40, FP=10, FN=20, TN=30.',
           },
         ],

@@ -8,10 +8,11 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { questionOfTheDay } from '../data/home';
-import { colors, fonts, radius, spacing, type, themedStyleSheet } from '../theme';
+import { colors, fonts, radius, spacing, type, themedStyleSheet, useThemeVersion } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function HeroCard() {
+  useThemeVersion();
   const router = useRouter();
   const { sourceLine, question, stats } = questionOfTheDay;
 

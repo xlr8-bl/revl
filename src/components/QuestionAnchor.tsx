@@ -11,10 +11,11 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { findQuestion } from '../lib/selectors';
 import { type QuestionRef } from '../lib/communityStore';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function QuestionAnchor({ refr, courseCode }: { refr: QuestionRef; courseCode: string }) {
+  useThemeVersion();
   const router = useRouter();
   const found = findQuestion(refr.questionId);
   if (!found) return null;

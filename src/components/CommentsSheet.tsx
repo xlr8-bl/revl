@@ -9,10 +9,11 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { addComment, toggleCommentLike, useCommunity } from '../lib/communityStore';
 import { useSession } from '../lib/session';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 import { BottomSheet } from './BottomSheet';
 
 export function CommentsSheet({ postId, visible, onClose }: { postId: string; visible: boolean; onClose: () => void }) {
+  useThemeVersion();
   const { height } = useWindowDimensions();
   const { posts } = useCommunity();
   const { profile } = useSession();

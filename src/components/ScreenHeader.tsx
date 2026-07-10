@@ -4,9 +4,10 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function ScreenHeader({ title }: { title: string }) {
+  useThemeVersion();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return (

@@ -2,9 +2,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, spacing, themedStyleSheet } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  useThemeVersion();
   return (
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>

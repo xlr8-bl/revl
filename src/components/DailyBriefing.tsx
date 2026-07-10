@@ -9,12 +9,13 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { getDailyBriefing } from '../data/ai';
 import { useRevealLogs } from '../lib/selectors';
-import { colors, fonts, spacing, themedStyleSheet } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 /** Below this many logged reveals we show the honest "still learning" state. */
 const MIN_DATA = 8;
 
 export function DailyBriefing() {
+  useThemeVersion();
   const logs = useRevealLogs();
   const text = getDailyBriefing(logs.length >= MIN_DATA);
 

@@ -6,8 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "revl",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -53,7 +54,8 @@
       "policy": "sdkVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/0a039f5e-2dc0-4dd0-b6d3-69c44e8fecb9"
+      "url": "https://u.expo.dev/0a039f5e-2dc0-4dd0-b6d3-69c44e8fecb9",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

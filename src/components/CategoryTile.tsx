@@ -7,9 +7,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Faculty } from '../types';
-import { colors, fonts, radius, themedStyleSheet } from '../theme';
+import { colors, fonts, radius, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function CategoryTile({ faculty, onPress }: { faculty: Faculty; onPress?: () => void }) {
+  useThemeVersion();
   return (
     <Pressable
       onPress={onPress}

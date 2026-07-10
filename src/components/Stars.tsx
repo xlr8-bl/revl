@@ -1,9 +1,10 @@
 /** Rating as plain text: "4.8" with a single star mark. No icon rows. */
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function Stars({ rating }: { rating: number; size?: number }) {
+  useThemeVersion();
   return (
     <Text style={styles.text}>
       {rating.toFixed(1)} <Text style={styles.star}>★</Text>

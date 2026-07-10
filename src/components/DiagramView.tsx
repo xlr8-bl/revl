@@ -11,9 +11,10 @@ import { Image, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } 
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Diagram } from '../types';
-import { colors, fonts, radius, themedStyleSheet } from '../theme';
+import { colors, fonts, radius, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function DiagramView({ diagram }: { diagram: Diagram }) {
+  useThemeVersion();
   const [failed, setFailed] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
 

@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { colors, fonts, spacing, themedStyleSheet } from '../theme';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
 
 type Props = {
   options: string[];
@@ -16,6 +16,7 @@ type Props = {
 };
 
 export function FilterChips({ options, selected, onSelect, variant = 'filled' }: Props) {
+  useThemeVersion();
   return (
     <ScrollView
       horizontal

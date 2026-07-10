@@ -6,7 +6,7 @@
 import React from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, themedStyleSheet } from '../theme';
+import { colors, themedStyleSheet, useThemeVersion } from '../theme';
 
 type Props = {
   visible: boolean;
@@ -17,6 +17,7 @@ type Props = {
 };
 
 export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88 }: Props) {
+  useThemeVersion();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

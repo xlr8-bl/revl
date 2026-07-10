@@ -9,11 +9,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { enableFreeze } from 'react-native-screens';
 import { seedDemoDataIfEmpty } from '../lib/revealLog';
 import { useSession } from '../lib/session';
 import { colors, useResolvedScheme } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
+// Don't freeze inactive screens: a theme switch must repaint every mounted
+// screen at once, not one-by-one as you navigate back to them.
+enableFreeze(false);
 
 export default function RootLayout() {
   const scheme = useResolvedScheme();

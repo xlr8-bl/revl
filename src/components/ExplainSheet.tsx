@@ -17,7 +17,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { askAboutQuestion, explainQuestion } from '../data/ai';
 import type { ChatMessage, ExplainResponse, Question } from '../types';
-import { colors, fonts, themedStyleSheet } from '../theme';
+import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 import { BottomSheet } from './BottomSheet';
 import { MathRichText } from './MathRichText';
 
@@ -30,6 +30,7 @@ type Props = {
 };
 
 export function ExplainSheet({ question, visible, onClose, onPrerequisites }: Props) {
+  useThemeVersion();
   const [explain, setExplain] = useState<ExplainResponse | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');

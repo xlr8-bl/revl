@@ -16,7 +16,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { handsFor, raiseHand, useCommunity } from '../lib/communityStore';
 import { logReveal } from '../lib/revealLog';
 import type { Question, RevealLog } from '../types';
-import { colors, fonts, radius, themedStyleSheet } from '../theme';
+import { colors, fonts, radius, themedStyleSheet, useThemeVersion } from '../theme';
 import { ConfidencePill } from './ConfidencePill';
 import { DiagramView } from './DiagramView';
 import { ExplainSheet } from './ExplainSheet';
@@ -39,6 +39,7 @@ type Props = {
 };
 
 export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highlightId }: Props) {
+  useThemeVersion();
   useCommunity(); // re-render when raised hands change
   const hasAnswer = !!(question.answers.verified || question.answers.aiGeneral);
   const wanted = handsFor(question.id);
