@@ -11,6 +11,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
+import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
 import { toggleSaved, useSavedCourses } from '../lib/savedCourses';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
@@ -82,7 +83,10 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
               return (
                 <Pressable
                   key={p.id}
-                  onPress={() => router.push(unlocked ? `/paper/${p.id}` : (`/unlock/${p.id}` as never))}
+                  onPress={() => {
+                    recordAccess(course.code);
+                    router.push(unlocked ? `/paper/${p.id}` : (`/unlock/${p.id}` as never));
+                  }}
                   style={({ pressed }) => [styles.paperRow, i > 0 && styles.paperRowDivider, pressed && { opacity: 0.7 }]}>
                   <Text style={styles.paperYear}>{p.year}</Text>
                   <Text style={styles.paperMeta} numberOfLines={1}>

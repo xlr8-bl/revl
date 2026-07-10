@@ -21,11 +21,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard, courseColor, wash } from '../../components/CourseCard';
+import { CoursePapersSheet } from '../../components/CoursePapersSheet';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
 import { courseByCode, coursesFor, departmentsFor, facultiesFor, searchCatalog } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
+import { useAccessCounts } from '../../lib/courseAccess';
 import { sentenceCase } from '../../lib/format';
 import { useSavedCourses } from '../../lib/savedCourses';
 import { useRevealLogs } from '../../lib/selectors';
@@ -59,6 +61,9 @@ export default function CoursesScreen() {
   const [tileFacultyId, setTileFacultyId] = useState<string | null>(null);
   /** One of my courses, focused from the quick tiles — narrows the list below. */
   const [focusedCode, setFocusedCode] = useState<string | null>(null);
+  /** Featured card tapped → show its papers in a sheet. */
+  const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
+  const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header (placement + title + sticky line). */
   const [baseH, setBaseH] = useState(118);
   const { scrollY, onScroll } = useScrollFade();
@@ -136,7 +141,10 @@ export default function CoursesScreen() {
   const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
   const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
 
-  /** Featured carousel: course sets that actually have extracted papers. */
+  /**
+   * Featured carousel: course sets with extracted papers, ordered by how much
+   * you use them (most-accessed first) so your go-to courses are one tap away.
+   */
   const featured = useMemo(() => {
     const byCourse = new Map<string, { code: string; title: string; years: number[]; newestId: string }>();
     papers.forEach((p) => {
@@ -145,8 +153,11 @@ export default function CoursesScreen() {
       if (p.year >= Math.max(...e.years)) e.newestId = p.id;
       byCourse.set(p.courseCode, e);
     });
-    return [...byCourse.values()].filter((f) => f.years.length > 0).slice(0, 4);
-  }, []);
+    return [...byCourse.values()]
+      .filter((f) => f.years.length > 0)
+      .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
+      .slice(0, 6);
+  }, [accessCounts]);
 
   const searchResults = query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : [];
 
@@ -275,12 +286,17 @@ export default function CoursesScreen() {
             decelerationRate="fast"
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
-              const years = [...new Set(f.years)].sort();
-              const unlocked = unlockedPaperIds.has(f.newestId);
+              const years = [...new Set(f.years)].sort((a, b) => a - b);
+              // Gap-aware: a clean range only when the years are actually
+              // contiguous; otherwise list the years so 2019 · 2021 · 2023
+              // never reads as an unbroken 2019–2023.
+              const contiguous = years[years.length - 1] - years[0] + 1 === years.length;
+              const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
+              const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
               return (
                 <Pressable
                   key={f.code}
-                  onPress={() => router.push(unlocked ? `/paper/${f.newestId}` : (`/unlock/${f.newestId}` as never))}
+                  onPress={() => setPapersSheet({ code: f.code, title: f.title })}
                   style={({ pressed }) => [
                     styles.featureCard,
                     { width: featuredWidth, backgroundColor: TILE[(i + 3) % TILE.length] },
@@ -291,7 +307,7 @@ export default function CoursesScreen() {
 
                   <View style={styles.featureTop}>
                     <Text style={styles.featureCode}>{f.code}</Text>
-                    <Text style={styles.featureKicker}>Featured set</Text>
+                    <Text style={styles.featureKicker}>{mostUsed ? 'Most used' : 'Featured set'}</Text>
                   </View>
 
                   <View>
@@ -300,10 +316,10 @@ export default function CoursesScreen() {
                     </Text>
                     <View style={styles.featureRule} />
                     <View style={styles.featureMetaRow}>
-                      <Text style={styles.featureMeta}>
-                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {years[0]}–{years[years.length - 1]}
+                      <Text style={styles.featureMeta} numberOfLines={1}>
+                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {yearLabel}
                       </Text>
-                      <Text style={styles.featureOpen}>{unlocked ? 'Open ›' : 'Unlock ›'}</Text>
+                      <Text style={styles.featureOpen}>View papers ›</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -429,6 +445,15 @@ export default function CoursesScreen() {
           Catalogue from the official UB 2023/24 teaching timetable and the current national HND program.
         </Text>
       </Animated.ScrollView>
+
+      {papersSheet && (
+        <CoursePapersSheet
+          code={papersSheet.code}
+          title={papersSheet.title}
+          visible={!!papersSheet}
+          onClose={() => setPapersSheet(null)}
+        />
+      )}
     </View>
   );
 }
