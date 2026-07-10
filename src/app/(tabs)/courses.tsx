@@ -28,7 +28,7 @@ import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { sentenceCase } from '../../lib/format';
 import { useSession } from '../../lib/session';
-import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
+import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
 const FILTERS = ['My courses', 'Browse', 'Saved', 'Completed'];
 const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
@@ -265,7 +265,10 @@ export default function CoursesScreen() {
                             onPress={() => setFocusedCode(active ? null : c.code)}
                             style={({ pressed }) => [
                               styles.myTile,
-                              { backgroundColor: wash(tint), borderColor: active ? tint : 'transparent' },
+                              {
+                                backgroundColor: withAlpha(tint, activeScheme() === 'light' ? 0.14 : 0.16),
+                                borderColor: active ? tint : withAlpha(tint, 0.4),
+                              },
                               pressed && { opacity: 0.85 },
                             ]}>
                             <Text style={[styles.myTileCode, { color: tint }]}>{c.code}</Text>
