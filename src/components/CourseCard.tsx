@@ -4,6 +4,7 @@
  * voice); the course's past papers sit inline below a hairline as
  * tappable year rows. No gradients, no icons: color, type, and rules.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,6 +12,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { sentenceCase } from '../lib/format';
+import { toggleSaved, useSavedCourses } from '../lib/savedCourses';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
 // One cohesive, warm-leaning jewel family (terracotta · teal · plum · gold ·
@@ -33,6 +35,8 @@ export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ?
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   useThemeVersion();
   const router = useRouter();
+  const savedCodes = useSavedCourses();
+  const saved = savedCodes.includes(course.code);
   const tint = courseColor(course.code);
   const coursePapers = papers
     .filter((p) => p.courseCode === course.code)
@@ -41,10 +45,19 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)}>
       <View style={styles.card}>
-        {/* Tinted header band: code + level */}
+        {/* Tinted header band: code + level + save */}
         <View style={[styles.band, { backgroundColor: wash(tint) }]}>
           <Text style={[styles.code, { color: tint }]}>{course.code}</Text>
-          <Text style={styles.level}>{course.level}</Text>
+          <View style={styles.bandRight}>
+            <Text style={styles.level}>{course.level}</Text>
+            <Pressable onPress={() => toggleSaved(course.code)} hitSlop={10}>
+              <Ionicons
+                name={saved ? 'bookmark' : 'bookmark-outline'}
+                size={17}
+                color={saved ? tint : colors.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.body}>
@@ -111,6 +124,7 @@ const makeStyles = () => StyleSheet.create({
     paddingVertical: 11,
   },
   code: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1 },
+  bandRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   level: { fontFamily: fonts.medium, fontSize: 12, color: colors.textSecondary },
   body: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6 },
   title: { fontFamily: fonts.serif, fontSize: 21, lineHeight: 27, color: colors.text },

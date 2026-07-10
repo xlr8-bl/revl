@@ -27,11 +27,15 @@ import { courseByCode, coursesFor, departmentsFor, facultiesFor, searchCatalog }
 import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { sentenceCase } from '../../lib/format';
+import { useSavedCourses } from '../../lib/savedCourses';
+import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
 import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
-const FILTERS = ['My courses', 'Browse', 'Saved', 'Completed'];
-const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
+// Primary scope (which set of courses) and secondary refinement — every one
+// backed by real data, no dead chips.
+const FILTERS = ['My courses', 'Browse', 'Saved', 'Studied'];
+const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
 
 /** Bright tile palette (the look from the original Courses page). */
 // Featured-set / faculty cards carry WHITE text, so they stay mid-to-deep in
@@ -86,11 +90,32 @@ export default function CoursesScreen() {
     [profile]
   );
 
+  const savedCodes = useSavedCourses();
+  const logs = useRevealLogs();
+  // Resolve a course code to a catalogue entry, falling back to paper metadata
+  // for codes that only exist as papers (e.g. the extracted CEC420 set).
+  const resolveCourse = (code: string): CatalogCourse | undefined => {
+    const cat = courseByCode(code);
+    if (cat) return cat;
+    const p = papers.find((pp) => pp.courseCode === code);
+    if (p) return { code, title: p.title, level: p.level, departmentId: '', verified: true, source: 'paper' };
+    return undefined;
+  };
+  const savedCourses = useMemo(
+    () => savedCodes.map(resolveCourse).filter((c): c is CatalogCourse => !!c),
+    [savedCodes]
+  );
+  const studiedCourses = useMemo(() => {
+    const codes = [...new Set(logs.map((l) => l.courseCode))];
+    return codes.map(resolveCourse).filter((c): c is CatalogCourse => !!c);
+  }, [logs]);
+
   if (!profile) return null;
 
   const faculties = facultiesFor(profile.school);
   const enrolledSet = new Set(profile.enrolledCourseCodes);
-  const withPapers = (list: CatalogCourse[]) => list.filter((c) => papers.some((p) => p.courseCode === c.code));
+  const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
+  const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
 
   /** Featured carousel: course sets that actually have extracted papers. */
   const featured = useMemo(() => {
@@ -108,8 +133,9 @@ export default function CoursesScreen() {
 
   // Sub-chip refinement applied to section lists.
   const refine = (list: CatalogCourse[]) => {
-    if (subFilter === 'Verified titles') return list.filter((c) => c.verified && c.title);
-    if (subFilter === 'Exam season') return withPapers(list);
+    if (subFilter === 'Verified') return list.filter((c) => c.verified && c.title);
+    if (subFilter === 'Has papers') return withPapers(list);
+    if (subFilter === 'Most papers') return [...list].sort((a, b) => paperCount(b) - paperCount(a));
     return list;
   };
 
@@ -132,7 +158,11 @@ export default function CoursesScreen() {
             { title: `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(), data: refine(departmentCourses) },
             ...(tileFaculty ? [{ title: tileFaculty.name, data: refine(tileCourses) }] : []),
           ]
-        : [{ title: filter, data: [] }];
+        : filter === 'Saved'
+          ? [{ title: 'Saved courses', data: refine(savedCourses) }]
+          : filter === 'Studied'
+            ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
+            : [{ title: filter, data: [] }];
 
   const stickyTitle = sections[0]?.title ?? '';
   const toggleSearch = () => {
@@ -349,9 +379,13 @@ export default function CoursesScreen() {
           <View style={{ paddingHorizontal: spacing.gutter }}>
             {section.data.length === 0 ? (
               <Text style={styles.empty}>
-                {section.title === 'Saved' || section.title === 'Completed'
-                  ? 'Nothing here yet. Papers you save or finish will collect here.'
-                  : 'Nothing here yet.'}
+                {filter === 'Saved'
+                  ? 'No saved courses yet. Tap the bookmark on any course to save it here.'
+                  : filter === 'Studied'
+                    ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
+                    : subFilter
+                      ? `No courses match “${subFilter}”.`
+                      : 'Nothing here yet.'}
               </Text>
             ) : (
               section.data.map((c, i) => <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} />)
