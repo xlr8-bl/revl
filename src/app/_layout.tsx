@@ -68,6 +68,8 @@ export default function RootLayout() {
           <Stack.Protected guard={signedIn && !!profile}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="account/edit" />
+            <Stack.Screen name="account/courses" />
             <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
           </Stack.Protected>

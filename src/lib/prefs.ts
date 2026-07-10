@@ -11,10 +11,11 @@ export type Prefs = {
   notifications: boolean;
   reduceMotion: boolean;
   offlineDownloads: boolean;
+  privateProfile: boolean;
 };
 
 const KEY = 'revl.prefs.v1';
-let prefs: Prefs = { notifications: true, reduceMotion: false, offlineDownloads: true };
+let prefs: Prefs = { notifications: true, reduceMotion: false, offlineDownloads: true, privateProfile: false };
 const listeners = new Set<() => void>();
 const emit = () => {
   prefs = { ...prefs };

@@ -71,6 +71,14 @@ export function setProfile(profile: StudentProfile) {
   emit();
 }
 
+/** Patch the current profile (edit-profile / manage-courses screens). */
+export function updateProfile(patch: Partial<StudentProfile>) {
+  if (!session.profile) return;
+  session = { ...session, profile: { ...session.profile, ...patch } };
+  persist();
+  emit();
+}
+
 export function signOut() {
   // Profile survives sign-out so returning students skip onboarding.
   session = { ...session, signedIn: false, method: null, phone: undefined };

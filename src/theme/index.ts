@@ -72,28 +72,33 @@ const darkColors: Palette = {
   orange: '#FF7900',
 };
 
-/** Light — warm exam-paper white, dark ink; the same system inverted. */
+/**
+ * Light — warm exam-paper, but with real separation: white cards sit on
+ * a warm-grey page (not white-on-cream, which bleaches), hairlines and
+ * ink are strong, and the amber accent is deepened so it stays legible
+ * on white instead of washing out.
+ */
 const lightColors: Palette = {
-  bg: '#F5F2EB',
-  bgDeep: '#E6E1D5',
+  bg: '#ECE9E2',
+  bgDeep: '#DAD5CA',
   card: '#FFFFFF',
-  surface: '#ECE7DC',
-  border: 'rgba(0,0,0,0.10)',
-  borderStrong: 'rgba(0,0,0,0.16)',
-  text: '#1B1813',
-  textSecondary: '#5E594F',
-  textTertiary: '#938D80',
-  accent: '#B26B12',
-  accentSoft: 'rgba(178,107,18,0.12)',
+  surface: '#E3DFD5',
+  border: 'rgba(0,0,0,0.13)',
+  borderStrong: 'rgba(0,0,0,0.20)',
+  text: '#191510',
+  textSecondary: '#585349',
+  textTertiary: '#8B8578',
+  accent: '#A65D0A',
+  accentSoft: 'rgba(166,93,10,0.12)',
   onAccent: '#FFFFFF',
-  ai: '#5B4FD1',
-  aiSoft: 'rgba(91,79,209,0.12)',
-  verified: '#1F9E52',
-  verifiedSoft: 'rgba(31,158,82,0.12)',
-  success: '#1F9E52',
-  warning: '#B26B12',
-  danger: '#CF3B31',
-  badge: '#CF3B31',
+  ai: '#544AC0',
+  aiSoft: 'rgba(84,74,192,0.12)',
+  verified: '#1B8A47',
+  verifiedSoft: 'rgba(27,138,71,0.12)',
+  success: '#1B8A47',
+  warning: '#A65D0A',
+  danger: '#C0352B',
+  badge: '#C0352B',
   dockTint: 'rgba(255,255,255,0.97)',
   mtn: '#FFCC08',
   orange: '#FF7900',
