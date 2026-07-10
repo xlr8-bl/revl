@@ -28,13 +28,18 @@ import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { sentenceCase } from '../../lib/format';
 import { useSession } from '../../lib/session';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
+import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const FILTERS = ['My courses', 'Browse', 'Saved', 'Completed'];
 const SUB_CHIPS = ['New', 'Popular', 'Exam season', 'Verified titles'];
 
 /** Bright tile palette (the look from the original Courses page). */
-const TILE_COLORS = ['#9D2450', '#4A3D63', '#E04B2F', '#3C6FE8', '#357F84', '#4D6FB5', '#8A6D2F', '#3E7A44', '#7A3A8A', '#A0522D'];
+// Feature/faculty tile colours. Dark uses vibrant jewel tones that pop on
+// ink. Light uses DEEPER, warm-leaning tones so a card reads as a rich
+// premium surface on the warm paper instead of a bright primary that fights
+// the amber accent (the "inverted / opposite colours" look).
+const TILE_COLORS_DARK = ['#9D2450', '#4A3D63', '#E04B2F', '#3C6FE8', '#357F84', '#4D6FB5', '#8A6D2F', '#3E7A44', '#7A3A8A', '#A0522D'];
+const TILE_COLORS_LIGHT = ['#7C2540', '#3B3357', '#9C4127', '#2C4A72', '#1F5551', '#39508A', '#6E5626', '#2F5738', '#5E2E6E', '#864428'];
 
 export default function CoursesScreen() {
   useThemeVersion();
@@ -64,6 +69,7 @@ export default function CoursesScreen() {
   });
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
+  const TILE = activeScheme() === 'light' ? TILE_COLORS_LIGHT : TILE_COLORS_DARK;
 
   const enrolled = useMemo(
     () =>
@@ -212,7 +218,7 @@ export default function CoursesScreen() {
                   onPress={() => router.push(unlocked ? `/paper/${f.newestId}` : (`/unlock/${f.newestId}` as never))}
                   style={({ pressed }) => [
                     styles.featureCard,
-                    { width: featuredWidth, backgroundColor: TILE_COLORS[(i + 3) % TILE_COLORS.length] },
+                    { width: featuredWidth, backgroundColor: TILE[(i + 3) % TILE.length] },
                     pressed && { opacity: 0.92 },
                   ]}>
                   {/* Oversized ghost year — background typography, not decoration */}
@@ -292,7 +298,7 @@ export default function CoursesScreen() {
                             onPress={() => setTileFacultyId(active ? null : f.id)}
                             style={({ pressed }) => [
                               styles.tile,
-                              { backgroundColor: TILE_COLORS[idx % TILE_COLORS.length] },
+                              { backgroundColor: TILE[idx % TILE.length] },
                               active && styles.tileActive,
                               pressed && { opacity: 0.85 },
                             ]}>
