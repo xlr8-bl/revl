@@ -169,6 +169,11 @@ export function useResolvedScheme(): 'light' | 'dark' {
   return active === lightColors ? 'light' : 'dark';
 }
 
+/** Non-hook read of the current scheme (for pure helpers like course tints). */
+export function activeScheme(): 'light' | 'dark' {
+  return active === lightColors ? 'light' : 'dark';
+}
+
 /* ------------------------------------------------------------------ */
 /* Live palette + reactive stylesheets                                 */
 /* ------------------------------------------------------------------ */

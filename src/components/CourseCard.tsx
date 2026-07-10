@@ -11,18 +11,23 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { sentenceCase } from '../lib/format';
-import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
+import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-const COURSE_COLORS = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
+// Two tuned sets that keep each course's identity hue but read correctly on
+// their background: airy pastels on the dark ink, deeper saturated tones on
+// the light paper. Same index per code, so a course's colour just shifts
+// value between themes rather than changing.
+const COURSE_COLORS_DARK = ['#7EA8FF', '#C792EA', '#7CE3AE', '#F2A93B', '#FF8FA3', '#5EEAD4', '#E0B76B'];
+const COURSE_COLORS_LIGHT = ['#2F6FE0', '#7A4FC0', '#1E9E6A', '#C07A16', '#C64F6A', '#128C8C', '#9A6B1E'];
+
 export function courseColor(code: string) {
-  // Hash the full code: a student's courses mostly share one prefix, and
-  // the whole point of the color is telling their courses apart at a glance.
+  const arr = activeScheme() === 'light' ? COURSE_COLORS_LIGHT : COURSE_COLORS_DARK;
   let h = 0;
   for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return COURSE_COLORS[h % COURSE_COLORS.length];
+  return arr[h % arr.length];
 }
-/** 12% alpha wash of the course color for the header band. */
-export const wash = (hex: string) => hex + '1F';
+/** Soft tint wash of the course color for header bands / tiles. */
+export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ? 0.1 : 0.12);
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   useThemeVersion();
