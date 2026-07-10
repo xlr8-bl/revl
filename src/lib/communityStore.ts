@@ -21,6 +21,8 @@ export type Comment = {
   author: { name: string; initial: string; color: string };
   text: string;
   time: string;
+  likes: number;
+  likedByMe?: boolean;
 };
 
 export type CommunityPost = {
@@ -33,7 +35,7 @@ export type CommunityPost = {
   /** The anchored question — renders as a real question card in the post. */
   questionRef?: QuestionRef;
   courseCode?: string;
-  /** ♥ count. On asks this is the raised-hand demand; on solves it's usefulness. */
+  /** ♥ count — a plain social like, the same on every post. */
   likes: number;
   likedByMe?: boolean;
   comments: Comment[];
@@ -60,8 +62,8 @@ const seed: State = {
       courseCode: 'CEC420',
       likes: 47,
       comments: [
-        { id: 'c1', author: { name: 'Melissa', initial: 'M', color: '#FF8FA3' }, text: 'This finally made it click, thank you!', time: '1h' },
-        { id: 'c2', author: { name: 'Tantoh', initial: 'T', color: '#5EEAD4' }, text: 'Wait so the confidence is 3/3? Let me redo mine.', time: '48m' },
+        { id: 'c1', author: { name: 'Melissa', initial: 'M', color: '#FF8FA3' }, text: 'This finally made it click, thank you!', time: '1h', likes: 5 },
+        { id: 'c2', author: { name: 'Tantoh', initial: 'T', color: '#5EEAD4' }, text: 'Wait so the confidence is 3/3? Let me redo mine.', time: '48m', likes: 1 },
       ],
       shares: 6,
       communityVerified: true,
@@ -77,7 +79,7 @@ const seed: State = {
       courseCode: 'CEC420',
       likes: 18,
       comments: [
-        { id: 'c3', author: { name: 'Grace', initial: 'G', color: '#F2A93B' }, text: 'The 8/14 is the share of rows in that branch. Weight each entropy by its branch size.', time: '3h' },
+        { id: 'c3', author: { name: 'Grace', initial: 'G', color: '#F2A93B' }, text: 'The 8/14 is the share of rows in that branch. Weight each entropy by its branch size.', time: '3h', likes: 8 },
       ],
       shares: 1,
       level: 'L400',
@@ -104,7 +106,7 @@ const seed: State = {
       courseCode: 'CEC420',
       likes: 21,
       comments: [
-        { id: 'c4', author: { name: 'Brandon', initial: 'B', color: '#7EA8FF' }, text: 'Clean. The F1 shortcut saves so much time.', time: '20h' },
+        { id: 'c4', author: { name: 'Brandon', initial: 'B', color: '#7EA8FF' }, text: 'Clean. The F1 shortcut saves so much time.', time: '20h', likes: 3 },
       ],
       shares: 2,
       level: 'L400',
@@ -153,19 +155,13 @@ function adjustHands(ref: QuestionRef, courseCode: string, delta: number, mine: 
   }
 }
 
-/**
- * Toggle a like. On an ask post the like is a raised hand, so it moves
- * the question's demand tally with it. On a solve it is a usefulness vote.
- */
+/** Toggle a like. A like is a plain social like — the same on every post. */
 export function toggleLike(postId: string) {
   const post = state.posts.find((p) => p.id === postId);
   if (!post) return;
   const nowLiked = !post.likedByMe;
   post.likedByMe = nowLiked;
   post.likes = Math.max(0, post.likes + (nowLiked ? 1 : -1));
-  if (post.kind === 'ask' && post.questionRef && post.courseCode) {
-    adjustHands(post.questionRef, post.courseCode, nowLiked ? 1 : -1, nowLiked);
-  }
   state.posts = [...state.posts];
   emit();
 }
@@ -179,7 +175,19 @@ export function likeOn(postId: string) {
 export function addComment(postId: string, text: string, author: Comment['author']) {
   const post = state.posts.find((p) => p.id === postId);
   if (!post || !text.trim()) return;
-  post.comments = [...post.comments, { id: `c-${Date.now()}`, author, text: text.trim(), time: 'now' }];
+  post.comments = [...post.comments, { id: `c-${Date.now()}`, author, text: text.trim(), time: 'now', likes: 0 }];
+  state.posts = [...state.posts];
+  emit();
+}
+
+export function toggleCommentLike(postId: string, commentId: string) {
+  const post = state.posts.find((p) => p.id === postId);
+  if (!post) return;
+  post.comments = post.comments.map((c) =>
+    c.id === commentId
+      ? { ...c, likedByMe: !c.likedByMe, likes: Math.max(0, c.likes + (c.likedByMe ? -1 : 1)) }
+      : c
+  );
   state.posts = [...state.posts];
   emit();
 }

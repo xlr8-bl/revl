@@ -1,15 +1,15 @@
 /**
- * PostCard — one feed post in the layout students already know from
- * Instagram: avatar + bold name header, edge-to-edge media, a
- * heart / reply / share action row, and a bold count line.
+ * PostCard — one feed post in the Instagram layout students know:
+ * avatar + bold name header, edge-to-edge media, a heart / reply /
+ * share action row, and a bold count line.
  *
- * Interaction model:
- *   · Double-tap the post  → likes it, with the heart-burst animation.
- *   · Tap ♥                → toggle like. On an ASK the like is your
- *                            raised hand (demand); on a SOLVE it is a
- *                            "found this useful" vote.
- *   · Tap 💬               → opens the replies sheet (real comments).
- *   · Tap ↗                → OS share sheet, and the share is counted.
+ * Interaction model (uniform on every post — no raise-hand, no ask/solve
+ * split):
+ *   · Double-tap anywhere on the post body / photo / question card
+ *     → likes it, with the heart-burst animation.
+ *   · Tap ♥ → toggle like.   · Tap 💬 → replies sheet.   · Tap ↗ → share.
+ * The only tap inside the body that navigates is the question card's
+ * explicit "Go to question" link.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useRef, useState } from 'react';
@@ -22,13 +22,12 @@ import { TapBurst } from './TapBurst';
 
 export function PostCard({ post }: { post: CommunityPost }) {
   const meta = [post.author.level, post.courseCode, post.time].filter(Boolean).join(' · ');
-  const isAsk = post.kind === 'ask';
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [burst, setBurst] = useState(0);
   const lastTap = useRef(0);
 
-  // Manual double-tap detector (RN has no native double-tap on Pressable).
-  const onBodyTap = useCallback(() => {
+  // Manual double-tap detector (RN Pressable has no native double-tap).
+  const onContentTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 280) {
       lastTap.current = 0;
@@ -43,18 +42,14 @@ export function PostCard({ post }: { post: CommunityPost }) {
     sharePost(post.id);
     try {
       if (Platform.OS !== 'web') {
-        await Share.share({
-          message: `${post.author.name} on Revl Class · ${post.courseCode ?? ''}\n\n${post.text}`,
-        });
+        await Share.share({ message: `${post.author.name} on Revl Class · ${post.courseCode ?? ''}\n\n${post.text}` });
+      } else if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({ text: post.text });
       }
     } catch {
-      /* user dismissed the share sheet */
+      /* dismissed */
     }
   };
-
-  const countLabel = isAsk
-    ? `${post.likes} ${post.likes === 1 ? 'classmate wants' : 'classmates want'} this solved`
-    : `${post.likes} found this useful${post.communityVerified ? ' · Class verified answer' : ''}`;
 
   return (
     <View style={styles.post}>
@@ -75,9 +70,11 @@ export function PostCard({ post }: { post: CommunityPost }) {
         </Pressable>
       </View>
 
-      {/* Double-tappable content region (text + media). The heart bursts here. */}
-      <Pressable onPress={onBodyTap}>
+      {/* Double-tappable content: text + media + the question card. Only the
+          nested "Go to question" link inside the card navigates. */}
+      <Pressable onPress={onContentTap}>
         <Text style={styles.body}>{post.text}</Text>
+
         {post.imageUri && (
           <View>
             <Image source={{ uri: post.imageUri }} style={styles.media} resizeMode="cover" />
@@ -86,19 +83,19 @@ export function PostCard({ post }: { post: CommunityPost }) {
             </TapBurst>
           </View>
         )}
+
+        {post.questionRef && post.courseCode && (
+          <View style={styles.anchorWrap}>
+            <QuestionAnchor refr={post.questionRef} courseCode={post.courseCode} />
+          </View>
+        )}
+
         {!post.imageUri && (
           <TapBurst trigger={burst}>
             <Ionicons name="heart" size={72} color={colors.accent} />
           </TapBurst>
         )}
       </Pressable>
-
-      {/* The referenced exam question, framed like the reader's card */}
-      {post.questionRef && post.courseCode && (
-        <View style={styles.anchorWrap}>
-          <QuestionAnchor refr={post.questionRef} courseCode={post.courseCode} postKind={post.kind} />
-        </View>
-      )}
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -117,7 +114,16 @@ export function PostCard({ post }: { post: CommunityPost }) {
         </Pressable>
       </View>
 
-      <Text style={styles.countLine}>{countLabel}</Text>
+      {/* Count line — teaches the gesture while there are no likes yet. */}
+      {post.likes > 0 ? (
+        <Text style={styles.countLine}>
+          {post.likes} {post.likes === 1 ? 'like' : 'likes'}
+          {post.communityVerified ? ' · Class verified answer' : ''}
+        </Text>
+      ) : (
+        <Text style={styles.hintLine}>Double-tap to like</Text>
+      )}
+
       <View style={styles.subCounts}>
         {post.comments.length > 0 && (
           <Pressable onPress={() => setCommentsOpen(true)} hitSlop={6}>
@@ -172,6 +178,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 13.5,
     color: colors.text,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 9,
+  },
+  hintLine: {
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    color: colors.textTertiary,
     paddingHorizontal: spacing.gutter,
     marginTop: 9,
   },
