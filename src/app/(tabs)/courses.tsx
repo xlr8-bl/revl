@@ -150,10 +150,12 @@ export default function CoursesScreen() {
       if (p.year >= Math.max(...e.years)) e.newestId = p.id;
       byCourse.set(p.courseCode, e);
     });
+    // Any course with papers is eligible; ranked by how much you use it. The
+    // cap is just how many ride the carousel at once, not which courses qualify.
     return [...byCourse.values()]
       .filter((f) => f.years.length > 0)
       .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
-      .slice(0, 6);
+      .slice(0, 10);
   }, [accessCounts]);
 
   const searchResults = query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : [];
