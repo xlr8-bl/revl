@@ -11,7 +11,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard } from '../../components/CourseCard';
 import { CourseCardMenu } from '../../components/CourseCardMenu';
 import { CoursePapersSheet } from '../../components/CoursePapersSheet';
+import { FeaturedCardShell } from '../../components/FeaturedCardShell';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
 import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
@@ -368,16 +369,24 @@ export default function CoursesScreen() {
               const contiguous = years[years.length - 1] - years[0] + 1 === years.length;
               const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
+              const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
               return (
                 <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
+                {/* iOS: the real system context menu (SwiftUI). Others: the
+                    JS blur overlay via onLongPress. */}
+                <FeaturedCardShell
+                  width={featuredWidth}
+                  height={190}
+                  code={f.code}
+                  title={f.title}
+                  meta={cardMeta}
+                  onViewPapers={() => openPapers(f.code, f.title)}>
                 <Pressable
                   onPress={() => openPapers(f.code, f.title)}
-                  onLongPress={() =>
-                    setCardMenu({
-                      code: f.code,
-                      title: f.title,
-                      meta: `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`,
-                    })
+                  onLongPress={
+                    Platform.OS === 'ios'
+                      ? undefined
+                      : () => setCardMenu({ code: f.code, title: f.title, meta: cardMeta })
                   }
                   delayLongPress={280}
                   style={({ pressed }) => [
@@ -413,6 +422,7 @@ export default function CoursesScreen() {
                     </View>
                   </View>
                 </Pressable>
+                </FeaturedCardShell>
                 </Animated.View>
               );
             })}
