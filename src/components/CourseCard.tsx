@@ -5,13 +5,15 @@
  * tappable year rows. No gradients, no icons: color, type, and rules.
  */
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
+import { useCourseMenuItems } from '../lib/useCourseMenu';
+import { ContextMenuShell } from './ContextMenuShell';
 import { CourseDownloadButton, PaperDownloadBadge } from './DownloadBadge';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
@@ -25,16 +27,36 @@ export function courseColor(_code?: string) {
 export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ? 0.1 : 0.14);
 
 
-export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
+export function CourseCard({
+  course,
+  index = 0,
+  onHold,
+}: {
+  course: CatalogCourse;
+  index?: number;
+  /** Long-press hint — iOS uses it to fade in the depth blur behind the
+      native menu; Android/web open the JS fallback overlay. */
+  onHold?: (code: string, title: string, meta: string) => void;
+}) {
   useThemeVersion();
   const router = useRouter();
   const tint = courseColor(course.code);
   const coursePapers = papers
     .filter((p) => p.courseCode === course.code)
     .sort((a, b) => b.year - a.year);
+  const meta =
+    coursePapers.length > 0 ? `${coursePapers.length} paper${coursePapers.length > 1 ? 's' : ''}` : 'Papers coming soon';
+  const menuItems = useCourseMenuItems(course.code, course.title || `Course ${course.code}`, meta);
+  /** Only QUICK taps open rows — a hold aimed at the context menu can
+      never accidentally open a paper on release. */
+  const pressStart = useRef(0);
 
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)}>
+      <ContextMenuShell items={menuItems} matchContents>
+      <Pressable
+        onLongPress={onHold ? () => onHold(course.code, course.title || `Course ${course.code}`, meta) : undefined}
+        delayLongPress={420}>
       <View style={styles.card}>
         {/* Tinted header band: code + level + save */}
         <View style={[styles.band, { backgroundColor: wash(tint) }]}>
@@ -67,7 +89,9 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
               return (
                 <Pressable
                   key={p.id}
+                  onPressIn={() => (pressStart.current = Date.now())}
                   onPress={() => {
+                    if (Date.now() - pressStart.current >= 250) return;
                     recordAccess(course.code);
                     router.push(unlocked ? `/paper/${p.id}` : (`/unlock/${p.id}` as never));
                   }}
@@ -91,6 +115,8 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
           )}
         </View>
       </View>
+      </Pressable>
+      </ContextMenuShell>
     </Animated.View>
   );
 }

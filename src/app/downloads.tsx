@@ -88,7 +88,7 @@ export default function DownloadsScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search your downloads"
+                placeholder="Code, title or year — e.g. CEC420, 2023"
                 placeholderTextColor={colors.textTertiary}
                 style={styles.searchInput}
                 autoCapitalize="characters"

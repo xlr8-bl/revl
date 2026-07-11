@@ -12,9 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
+  FadeIn,
   FadeInDown,
+  FadeOut,
   interpolate,
   interpolateColor,
   useAnimatedScrollHandler,
@@ -99,10 +102,20 @@ export default function CoursesScreen() {
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /** Raw carousel scroll offset — drives the dot wave. */
+  /** Raw carousel scroll offset — drives the dot wave. Re-synced at drag
+      start and momentum end because the native context menu can swallow a
+      stretch of scroll events, leaving the first post-menu scroll stale. */
   const carouselX = useSharedValue(0);
-  const onCarouselScroll = useAnimatedScrollHandler((e) => {
-    carouselX.value = e.contentOffset.x;
+  const onCarouselScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      carouselX.value = e.contentOffset.x;
+    },
+    onBeginDrag: (e) => {
+      carouselX.value = e.contentOffset.x;
+    },
+    onMomentumEnd: (e) => {
+      carouselX.value = e.contentOffset.x;
+    },
   });
   /** Featured card tapped → show its papers in a sheet. `sheetData` sticks
       around after close so the sheet can play its exit animation instead of
@@ -113,8 +126,21 @@ export default function CoursesScreen() {
     setSheetData({ code, title });
     setSheetOpen(true);
   };
-  /** Press-and-hold on a featured card → blur + action menu (WhatsApp-style). */
+  /** Press-and-hold fallback menu (Android/web JS overlay). */
   const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
+  /** iOS: a soft depth blur behind the native context menu. No dismiss
+      callback exists, so it clears on the next touch (or a failsafe). */
+  const [menuBlur, setMenuBlur] = useState(false);
+  const blurFailsafe = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCardHold = (code: string, title: string, meta: string) => {
+    if (Platform.OS === 'ios') {
+      setMenuBlur(true);
+      if (blurFailsafe.current) clearTimeout(blurFailsafe.current);
+      blurFailsafe.current = setTimeout(() => setMenuBlur(false), 6000);
+    } else {
+      setCardMenu({ code, title, meta });
+    }
+  };
   /** Press start time — only QUICK taps open papers, so a hold aimed at the
       context menu can never accidentally open the sheet on release. */
   const pressStart = useRef(0);
@@ -133,13 +159,26 @@ export default function CoursesScreen() {
 
   // The section title slides up and sticks under "Courses" as you scroll into
   // it — the fade completes right as the real title reaches the header base so
-  // the hand-off is seamless (no double heading, no bleed-through).
+  // the hand-off is seamless (no double heading, no bleed-through). At the
+  // same moment the placement kicker ("Accountancy · HND") animates OUT and
+  // the title block lifts to rebalance — no redundant "Accountancy" stack.
   const stickyStyle = useAnimatedStyle(() => {
     const end = sectionY.value - baseH - 4;
+    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
     return {
-      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp') * (1 - open.value),
-      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') }],
+      opacity: p * (1 - open.value),
+      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') - 16 * p }],
     };
+  });
+  const kickerStyle = useAnimatedStyle(() => {
+    const end = sectionY.value - baseH - 4;
+    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
+    return { opacity: 1 - p, transform: [{ translateY: -6 * p }] };
+  });
+  const liftStyle = useAnimatedStyle(() => {
+    const end = sectionY.value - baseH - 4;
+    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
+    return { transform: [{ translateY: -16 * p }] };
   });
   // The search bar grows out of the header; the content spacer grows with it so
   // everything below shifts down together, then back.
@@ -284,7 +323,7 @@ export default function CoursesScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} onTouchStart={() => menuBlur && setMenuBlur(false)}>
       {/* Same seamless blend as Tonight: a transparent header sits over a
           scroll-linked gradient that dissolves from the page bg to clear, so
           content fades under the title instead of hitting a hard edge. */}
@@ -294,12 +333,12 @@ export default function CoursesScreen() {
       <View style={styles.header}>
         {/* Fixed part: placement · title + search button */}
         <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
-          <Text style={styles.placement}>
+          <Animated.Text style={[styles.placement, kickerStyle]}>
             {profile.school === 'hnd'
               ? `${profile.departmentName} · HND`
               : `${profile.departmentName} · ${profile.level} · UB`}
-          </Text>
-          <View style={styles.titleRow}>
+          </Animated.Text>
+          <Animated.View style={[styles.titleRow, liftStyle]}>
             <Text style={styles.title}>Courses</Text>
             <Pressable onPress={() => router.push('/downloads' as never)} style={styles.searchBtn} hitSlop={8}>
               <Ionicons name="arrow-down-circle-outline" size={21} color={colors.text} />
@@ -312,7 +351,7 @@ export default function CoursesScreen() {
                 <Ionicons name="close" size={22} color={colors.text} />
               </Animated.View>
             </Pressable>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Section title floats just under the header base and sticks there as
@@ -373,8 +412,14 @@ export default function CoursesScreen() {
               const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
               const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
+              // Hard-pinned wrapper size: the native Host occasionally
+              // proposes a collapsed height mid-layout, which read as a
+              // vertically shrunken card.
               return (
-                <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
+                <Animated.View
+                  key={f.code}
+                  entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}
+                  style={{ width: featuredWidth, height: 190 }}>
                 {/* iOS: the real system context menu (SwiftUI). Others: the
                     JS blur overlay via onLongPress. */}
                 <FeaturedCardShell
@@ -389,12 +434,8 @@ export default function CoursesScreen() {
                   onPress={() => {
                     if (Date.now() - pressStart.current < 250) openPapers(f.code, f.title);
                   }}
-                  onLongPress={
-                    Platform.OS === 'ios'
-                      ? undefined
-                      : () => setCardMenu({ code: f.code, title: f.title, meta: cardMeta })
-                  }
-                  delayLongPress={280}
+                  onLongPress={() => onCardHold(f.code, f.title, cardMeta)}
+                  delayLongPress={Platform.OS === 'ios' ? 420 : 280}
                   style={({ pressed }) => [
                     styles.featureCard,
                     { width: featuredWidth },
@@ -485,7 +526,9 @@ export default function CoursesScreen() {
                       : 'Nothing here yet.'}
               </Text>
             ) : (
-              section.data.map((c, i) => <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} />)
+              section.data.map((c, i) => (
+                <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} onHold={onCardHold} />
+              ))
             )}
           </View>
         </View>
@@ -514,6 +557,22 @@ export default function CoursesScreen() {
           onViewPapers={() => openPapers(cardMenu.code, cardMenu.title)}
         />
       )}
+
+      {/* iOS: soft depth blur under the native context menu (the menu lives
+          in a system window above this). Clears on the next touch. */}
+      {menuBlur && (
+        <Animated.View
+          pointerEvents="none"
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(220)}
+          style={[StyleSheet.absoluteFill, { zIndex: 75 }]}>
+          <BlurView
+            intensity={16}
+            tint={activeScheme() === 'light' ? 'light' : 'dark'}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -522,7 +581,7 @@ const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 },
   searchBtn: {
     width: 44,
     height: 44,

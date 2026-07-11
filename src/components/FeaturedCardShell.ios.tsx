@@ -1,17 +1,10 @@
 /**
- * FeaturedCardShell (iOS) — wraps a featured card in the REAL system
- * context menu: @expo/ui's SwiftUI ContextMenu (UIKit's own long-press
- * interaction — the card lifts, the rest of the screen gets Apple's blur,
- * and a native menu drops in). Items are true SwiftUI buttons with SF
- * Symbols; the download row reflects live paper state.
+ * FeaturedCardShell (iOS) — the real system context menu around a featured
+ * carousel card, via the shared ContextMenuShell (@expo/ui SwiftUI).
  */
-import { Button, ContextMenu, Host } from '@expo/ui/swift-ui';
-import { useRouter } from 'expo-router';
 import React from 'react';
-import { Share } from 'react-native';
-import { papers } from '../data/papers';
-import { downloadCourse, usePaperDownloads } from '../lib/courseDownloads';
-import { sentenceCase } from '../lib/format';
+import { ContextMenuShell } from './ContextMenuShell';
+import { useCourseMenuItems } from '../lib/useCourseMenu';
 
 export function FeaturedCardShell({
   width,
@@ -30,47 +23,10 @@ export function FeaturedCardShell({
   onViewPapers: () => void;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-  const paperStates = usePaperDownloads();
-  const coursePapers = papers.filter((p) => p.courseCode === code);
-  const doneCount = coursePapers.filter((p) => paperStates[p.id]?.status === 'done').length;
-  const inFlight = coursePapers.some((p) => paperStates[p.id]?.status === 'downloading');
-  const allDone = coursePapers.length > 0 && doneCount === coursePapers.length;
-
-  const share = async () => {
-    try {
-      await Share.share({
-        message: `${code} · ${sentenceCase(title)} — past papers with verified answers on Revl. ${meta}.`,
-      });
-    } catch {}
-  };
-
+  const items = useCourseMenuItems(code, title, meta, { onViewPapers });
   return (
-    // overflow visible: the system grows the card in place before lifting
-    // it — the Host must never clip that first beat of the animation.
-    <Host style={{ width, height, overflow: 'visible' }}>
-      <ContextMenu>
-        <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
-        <ContextMenu.Items>
-          <Button label="View papers" systemImage="doc.text" onPress={onViewPapers} />
-          {allDone ? (
-            <Button
-              label="Downloaded"
-              systemImage="arrow.down.circle.fill"
-              onPress={() => router.push('/downloads' as never)}
-            />
-          ) : inFlight ? (
-            <Button label="Downloading…" systemImage="arrow.down.circle" onPress={() => {}} />
-          ) : (
-            <Button
-              label={doneCount > 0 ? `Download ${coursePapers.length - doneCount} more` : 'Download all'}
-              systemImage="arrow.down.circle"
-              onPress={() => downloadCourse(code)}
-            />
-          )}
-          <Button label="Share course" systemImage="square.and.arrow.up" onPress={share} />
-        </ContextMenu.Items>
-      </ContextMenu>
-    </Host>
+    <ContextMenuShell items={items} style={{ width, height }}>
+      {children}
+    </ContextMenuShell>
   );
 }
