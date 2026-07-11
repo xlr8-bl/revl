@@ -17,6 +17,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signIn } from '../../lib/session';
+import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, type, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'momo' | 'orange';
@@ -56,8 +57,8 @@ export default function MomoSignInScreen() {
       {step === 'number' ? (
         <>
           <View style={styles.providerRow}>
-            <ProviderCard label="MTN MoMo" color={colors.mtn} selected={provider === 'momo'} onPress={() => setProvider('momo')} />
-            <ProviderCard label="Orange Money" color={colors.orange} selected={provider === 'orange'} onPress={() => setProvider('orange')} />
+            <ProviderCard label="MTN MoMo" color={colors.mtn} logo={<MtnLogo size={20} />} selected={provider === 'momo'} onPress={() => setProvider('momo')} />
+            <ProviderCard label="Orange Money" color={colors.orange} logo={<OrangeLogo size={20} />} selected={provider === 'orange'} onPress={() => setProvider('orange')} />
           </View>
 
           <Text style={styles.fieldLabel}>Wallet number</Text>
@@ -108,10 +109,10 @@ export default function MomoSignInScreen() {
   );
 }
 
-function ProviderCard({ label, color, selected, onPress }: { label: string; color: string; selected: boolean; onPress: () => void }) {
+function ProviderCard({ label, color, logo, selected, onPress }: { label: string; color: string; logo: React.ReactNode; selected: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.provider, selected && { borderColor: color }]}>
-      <View style={[styles.providerDot, { backgroundColor: color }]} />
+      {logo}
       <Text style={styles.providerText}>{label}</Text>
     </Pressable>
   );

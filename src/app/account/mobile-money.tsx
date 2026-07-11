@@ -12,6 +12,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setPref, usePrefs } from '../../lib/prefs';
 import { linkMobileMoney, useSession } from '../../lib/session';
+import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const NETWORKS = [
@@ -62,8 +63,10 @@ export default function MobileMoneyScreen() {
         {/* Linked status */}
         <View style={styles.statusCard}>
           <View style={styles.momoDots}>
-            <View style={[styles.momoDot, { backgroundColor: colors.mtn }]} />
-            <View style={[styles.momoDot, { backgroundColor: colors.orange, marginLeft: -6 }]} />
+            <MtnLogo size={22} />
+            <View style={{ marginLeft: -5 }}>
+              <OrangeLogo size={22} />
+            </View>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.statusLabel}>{masked ? 'Linked number' : 'No number linked yet'}</Text>
@@ -82,7 +85,7 @@ export default function MobileMoneyScreen() {
                 key={n.id}
                 onPress={() => setPref('preferredNetwork', n.id)}
                 style={[styles.network, active && { borderColor: n.color, backgroundColor: colors.card }]}>
-                <View style={[styles.networkDot, { backgroundColor: n.color }]} />
+                {n.id === 'mtn' ? <MtnLogo size={18} /> : <OrangeLogo size={18} />}
                 <Text style={[styles.networkText, active && { color: colors.text }]}>{n.label}</Text>
                 {active && <Ionicons name="checkmark" size={16} color={n.color} />}
               </Pressable>

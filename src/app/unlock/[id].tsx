@@ -11,6 +11,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getPaper, unlockedPaperIds } from '../../data/papers';
 import { currentUser } from '../../data/user';
+import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'mtn' | 'orange';
@@ -94,12 +95,14 @@ export default function UnlockScreen() {
               <ProviderCard
                 label="MTN MoMo"
                 color={colors.mtn}
+                logo={<MtnLogo size={20} />}
                 selected={provider === 'mtn'}
                 onPress={() => setProvider('mtn')}
               />
               <ProviderCard
                 label="Orange Money"
                 color={colors.orange}
+                logo={<OrangeLogo size={20} />}
                 selected={provider === 'orange'}
                 onPress={() => setProvider('orange')}
               />
@@ -130,10 +133,10 @@ export default function UnlockScreen() {
   );
 }
 
-function ProviderCard({ label, color, selected, onPress }: { label: string; color: string; selected: boolean; onPress: () => void }) {
+function ProviderCard({ label, color, logo, selected, onPress }: { label: string; color: string; logo: React.ReactNode; selected: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.provider, selected && { borderColor: color }]}>
-      <View style={[styles.providerDot, { backgroundColor: color }]} />
+      {logo}
       <Text style={styles.providerText}>{label}</Text>
       {selected && <Ionicons name="checkmark-circle" size={17} color={color} />}
     </Pressable>

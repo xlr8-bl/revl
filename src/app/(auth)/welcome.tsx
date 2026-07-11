@@ -14,6 +14,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RevlLogo } from '../../components/RevlLogo';
 import { signIn } from '../../lib/session';
+import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const PAPER = '#F2ECDF';
@@ -104,8 +105,10 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/momo' as never)}
             style={({ pressed }) => [styles.btn, styles.btnMomo, pressed && styles.pressed]}>
             <View style={styles.momoDots}>
-              <View style={[styles.momoDot, { backgroundColor: colors.mtn }]} />
-              <View style={[styles.momoDot, { backgroundColor: colors.orange, marginLeft: -5 }]} />
+              <MtnLogo size={16} />
+              <View style={{ marginLeft: -4 }}>
+                <OrangeLogo size={16} />
+              </View>
             </View>
             <Text style={styles.btnText}>Continue with Mobile Money</Text>
             <View style={styles.momoTag}>
