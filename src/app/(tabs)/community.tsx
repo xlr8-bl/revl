@@ -9,6 +9,7 @@
  * Solve posts that cross the community threshold become the paper's
  * "verified by top student" answer — the room feeds the reader.
  */
+import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -102,7 +103,10 @@ export default function ClassScreen() {
                 <View key={w.ref.questionId} style={styles.wantedCard}>
                   <View style={styles.wantedRank}>
                     <Text style={styles.wantedRankText}>{i + 1}</Text>
-                    <Text style={styles.wantedHands}>✋ {w.hands}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="hand-left-outline" size={13} color={colors.accent} />
+                      <Text style={styles.wantedHands}>{w.hands}</Text>
+                    </View>
                   </View>
                   <QuestionAnchor refr={w.ref} courseCode={w.courseCode} />
                   <Pressable

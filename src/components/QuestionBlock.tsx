@@ -111,8 +111,13 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
           onPress={() => raiseHand({ paperId: '', questionId: question.id }, courseCode)}
           hitSlop={6}
           style={styles.handRow}>
+          <Ionicons
+            name="hand-left-outline"
+            size={14}
+            color={wanted?.raisedByMe ? colors.accent : colors.textSecondary}
+          />
           <Text style={[styles.handText, wanted?.raisedByMe && { color: colors.accent }]}>
-            ✋ {wanted ? `${wanted.hands} classmates want this solved` : 'Raise hand for a class solution'}
+            {wanted ? `${wanted.hands} classmates want this solved` : 'Raise hand for a class solution'}
           </Text>
         </Pressable>
       )}
@@ -238,7 +243,7 @@ const makeStyles = () => StyleSheet.create({
     paddingVertical: 4,
     overflow: 'hidden',
   },
-  handRow: { marginTop: 10 },
+  handRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
   handText: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
   loop: { marginTop: 14, gap: 10 },
   revealBtn: {

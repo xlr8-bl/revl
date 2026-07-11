@@ -52,7 +52,7 @@ export default function PredictedPaperScreen() {
         ))}
 
         <Text style={styles.disclaimer}>
-          Predictions resolve after the exam — correct calls earn contributors ⚡ credits.
+          Predictions resolve after the exam — correct calls earn contributors credits.
         </Text>
       </ScrollView>
     </View>

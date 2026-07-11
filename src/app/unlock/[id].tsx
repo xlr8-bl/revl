@@ -82,7 +82,7 @@ export default function UnlockScreen() {
               <Ionicons name="flash" size={22} color={colors.warning} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.creditTitle}>Use {PRICE_CREDITS} credits</Text>
-                <Text style={styles.creditMeta}>You have ⚡ {currentUser.credits}</Text>
+                <Text style={styles.creditMeta}>You have {currentUser.credits} credits</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </Pressable>
