@@ -16,9 +16,12 @@ import Animated, {
   Easing,
   FadeInDown,
   interpolate,
+  interpolateColor,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard } from '../../components/CourseCard';
@@ -43,6 +46,38 @@ const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
 
 // Resolve a course code to a catalogue entry, falling back to paper metadata
 // for codes that only exist as papers (e.g. the extracted CEC420 set).
+/**
+ * One dot of the carousel indicator. Driven directly by the scroll offset:
+ * a gaussian "bump" travels through the row as you swipe (each dot lifts
+ * and brightens as the motion passes through it), and the dot whose card
+ * is at rest stretches into an accent pill.
+ */
+function CarouselDot({
+  i,
+  scrollX,
+  interval,
+  on,
+  off,
+}: {
+  i: number;
+  scrollX: SharedValue<number>;
+  interval: number;
+  on: string;
+  off: string;
+}) {
+  const style = useAnimatedStyle(() => {
+    const d = Math.abs(i - scrollX.value / interval);
+    const focus = Math.max(0, 1 - Math.min(d, 1));
+    return {
+      width: 6 + 16 * focus,
+      opacity: 0.45 + 0.55 * focus,
+      backgroundColor: interpolateColor(focus, [0, 1], [off, on]),
+      transform: [{ translateY: -5 * Math.exp(-d * d * 3) }],
+    };
+  });
+  return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
+}
+
 const resolveCourse = (code: string): CatalogCourse | undefined => {
   const cat = courseByCode(code);
   if (cat) return cat;
@@ -61,8 +96,11 @@ export default function CoursesScreen() {
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /** Which featured card is snapped in view — drives the dots. */
-  const [featIdx, setFeatIdx] = useState(0);
+  /** Raw carousel scroll offset — drives the dot wave. */
+  const carouselX = useSharedValue(0);
+  const onCarouselScroll = useAnimatedScrollHandler((e) => {
+    carouselX.value = e.contentOffset.x;
+  });
   /** Featured card tapped → show its papers in a sheet. */
   const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
   const accessCounts = useAccessCounts();
@@ -149,24 +187,28 @@ export default function CoursesScreen() {
   const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
 
   /**
-   * Featured carousel: course sets with extracted papers, ordered by how much
-   * you use them (most-accessed first) so your go-to courses are one tap away.
+   * Featured carousel: course sets with extracted papers, scoped by the
+   * active filter (your courses / downloaded / studied) and always ranked
+   * by how much you use them — your go-to sets ride first.
    */
-  const featured = useMemo(() => {
-    const byCourse = new Map<string, { code: string; title: string; years: number[]; newestId: string }>();
-    papers.forEach((p) => {
-      const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [], newestId: p.id };
-      e.years.push(p.year);
-      if (p.year >= Math.max(...e.years)) e.newestId = p.id;
-      byCourse.set(p.courseCode, e);
-    });
-    // Any course with papers is eligible; ranked by how much you use it. The
-    // cap is just how many ride the carousel at once, not which courses qualify.
-    return [...byCourse.values()]
-      .filter((f) => f.years.length > 0)
-      .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
-      .slice(0, 10);
-  }, [accessCounts]);
+  const scopeCodes =
+    scope === 'My courses'
+      ? new Set(enrolled.map((c) => c.code))
+      : scope === 'Downloaded'
+        ? new Set(downloadedCourses.map((c) => c.code))
+        : scope === 'Studied'
+          ? new Set(studiedCourses.map((c) => c.code))
+          : null; // All courses — every paper set qualifies
+  const byCourse = new Map<string, { code: string; title: string; years: number[] }>();
+  papers.forEach((p) => {
+    const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [] };
+    e.years.push(p.year);
+    byCourse.set(p.courseCode, e);
+  });
+  const featured = [...byCourse.values()]
+    .filter((f) => f.years.length > 0 && (!scopeCodes || scopeCodes.has(f.code)))
+    .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
+    .slice(0, 10);
 
   const searchResults = query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : [];
 
@@ -275,17 +317,13 @@ export default function CoursesScreen() {
           <FilterChips options={filterOptions} selected={scope} onSelect={setFilter} />
 
           {/* Featured carousel — paper sets that are live today */}
-          <ScrollView
+          <Animated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             snapToInterval={featuredWidth + 12}
             decelerationRate="fast"
-            onScroll={(e) => {
-              const i = Math.round(e.nativeEvent.contentOffset.x / (featuredWidth + 12));
-              const clamped = Math.max(0, Math.min(featured.length - 1, i));
-              if (clamped !== featIdx) setFeatIdx(clamped);
-            }}
-            scrollEventThrottle={32}
+            onScroll={onCarouselScroll}
+            scrollEventThrottle={16}
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
               const years = [...new Set(f.years)].sort((a, b) => a - b);
@@ -335,13 +373,22 @@ export default function CoursesScreen() {
                 </Animated.View>
               );
             })}
-          </ScrollView>
+          </Animated.ScrollView>
 
-          {/* Position dots — one per featured card, the snapped one stretched. */}
+          {/* Position dots — a wave: as you swipe, the "energy" travels
+              through the row (dots lift and tint as the scroll passes),
+              and the resting card's dot stretches into a pill. */}
           {featured.length > 1 && (
             <View style={styles.dotsRow}>
               {featured.map((f, i) => (
-                <View key={f.code} style={[styles.dot, i === featIdx && styles.dotActive]} />
+                <CarouselDot
+                  key={f.code}
+                  i={i}
+                  scrollX={carouselX}
+                  interval={featuredWidth + 12}
+                  on={colors.accent}
+                  off={colors.borderStrong}
+                />
               ))}
             </View>
           )}
@@ -445,21 +492,18 @@ const makeStyles = () => StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
   carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 22 },
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.borderStrong },
-  dotActive: { width: 18, backgroundColor: colors.accent },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 6, marginTop: 14, height: 14 },
+  // Clean geometric card — uniform hairline, no asymmetric "spine" bar
+  // (which read like a book/serif gesture against the sans identity).
   featureCard: {
     height: 190,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     padding: 18,
-    paddingLeft: 20,
     justifyContent: 'space-between',
     backgroundColor: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.13),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: withAlpha(colors.accent, 0.28),
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
+    borderColor: withAlpha(colors.accent, 0.3),
   },
   featureGhost: {
     position: 'absolute',

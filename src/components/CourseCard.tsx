@@ -4,17 +4,15 @@
  * voice); the course's past papers sit inline below a hairline as
  * tappable year rows. No gradients, no icons: color, type, and rules.
  */
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { recordAccess } from '../lib/courseAccess';
-import { downloadCourse, removeDownload, useDownloads } from '../lib/courseDownloads';
 import { sentenceCase } from '../lib/format';
+import { CourseDownloadButton, PaperDownloadBadge } from './DownloadBadge';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
 // Monochrome-orange identity: one accent does all the work across the whole
@@ -26,55 +24,6 @@ export function courseColor(_code?: string) {
 /** Soft tint wash of the accent for header bands / tiles. */
 export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ? 0.1 : 0.14);
 
-/**
- * Download button — a familiar download-tray icon instead of a bookmark.
- * While downloading, a ring fills around the icon with the real progress
- * (papers persisted + diagrams cached); once done it becomes a filled
- * check so "this course is on your phone" is unmistakable.
- */
-function DownloadButton({ code }: { code: string }) {
-  const downloads = useDownloads();
-  const dl = downloads[code] ?? { status: 'idle' as const, progress: 0 };
-  const SIZE = 26;
-  const R = 11;
-  const C = 2 * Math.PI * R;
-
-  if (dl.status === 'done') {
-    return (
-      <Pressable onPress={() => removeDownload(code)} hitSlop={10}>
-        <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
-      </Pressable>
-    );
-  }
-  return (
-    <Pressable onPress={() => dl.status === 'idle' && downloadCourse(code)} hitSlop={10}>
-      <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
-        {dl.status === 'downloading' && (
-          <Svg width={SIZE} height={SIZE} style={StyleSheet.absoluteFill}>
-            <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke={colors.border} strokeWidth={2} fill="none" />
-            <Circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              stroke={colors.accent}
-              strokeWidth={2}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${C}`}
-              strokeDashoffset={C * (1 - dl.progress)}
-              transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-            />
-          </Svg>
-        )}
-        <Ionicons
-          name="download-outline"
-          size={dl.status === 'downloading' ? 13 : 17}
-          color={dl.status === 'downloading' ? colors.accent : colors.textSecondary}
-        />
-      </View>
-    </Pressable>
-  );
-}
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   useThemeVersion();
@@ -92,7 +41,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
           <Text style={[styles.code, { color: tint }]}>{course.code}</Text>
           <View style={styles.bandRight}>
             <Text style={styles.level}>{course.level}</Text>
-            {coursePapers.length > 0 && <DownloadButton code={course.code} />}
+            {coursePapers.length > 0 && <CourseDownloadButton code={course.code} />}
           </View>
         </View>
 
@@ -128,6 +77,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
                     {p.session}
                     {p.questions.length > 0 ? ` · ${p.questions.length} questions` : ''}
                   </Text>
+                  <PaperDownloadBadge paper={p} />
                   <Text style={[styles.paperAction, !unlocked && { color: colors.textSecondary }]}>
                     {unlocked ? 'Open ›' : 'Unlock ›'}
                   </Text>
@@ -166,7 +116,7 @@ const makeStyles = () => StyleSheet.create({
   bandRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   level: { fontFamily: fonts.medium, fontSize: 12, color: colors.textSecondary },
   body: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6 },
-  title: { fontFamily: fonts.serif, fontSize: 21, lineHeight: 27, color: colors.text },
+  title: { fontFamily: fonts.bold, fontSize: 19, lineHeight: 25, color: colors.text },
   pending: { fontFamily: fonts.regular, fontSize: 12, fontStyle: 'italic', color: colors.textTertiary, marginTop: 5 },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 14 },
   paperRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },

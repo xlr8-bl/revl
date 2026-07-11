@@ -151,7 +151,7 @@ const makeStyles = () => StyleSheet.create({
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
   verifiedText: { fontFamily: fonts.medium, fontSize: 12, color: '#1B8A47' },
 
-  headline: { fontFamily: fonts.serif, fontSize: 27, lineHeight: 36, color: colors.text, marginTop: 30 },
+  headline: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 34, color: colors.text, marginTop: 30 },
   values: { marginTop: 22, gap: 13 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   valueChip: {

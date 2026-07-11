@@ -129,15 +129,31 @@ function resolve() {
 resolve(); // set the initial active palette from the system scheme
 
 Appearance.addChangeListener(({ colorScheme }) => {
+  // While we're forcing a scheme natively (mode !== 'system'), the change
+  // events echo our own override — don't let that pollute the remembered
+  // TRUE system scheme.
+  if (mode !== 'system') return;
   systemScheme = colorScheme === 'light' ? 'light' : 'dark';
-  if (mode === 'system') resolve();
+  resolve();
 });
+
+/**
+ * Keep the NATIVE side (system tab bar, liquid glass, alerts) on the same
+ * scheme as the in-app theme — otherwise forcing dark in-app leaves native
+ * containers light, which flashes white during tab transitions.
+ */
+function syncNativeAppearance() {
+  try {
+    Appearance.setColorScheme(mode === 'system' ? 'unspecified' : mode);
+  } catch {}
+}
 
 // Hydrate the saved preference.
 AsyncStorage.getItem(THEME_KEY)
   .then((v) => {
     if (v === 'light' || v === 'dark' || v === 'system') {
       mode = v;
+      syncNativeAppearance();
       resolve();
     }
   })
@@ -151,6 +167,7 @@ const subscribe = (l: () => void) => {
 export function setThemeMode(next: ThemeMode) {
   mode = next;
   AsyncStorage.setItem(THEME_KEY, next).catch(() => {});
+  syncNativeAppearance();
   resolve();
 }
 

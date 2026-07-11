@@ -11,6 +11,7 @@ import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
 import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 import { BottomSheet } from './BottomSheet';
+import { PaperDownloadBadge } from './DownloadBadge';
 
 export function CoursePapersSheet({
   code,
@@ -60,6 +61,7 @@ export function CoursePapersSheet({
                 {p.session}
                 {p.questions.length > 0 ? ` · ${p.questions.length} question${p.questions.length === 1 ? '' : 's'}` : ''}
               </Text>
+              <PaperDownloadBadge paper={p} />
               <Text style={[styles.action, !unlocked && { color: colors.textSecondary }]}>
                 {unlocked ? 'Open ›' : 'Unlock ›'}
               </Text>
@@ -74,7 +76,7 @@ export function CoursePapersSheet({
 const makeStyles = () =>
   StyleSheet.create({
     code: { fontFamily: fonts.bold, fontSize: 13, letterSpacing: 1, color: colors.accent },
-    title: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.text, marginTop: 4 },
+    title: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, color: colors.text, marginTop: 4 },
     count: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 4, marginBottom: 8 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
     rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },

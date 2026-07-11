@@ -525,8 +525,8 @@ const makeStyles = () => StyleSheet.create({
   card: { flex: 1, paddingHorizontal: 34, paddingTop: 130, paddingBottom: 120, justifyContent: 'space-between' },
   centerBlock: { flex: 1, justifyContent: 'center', gap: 6 },
   eyebrow: { fontFamily: fonts.medium, fontSize: 13, color: 'rgba(245,244,240,0.55)', marginBottom: 18 },
-  displayTitle: { fontFamily: fonts.serif, fontSize: 52, lineHeight: 60, color: colors.text },
-  outroTitle: { fontFamily: fonts.serif, fontSize: 42, lineHeight: 50 },
+  displayTitle: { fontFamily: fonts.bold, fontSize: 50, lineHeight: 58, color: colors.text },
+  outroTitle: { fontFamily: fonts.bold, fontSize: 40, lineHeight: 48 },
   introHint: { fontFamily: fonts.regular, fontSize: 15, color: 'rgba(245,244,240,0.6)', marginTop: 26 },
   bigNumber: {
     fontFamily: fonts.bold,
