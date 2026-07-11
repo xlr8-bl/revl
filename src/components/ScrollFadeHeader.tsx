@@ -7,14 +7,14 @@
  *
  * Usage:
  *   const { scrollY, onScroll } = useScrollFade();
- *   <TopFade scrollY={scrollY} height={headerHeight + 90} solid={headerHeight} />
+ *   <TopFade scrollY={scrollY} solid={headerHeight} fade={56} />
  *   ...pinned header (absolute)...
  *   <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} ... />
  *
- * `solid` is the height (px) that stays fully opaque background — set it to
- * the header height so the pinned title AND any sticky subtitle sit on solid
- * bg (no content bleeding through). The remaining height is the soft fade
- * where scrolling content dissolves.
+ * `solid` is the fully-opaque height — set it to the pinned header height so
+ * the title (and any sticky subtitle) always sit on solid bg. `fade` is the
+ * soft dissolve tail *below* that, where scrolling content melts away; keep
+ * it short for a crisp blend, longer for a gentler one.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -35,19 +35,31 @@ export function useScrollFade() {
   return { scrollY, onScroll };
 }
 
-export function TopFade({ scrollY, height }: { scrollY: SharedValue<number>; height: number }) {
+export function TopFade({
+  scrollY,
+  solid,
+  fade = 80,
+}: {
+  scrollY: SharedValue<number>;
+  /** Fully-opaque height — cover the pinned header so nothing bleeds through. */
+  solid: number;
+  /** Soft dissolve tail below the header (px). Shorter = crisper blend. */
+  fade?: number;
+}) {
   useThemeVersion();
+  const height = solid + fade;
+  const solidFrac = solid / height;
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
   }));
-  // The clean "Tonight" blend: opaque for the top half, then a soft dissolve.
+  // Opaque under the header, then a short soft dissolve for the tail.
   return (
     <Animated.View
       pointerEvents="none"
       style={[{ position: 'absolute', top: 0, left: 0, right: 0, height, zIndex: 5 }, style]}>
       <LinearGradient
-        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.7), withAlpha(colors.bg, 0)]}
-        locations={[0, 0.5, 0.75, 1]}
+        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0)]}
+        locations={[0, solidFrac, solidFrac + (1 - solidFrac) * 0.5, 1]}
         style={{ flex: 1 }}
       />
     </Animated.View>

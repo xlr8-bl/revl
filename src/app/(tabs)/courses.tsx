@@ -205,7 +205,7 @@ export default function CoursesScreen() {
       {/* Same seamless blend as Tonight: a transparent header sits over a
           scroll-linked gradient that dissolves from the page bg to clear, so
           content fades under the title instead of hitting a hard edge. */}
-      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 80} />
+      <TopFade scrollY={scrollY} solid={baseH + (searchOpen ? SEARCH_H : 0)} fade={54} />
 
       {/* Pinned header */}
       <View style={styles.header}>

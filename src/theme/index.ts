@@ -56,15 +56,15 @@ const darkColors: Palette = {
   text: '#F5F4F0',
   textSecondary: '#98979E',
   textTertiary: '#5D5C64',
-  accent: '#F2A93B',
-  accentSoft: 'rgba(242,169,59,0.14)',
+  accent: '#F5933C',
+  accentSoft: 'rgba(245,147,60,0.14)',
   onAccent: '#1C1204',
   ai: '#9D97F5',
   aiSoft: 'rgba(157,151,245,0.14)',
   verified: '#4ADE80',
   verifiedSoft: 'rgba(74,222,128,0.12)',
   success: '#4ADE80',
-  warning: '#F2A93B',
+  warning: '#F5933C',
   danger: '#F87171',
   badge: '#F87171',
   dockTint: 'rgba(8,8,11,0.97)',
@@ -73,30 +73,30 @@ const darkColors: Palette = {
 };
 
 /**
- * Light — warm exam-paper, but with real separation: white cards sit on
- * a warm-grey page (not white-on-cream, which bleaches), hairlines and
- * ink are strong, and the amber accent is deepened so it stays legible
- * on white instead of washing out.
+ * Light — warm cream paper with a single vivid-orange accent (the
+ * monochrome-orange identity): white cards sit on an airy off-white page
+ * separated by hairlines, ink stays near-black, and the accent is a
+ * bright, warm orange rather than deep burnt amber.
  */
 const lightColors: Palette = {
-  bg: '#ECE9E2',
-  bgDeep: '#DAD5CA',
+  bg: '#F6F3EC',
+  bgDeep: '#E8E3D8',
   card: '#FFFFFF',
-  surface: '#E3DFD5',
-  border: 'rgba(0,0,0,0.13)',
-  borderStrong: 'rgba(0,0,0,0.20)',
+  surface: '#ECE7DD',
+  border: 'rgba(0,0,0,0.12)',
+  borderStrong: 'rgba(0,0,0,0.19)',
   text: '#191510',
   textSecondary: '#585349',
   textTertiary: '#8B8578',
-  accent: '#A65D0A',
-  accentSoft: 'rgba(166,93,10,0.12)',
+  accent: '#E0700C',
+  accentSoft: 'rgba(224,112,12,0.12)',
   onAccent: '#FFFFFF',
   ai: '#544AC0',
   aiSoft: 'rgba(84,74,192,0.12)',
   verified: '#1B8A47',
   verifiedSoft: 'rgba(27,138,71,0.12)',
   success: '#1B8A47',
-  warning: '#A65D0A',
+  warning: '#E0700C',
   danger: '#C0352B',
   badge: '#C0352B',
   dockTint: 'rgba(255,255,255,0.97)',
