@@ -31,7 +31,9 @@ import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
 import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
+import { useOnline } from '../../lib/connectivity';
 import { useAccessCounts } from '../../lib/courseAccess';
+import { usePaperDownloads } from '../../lib/courseDownloads';
 import { sentenceCase } from '../../lib/format';
 import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
@@ -160,6 +162,8 @@ export default function CoursesScreen() {
     [profile]
   );
 
+  const online = useOnline();
+  const paperStates = usePaperDownloads();
   const logs = useRevealLogs();
   const studiedCourses = useMemo(() => {
     const codes = [...new Set(logs.map((l) => l.courseCode))];
@@ -205,7 +209,34 @@ export default function CoursesScreen() {
     .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
     .slice(0, 10);
 
-  const searchResults = query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : [];
+  // Context-aware search: online searches the full index (the "database");
+  // offline searches only what's on this phone — courses whose papers are
+  // downloaded — so results are always genuinely openable.
+  const searchingOffline = online === false;
+  const searchResults = query.trim()
+    ? (() => {
+        const q = query.trim().toLowerCase();
+        const all = searchCatalog(profile.school, profile.departmentId, query);
+        // Index paper metadata too — courses that only exist as extracted
+        // paper sets (e.g. CEC420) must be findable by code or title.
+        const paperMatches = [
+          ...new Set(
+            papers
+              .filter((p) => p.courseCode.toLowerCase().includes(q) || p.title.toLowerCase().includes(q))
+              .map((p) => p.courseCode)
+          ),
+        ]
+          .filter((code) => !all.some((c) => c.code === code))
+          .map(resolveCourse)
+          .filter((c): c is CatalogCourse => !!c);
+        const combined = [...paperMatches, ...all];
+        if (!searchingOffline) return combined;
+        const local = new Set(
+          papers.filter((p) => paperStates[p.id]?.status === 'done').map((p) => p.courseCode)
+        );
+        return combined.filter((c) => local.has(c.code));
+      })()
+    : [];
 
   // Sub-chip refinement applied to section lists.
   const refine = (list: CatalogCourse[]) => {
@@ -217,7 +248,12 @@ export default function CoursesScreen() {
 
   const deptTitle = `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim();
   const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
-    ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
+    ? [
+        {
+          title: searchingOffline ? `On this phone for "${query.trim()}"` : `Results for "${query.trim()}"`,
+          data: searchResults,
+        },
+      ]
     : scope === 'My courses'
       ? [{ title: deptTitle, data: refine(enrolled) }]
       : scope === 'All courses'
@@ -417,7 +453,9 @@ export default function CoursesScreen() {
           <View style={{ paddingHorizontal: spacing.gutter }}>
             {section.data.length === 0 ? (
               <Text style={styles.empty}>
-                {scope === 'Studied'
+                {query.trim() && searchingOffline
+                  ? "You're offline — only downloaded courses can be searched. Connect to search everything."
+                  : scope === 'Studied'
                     ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
                     : subFilter
                       ? `No courses match “${subFilter}”.`
