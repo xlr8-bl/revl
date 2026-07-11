@@ -5,8 +5,8 @@
  * tappable year rows. No gradients, no icons: color, type, and rules.
  */
 import { useRouter } from 'expo-router';
-import React, { useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
@@ -50,14 +50,22 @@ export function CourseCard({
   /** Only QUICK taps open rows — a hold aimed at the context menu can
       never accidentally open a paper on release. */
   const pressStart = useRef(0);
+  /** Measured card height: the native Host needs an EXPLICIT size (its
+      content-matching collapses RN children to zero — invisible cards).
+      First paint renders the bare card to measure; then the shell wraps
+      it at that exact height. */
+  const [cardH, setCardH] = useState(0);
 
-  return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)}>
-      <ContextMenuShell items={menuItems} matchContents>
+  const inner = (
       <Pressable
         onLongPress={onHold ? () => onHold(course.code, course.title || `Course ${course.code}`, meta) : undefined}
         delayLongPress={420}>
-      <View style={styles.card}>
+      <View
+        style={styles.card}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          if (Math.abs(h - cardH) > 1) setCardH(h);
+        }}>
         {/* Tinted header band: code + level + save */}
         <View style={[styles.band, { backgroundColor: wash(tint) }]}>
           <Text style={[styles.code, { color: tint }]}>{course.code}</Text>
@@ -116,19 +124,31 @@ export function CourseCard({
         </View>
       </View>
       </Pressable>
-      </ContextMenuShell>
+  );
+
+  return (
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)} style={styles.cardWrap}>
+      {Platform.OS === 'ios' && cardH > 0 ? (
+        <ContextMenuShell items={menuItems} style={{ height: cardH }}>
+          {inner}
+        </ContextMenuShell>
+      ) : (
+        inner
+      )}
     </Animated.View>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
+  // Spacing lives on the wrapper, not the card — the iOS Host is sized to
+  // the card's exact measured height, so a margin inside it would be lost.
+  cardWrap: { marginBottom: 12 },
   card: {
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
     backgroundColor: colors.card,
     overflow: 'hidden',
-    marginBottom: 12,
   },
   band: {
     flexDirection: 'row',
