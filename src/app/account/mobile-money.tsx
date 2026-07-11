@@ -75,7 +75,7 @@ export default function MobileMoneyScreen() {
           {masked && <Ionicons name="checkmark-circle" size={20} color={colors.verified} />}
         </View>
 
-        {/* Preferred network */}
+        {/* Preferred network — same logo-led tiles as the sign-in flow */}
         <Text style={styles.sectionLabel}>Preferred network</Text>
         <View style={styles.networkRow}>
           {NETWORKS.map((n) => {
@@ -84,10 +84,14 @@ export default function MobileMoneyScreen() {
               <Pressable
                 key={n.id}
                 onPress={() => setPref('preferredNetwork', n.id)}
-                style={[styles.network, active && { borderColor: n.color, backgroundColor: colors.card }]}>
-                {n.id === 'mtn' ? <MtnLogo size={18} /> : <OrangeLogo size={18} />}
+                style={[styles.network, active && styles.networkActive]}>
+                {active && (
+                  <View style={styles.networkCheck}>
+                    <Ionicons name="checkmark" size={12} color={colors.onAccent} />
+                  </View>
+                )}
+                {n.id === 'mtn' ? <MtnLogo size={32} /> : <OrangeLogo size={32} />}
                 <Text style={[styles.networkText, active && { color: colors.text }]}>{n.label}</Text>
-                {active && <Ionicons name="checkmark" size={16} color={n.color} />}
               </Pressable>
             );
           })}
@@ -159,20 +163,30 @@ const makeStyles = () =>
     statusLabel: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
     statusValue: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text, marginTop: 2 },
     sectionLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.textSecondary, marginTop: 26, marginBottom: 10 },
-    networkRow: { flexDirection: 'row', gap: 10 },
+    networkRow: { flexDirection: 'row', gap: 12 },
     network: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+      alignItems: 'flex-start',
+      gap: 10,
       borderWidth: 1.5,
       borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 13,
-      paddingVertical: 13,
+      borderRadius: 16,
+      padding: 14,
+      backgroundColor: colors.card,
     },
-    networkDot: { width: 14, height: 14, borderRadius: 7 },
-    networkText: { flex: 1, fontFamily: fonts.medium, fontSize: 13.5, color: colors.textSecondary },
+    networkActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+    networkCheck: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    networkText: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.textSecondary },
     inputRow: {
       flexDirection: 'row',
       alignItems: 'center',
