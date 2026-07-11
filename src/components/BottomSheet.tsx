@@ -1,10 +1,30 @@
 /**
- * BottomSheet — minimal dark bottom sheet (Modal + slide) used by
- * ExplainSheet and the unlock flow. Kept dependency-free on purpose;
- * swap for @gorhom/bottom-sheet later if gesture-driven snapping is wanted.
+ * BottomSheet — a bottom-anchored sheet you can drag down to dismiss. It
+ * hugs its content (no dead space at the foot — the card ends just above the
+ * home indicator), slides up on open, and as you drag it down the backdrop
+ * tint fades away with it so the dismissal feels physical. Used by
+ * ExplainSheet, CoursePapersSheet, the composer and the unlock flow.
  */
-import React from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  Easing,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, themedStyleSheet, useThemeVersion } from '../theme';
 
@@ -12,31 +32,87 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  /** 0–1 share of screen height the sheet may grow to. */
+  /** 0–1 share of screen height the sheet may grow to (it hugs content below this). */
   maxHeightPct?: number;
 };
 
 export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88 }: Props) {
   useThemeVersion();
   const insets = useSafeAreaInsets();
+  const { height: SCREEN_H } = useWindowDimensions();
+  // Keep the sheet mounted through its exit animation.
+  const [mounted, setMounted] = useState(visible);
+  const translateY = useSharedValue(SCREEN_H);
+  // Measured sheet height — drives the drag threshold and the tint interpolation.
+  const sheetH = useSharedValue(SCREEN_H);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      translateY.value = SCREEN_H;
+      translateY.value = withTiming(0, { duration: 340, easing: Easing.out(Easing.cubic) });
+    } else if (mounted) {
+      translateY.value = withTiming(SCREEN_H, { duration: 240, easing: Easing.in(Easing.cubic) }, (fin) => {
+        if (fin) runOnJS(setMounted)(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // Drag down to dismiss: only downward drag moves the sheet; release past a
+  // third of its height (or with a flick) closes, otherwise it springs back.
+  const pan = Gesture.Pan()
+    .activeOffsetY(14)
+    .failOffsetY(-14)
+    .onUpdate((e) => {
+      translateY.value = Math.max(0, e.translationY);
+    })
+    .onEnd((e) => {
+      if (e.translationY > sheetH.value * 0.32 || e.velocityY > 850) {
+        runOnJS(onClose)();
+      } else {
+        translateY.value = withSpring(0, { damping: 22, stiffness: 240, mass: 0.7 });
+      }
+    });
+
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateY.value, [0, sheetH.value], [1, 0], 'clamp'),
+  }));
+
+  if (!mounted) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdropWrap}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={[styles.sheet, { maxHeight: `${Math.round(maxHeightPct * 100)}%` as never, paddingBottom: insets.bottom + 12 }]}>
-            <View style={styles.grabber} />
-            {children}
-          </View>
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.kav}
+          pointerEvents="box-none">
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              onLayout={(e) => (sheetH.value = e.nativeEvent.layout.height)}
+              style={[
+                styles.sheet,
+                { maxHeight: `${Math.round(maxHeightPct * 100)}%` as never, paddingBottom: insets.bottom + 12 },
+                sheetStyle,
+              ]}>
+              <View style={styles.grabber} />
+              {children}
+            </Animated.View>
+          </GestureDetector>
         </KeyboardAvoidingView>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
-  backdropWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  kav: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card,
     borderTopLeftRadius: 26,

@@ -202,14 +202,14 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Solid header + a short soft edge: the saturated featured cards slide
-          under cleanly instead of muddy-fading through a long gradient (which
-          is why the long Tonight-style blend read badly over colour here). */}
-      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 40} />
+      {/* Same seamless blend as Tonight: a transparent header sits over a
+          scroll-linked gradient that dissolves from the page bg to clear, so
+          content fades under the title instead of hitting a hard edge. */}
+      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 80} />
 
       {/* Pinned header */}
       <View style={styles.header}>
-        {/* Fixed part: placement · title + search button · sticky section title */}
+        {/* Fixed part: placement · title + search button */}
         <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
           <Text style={styles.placement}>
             {profile.school === 'hnd'
@@ -227,10 +227,14 @@ export default function CoursesScreen() {
               </Animated.View>
             </Pressable>
           </View>
-          <Animated.Text numberOfLines={1} style={[styles.stickyTitle, stickyStyle]}>
-            {stickyTitle}
-          </Animated.Text>
         </View>
+
+        {/* Section title floats just under the header base and sticks there as
+            you scroll into a section — absolute so it never reserves an empty
+            gap under "Courses" when hidden. */}
+        <Animated.Text numberOfLines={1} style={[styles.stickyTitle, { top: baseH - 2 }, stickyStyle]}>
+          {stickyTitle}
+        </Animated.Text>
 
         {/* Search bar grows out of the header */}
         <Animated.View style={[styles.searchWrap, searchWrapStyle]}>
@@ -424,7 +428,7 @@ export default function CoursesScreen() {
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4, backgroundColor: colors.bg },
+  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   searchBtn: {
     width: 44,
@@ -439,8 +443,15 @@ const makeStyles = () => StyleSheet.create({
   iconLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
-  stickyTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.textSecondary, marginTop: 6, height: 20 },
-  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start', backgroundColor: colors.bg },
+  stickyTitle: {
+    position: 'absolute',
+    left: spacing.gutter,
+    right: spacing.gutter,
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',

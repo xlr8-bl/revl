@@ -5,7 +5,7 @@
  */
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { papers, unlockedPaperIds } from '../data/papers';
 import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
@@ -41,7 +41,13 @@ export function CoursePapersSheet({
         {list.length} paper{list.length === 1 ? '' : 's'} available
       </Text>
 
-      <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+      {/* Papers render inline so the sheet hugs the list — a course only has a
+          handful of years, so there's no dead space and nothing to scroll. If
+          a set ever runs long, the sheet caps and this scrolls within it. */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={list.length > 7}
+        style={list.length > 7 ? { maxHeight: 380 } : undefined}>
         {list.map((p, i) => {
           const unlocked = unlockedPaperIds.has(p.id);
           return (
