@@ -39,7 +39,7 @@ import { usePaperDownloads } from '../../lib/courseDownloads';
 import { sentenceCase } from '../../lib/format';
 import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
-import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
+import { activeScheme, colors, fonts, mixColor, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
 // Primary scope (which set of courses) and secondary refinement — every one
 // backed by real data, no dead chips. When the student's enrolled set covers
@@ -115,6 +115,9 @@ export default function CoursesScreen() {
   };
   /** Press-and-hold on a featured card → blur + action menu (WhatsApp-style). */
   const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
+  /** Press start time — only QUICK taps open papers, so a hold aimed at the
+      context menu can never accidentally open the sheet on release. */
+  const pressStart = useRef(0);
   const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header — seeded close to the measured
       value (inset + placement + title row) so the first layout doesn't jump. */
@@ -382,7 +385,10 @@ export default function CoursesScreen() {
                   meta={cardMeta}
                   onViewPapers={() => openPapers(f.code, f.title)}>
                 <Pressable
-                  onPress={() => openPapers(f.code, f.title)}
+                  onPressIn={() => (pressStart.current = Date.now())}
+                  onPress={() => {
+                    if (Date.now() - pressStart.current < 250) openPapers(f.code, f.title);
+                  }}
                   onLongPress={
                     Platform.OS === 'ios'
                       ? undefined
@@ -550,17 +556,21 @@ const makeStyles = () => StyleSheet.create({
     paddingHorizontal: 14,
   },
   searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
-  carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 22 },
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 6, marginTop: 14, height: 14 },
-  // Clean geometric card — uniform hairline, no asymmetric "spine" bar
-  // (which read like a book/serif gesture against the sans identity).
+  // Vertical padding gives the iOS context-menu "grow" its headroom — the
+  // card scales up in place before lifting, and without this the bottom
+  // edge clips against the scroll bounds.
+  carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 12, paddingVertical: 10 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 6, marginTop: 4, height: 14 },
+  // Clean geometric card — uniform hairline, no asymmetric "spine" bar.
+  // OPAQUE background (accent composited over the page) so the iOS context
+  // menu lift never shows the neighbouring card through the preview.
   featureCard: {
     height: 190,
     borderRadius: 20,
     overflow: 'hidden',
     padding: 18,
     justifyContent: 'space-between',
-    backgroundColor: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.13),
+    backgroundColor: mixColor(colors.accent, colors.bg, activeScheme() === 'light' ? 0.09 : 0.13),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: withAlpha(colors.accent, 0.3),
   },

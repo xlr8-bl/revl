@@ -195,6 +195,18 @@ export function activeScheme(): 'light' | 'dark' {
 /* Live palette + reactive stylesheets                                 */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Composite `fg` over `bg` at the given alpha and return a SOLID hex.
+ * Use instead of withAlpha when the surface must be opaque — e.g. cards
+ * that iOS lifts for a context menu (a translucent card lets whatever sits
+ * behind it show through the lifted preview).
+ */
+export function mixColor(fg: string, bg: string, alpha: number): string {
+  const p = (hex: string, i: number) => parseInt(hex.replace('#', '').slice(i * 2, i * 2 + 2), 16);
+  const mix = (i: number) => Math.round(p(fg, i) * alpha + p(bg, i) * (1 - alpha));
+  return `#${[0, 1, 2].map((i) => mix(i).toString(16).padStart(2, '0')).join('')}`;
+}
+
 /** Convert a #RRGGBB color to rgba() with the given alpha. */
 export function withAlpha(hex: string, alpha: number): string {
   const h = hex.replace('#', '');

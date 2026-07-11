@@ -46,14 +46,16 @@ export function FeaturedCardShell({
   };
 
   return (
-    <Host style={{ width, height }}>
+    // overflow visible: the system grows the card in place before lifting
+    // it — the Host must never clip that first beat of the animation.
+    <Host style={{ width, height, overflow: 'visible' }}>
       <ContextMenu>
         <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
         <ContextMenu.Items>
           <Button label="View papers" systemImage="doc.text" onPress={onViewPapers} />
           {allDone ? (
             <Button
-              label="Downloaded — view"
+              label="Downloaded"
               systemImage="arrow.down.circle.fill"
               onPress={() => router.push('/downloads' as never)}
             />
@@ -61,7 +63,7 @@ export function FeaturedCardShell({
             <Button label="Downloading…" systemImage="arrow.down.circle" onPress={() => {}} />
           ) : (
             <Button
-              label={doneCount > 0 ? `Download remaining (${coursePapers.length - doneCount})` : 'Download all papers'}
+              label={doneCount > 0 ? `Download ${coursePapers.length - doneCount} more` : 'Download all'}
               systemImage="arrow.down.circle"
               onPress={() => downloadCourse(code)}
             />
