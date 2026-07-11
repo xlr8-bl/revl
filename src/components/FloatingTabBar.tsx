@@ -14,9 +14,8 @@ import { isDaytime } from '../lib/greeting';
 import { colors, fonts, themedStyleSheet, useResolvedScheme, useThemeVersion, withAlpha } from '../theme';
 
 const TABS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
-  index: { label: 'Tonight', icon: 'moon-outline', iconActive: 'moon' },
+  index: { label: 'Courses', icon: 'library-outline', iconActive: 'library' },
   community: { label: 'Class', icon: 'people-outline', iconActive: 'people' },
-  courses: { label: 'Courses', icon: 'library-outline', iconActive: 'library' },
   discover: { label: 'Search', icon: 'search-outline', iconActive: 'search' },
   you: { label: 'You', icon: 'person-outline', iconActive: 'person' },
 };
@@ -55,7 +54,7 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
 
         <View style={styles.row}>
           {state.routes.map((route, index) => {
-            const tab = route.name === 'index' ? homeTab : TABS[route.name];
+            const tab = route.name === 'today' ? homeTab : TABS[route.name];
             if (!tab) return null;
             const focused = state.index === index;
 

@@ -137,7 +137,7 @@ export default function OnboardingScreen() {
       examDate: examDate!,
       studyTime: studyTime!,
     });
-    router.replace('/courses');
+    router.replace('/');
   };
 
   /** Breadcrumb of confirmed choices; tap a crumb to change it. */

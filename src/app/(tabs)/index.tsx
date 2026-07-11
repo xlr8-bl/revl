@@ -1,310 +1,514 @@
 /**
- * Tonight (Home) — Revl's own layout, not a feed clone:
+ * Courses — landing tab, in the original page architecture:
  *
- * - Editorial header: date kicker + exam countdown chip, big greeting,
- *   amber credits bolt + badged bell.
- * - "Tonight's Question" exam-paper hero (serif, marks pill, Attempt CTA).
- * - AI briefing (violet voice) above a numbered study queue.
- * - "Class activity" strip (community lives here now, not a top tab).
- * - Wrapped entry appears only inside its end-of-semester window.
+ *   search circle · big title · filter chips · featured carousel ·
+ *   bright faculty tiles · secondary chips · "Section · See All" lists
  *
- * Keeps the scroll-linked top fade: content dissolves under the pinned
- * header as you scroll.
+ * ...but everything is driven by the student's profile + the UB/HND
+ * catalogue, and course rows use the big index cards with the course's
+ * past papers inline (Papers and Courses are one page).
  */
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
+  Easing,
+  FadeInDown,
   interpolate,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CreditMark } from '../../components/CreditMark';
-import { DailyBriefing } from '../../components/DailyBriefing';
-import { HeroCard } from '../../components/HeroCard';
-import { SessionCard } from '../../components/SessionCard';
-import { communityFeed, todaySession } from '../../data/home';
-import { currentUser } from '../../data/user';
-import { getGreeting, isDaytime, planWord } from '../../lib/greeting';
+import { CourseCard } from '../../components/CourseCard';
+import { CoursePapersSheet } from '../../components/CoursePapersSheet';
+import { FilterChips } from '../../components/FilterChips';
+import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
+import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
+import type { CatalogCourse } from '../../data/catalog/types';
+import { papers, unlockedPaperIds } from '../../data/papers';
+import { useAccessCounts } from '../../lib/courseAccess';
+import { sentenceCase } from '../../lib/format';
+import { useDownloads } from '../../lib/courseDownloads';
+import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
-import { isWrappedLive } from '../../lib/wrappedGate';
-import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
+import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
-export default function HomeScreen() {
+// Primary scope (which set of courses) and secondary refinement — every one
+// backed by real data, no dead chips. When the student's enrolled set covers
+// the whole department list (most students), My/All collapse into one chip.
+const FILTERS = ['My courses', 'All courses', 'Downloaded', 'Studied'];
+const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
+
+// Resolve a course code to a catalogue entry, falling back to paper metadata
+// for codes that only exist as papers (e.g. the extracted CEC420 set).
+const resolveCourse = (code: string): CatalogCourse | undefined => {
+  const cat = courseByCode(code);
+  if (cat) return cat;
+  const p = papers.find((pp) => pp.courseCode === code);
+  if (p) return { code, title: p.title, level: p.level, departmentId: '', verified: true, source: 'paper' };
+  return undefined;
+};
+
+export default function CoursesScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { profile } = useSession();
-  const firstName = profile?.name.split(' ')[0] || currentUser.name;
-  const examDays = profile?.examDate
-    ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000))
-    : null;
-  const [headerHeight, setHeaderHeight] = useState(120);
+  const [filter, setFilter] = useState('My courses');
+  const [subFilter, setSubFilter] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  /** Which featured card is snapped in view — drives the dots. */
+  const [featIdx, setFeatIdx] = useState(0);
+  /** Featured card tapped → show its papers in a sheet. */
+  const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
+  const accessCounts = useAccessCounts();
+  /** Height of the fixed part of the header — seeded close to the measured
+      value (inset + placement + title row) so the first layout doesn't jump. */
+  const [baseH, setBaseH] = useState(insets.top + 82);
+  const { scrollY, onScroll } = useScrollFade();
+  const listRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  /** Search open progress (0…1) — drives the expand, content shift and icon morph. */
+  const open = useSharedValue(0);
+  /** Y of the first section title in the scroll content, for the sticky subtitle. */
+  const sectionY = useSharedValue(600);
+  const SEARCH_H = 54;
 
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
+  // The section title slides up and sticks under "Courses" as you scroll into
+  // it — the fade completes right as the real title reaches the header base so
+  // the hand-off is seamless (no double heading, no bleed-through).
+  const stickyStyle = useAnimatedStyle(() => {
+    const end = sectionY.value - baseH - 4;
+    return {
+      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp') * (1 - open.value),
+      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') }],
+    };
   });
-  const gradientStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
+  // The search bar grows out of the header; the content spacer grows with it so
+  // everything below shifts down together, then back.
+  const searchWrapStyle = useAnimatedStyle(() => ({ height: open.value * SEARCH_H, opacity: open.value }));
+  const spacerStyle = useAnimatedStyle(() => ({ height: baseH + open.value * SEARCH_H + 8 }));
+  // Search icon morphs to X and back (crossfade + quarter-turn).
+  const searchIconStyle = useAnimatedStyle(() => ({
+    opacity: 1 - open.value,
+    transform: [{ rotate: `${open.value * 90}deg` }, { scale: 1 - open.value * 0.2 }],
+  }));
+  const closeIconStyle = useAnimatedStyle(() => ({
+    opacity: open.value,
+    transform: [{ rotate: `${(open.value - 1) * 90}deg` }, { scale: 0.8 + open.value * 0.2 }],
   }));
 
-  const today = new Date();
-  const dateLine = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  const daytime = isDaytime(today);
+  const featuredWidth = width - spacing.gutter * 2 - 36;
+
+  const enrolled = useMemo(
+    () =>
+      (profile?.enrolledCourseCodes ?? [])
+        .map(resolveCourse)
+        .filter((c): c is CatalogCourse => !!c),
+    [profile]
+  );
+  const departmentCourses = useMemo(
+    () => (profile ? coursesFor(profile.school, profile.departmentId, profile.level) : []),
+    [profile]
+  );
+
+  const downloads = useDownloads();
+  const logs = useRevealLogs();
+  const downloadedCourses = useMemo(
+    () =>
+      Object.keys(downloads)
+        .filter((code) => downloads[code].status === 'done')
+        .map(resolveCourse)
+        .filter((c): c is CatalogCourse => !!c),
+    [downloads]
+  );
+  const studiedCourses = useMemo(() => {
+    const codes = [...new Set(logs.map((l) => l.courseCode))];
+    return codes.map(resolveCourse).filter((c): c is CatalogCourse => !!c);
+  }, [logs]);
+
+  if (!profile) return null;
+
+  // If everything you're enrolled in IS the department list (true for HND and
+  // most UB levels), "My courses" and "All courses" would show the same list —
+  // collapse them into a single chip instead of offering a dead distinction.
+  const myIsAll =
+    enrolled.length === 0 ||
+    (enrolled.length === departmentCourses.length &&
+      enrolled.every((c) => departmentCourses.some((d) => d.code === c.code)));
+  const filterOptions = myIsAll ? ['All courses', 'Downloaded', 'Studied'] : FILTERS;
+  // The selected scope, mapped onto the visible chips (state defaults to
+  // 'My courses', which doesn't exist when the sets are merged).
+  const scope = myIsAll && filter === 'My courses' ? 'All courses' : filter;
+
+  const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
+  const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
+
+  /**
+   * Featured carousel: course sets with extracted papers, ordered by how much
+   * you use them (most-accessed first) so your go-to courses are one tap away.
+   */
+  const featured = useMemo(() => {
+    const byCourse = new Map<string, { code: string; title: string; years: number[]; newestId: string }>();
+    papers.forEach((p) => {
+      const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [], newestId: p.id };
+      e.years.push(p.year);
+      if (p.year >= Math.max(...e.years)) e.newestId = p.id;
+      byCourse.set(p.courseCode, e);
+    });
+    // Any course with papers is eligible; ranked by how much you use it. The
+    // cap is just how many ride the carousel at once, not which courses qualify.
+    return [...byCourse.values()]
+      .filter((f) => f.years.length > 0)
+      .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
+      .slice(0, 10);
+  }, [accessCounts]);
+
+  const searchResults = query.trim() ? searchCatalog(profile.school, profile.departmentId, query) : [];
+
+  // Sub-chip refinement applied to section lists.
+  const refine = (list: CatalogCourse[]) => {
+    if (subFilter === 'Verified') return list.filter((c) => c.verified && c.title);
+    if (subFilter === 'Has papers') return withPapers(list);
+    if (subFilter === 'Most papers') return [...list].sort((a, b) => paperCount(b) - paperCount(a));
+    return list;
+  };
+
+  const deptTitle = `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim();
+  const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
+    ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
+    : scope === 'My courses'
+      ? [{ title: deptTitle, data: refine(enrolled) }]
+      : scope === 'All courses'
+        ? [{ title: deptTitle, data: refine(departmentCourses) }]
+        : scope === 'Downloaded'
+          ? [{ title: 'Downloaded courses', data: refine(downloadedCourses) }]
+          : scope === 'Studied'
+            ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
+            : [{ title: scope, data: [] }];
+
+  const stickyTitle = sections[0]?.title ?? '';
+  const toggleSearch = () => {
+    const next = !searchOpen;
+    setSearchOpen(next);
+    open.value = withTiming(next ? 1 : 0, { duration: 280, easing: Easing.out(Easing.cubic) });
+    if (next) {
+      listRef.current?.scrollTo({ y: 0, animated: true });
+      setTimeout(() => inputRef.current?.focus(), 180);
+    } else {
+      setQuery('');
+      inputRef.current?.blur();
+    }
+  };
 
   return (
     <View style={styles.root}>
-      {/* Scroll-linked top fade: content dissolves under the header. */}
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.topFade, { height: headerHeight + 80 }, gradientStyle]}>
-        <LinearGradient
-          colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.7), withAlpha(colors.bg, 0)]}
-          locations={[0, 0.5, 0.75, 1]}
-          style={{ flex: 1 }}
-        />
-      </Animated.View>
+      {/* Same seamless blend as Tonight: a transparent header sits over a
+          scroll-linked gradient that dissolves from the page bg to clear, so
+          content fades under the title instead of hitting a hard edge. */}
+      <TopFade scrollY={scrollY} solid={baseH + (searchOpen ? SEARCH_H : 0)} fade={54} />
 
       {/* Pinned header */}
-      <View
-        style={[styles.header, { paddingTop: insets.top + 8 }]}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <View style={styles.kickerRow}>
-          <View style={styles.daypartRow}>
-            <Ionicons
-              name={daytime ? 'sunny' : 'moon'}
-              size={14}
-              color={daytime ? colors.accent : colors.ai}
-            />
-            <Text style={styles.dateLine}>{dateLine}</Text>
-          </View>
-          {examDays !== null && <Text style={styles.countdownText}>Exams in {examDays} days</Text>}
-        </View>
-        <View style={styles.greetingRow}>
-          <Text style={styles.greeting}>
-            {getGreeting()}, {firstName}
+      <View style={styles.header}>
+        {/* Fixed part: placement · title + search button */}
+        <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
+          <Text style={styles.placement}>
+            {profile.school === 'hnd'
+              ? `${profile.departmentName} · HND`
+              : `${profile.departmentName} · ${profile.level} · UB`}
           </Text>
-          <View style={styles.headerIcons}>
-            <Pressable onPress={() => router.push('/wallet')} style={styles.creditChip} hitSlop={8}>
-              <CreditMark size={15} />
-              <Text style={styles.creditCount}>{currentUser.credits}</Text>
-            </Pressable>
-            <Pressable hitSlop={8}>
-              <Ionicons name="notifications-outline" size={23} color={colors.text} />
-              {currentUser.notifications > 0 && (
-                <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{currentUser.notifications}</Text>
-                </View>
-              )}
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Courses</Text>
+            <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
+              <Animated.View style={[styles.iconLayer, searchIconStyle]}>
+                <Ionicons name="search" size={20} color={colors.text} />
+              </Animated.View>
+              <Animated.View style={[styles.iconLayer, closeIconStyle]}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Animated.View>
             </Pressable>
           </View>
         </View>
+
+        {/* Section title floats just under the header base and sticks there as
+            you scroll into a section — absolute so it never reserves an empty
+            gap under "Courses" when hidden. */}
+        <Animated.Text numberOfLines={1} style={[styles.stickyTitle, { top: baseH - 2 }, stickyStyle]}>
+          {stickyTitle}
+        </Animated.Text>
+
+        {/* Search bar grows out of the header */}
+        <Animated.View style={[styles.searchWrap, searchWrapStyle]}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={16} color={colors.textTertiary} />
+            <TextInput
+              ref={inputRef}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search code or title, e.g. BCH301"
+              placeholderTextColor={colors.textTertiary}
+              style={styles.searchInput}
+              autoCapitalize="characters"
+              returnKeyType="search"
+            />
+          </View>
+        </Animated.View>
       </View>
 
       <Animated.ScrollView
+        ref={listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
-        <HeroCard />
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}>
+      {/* Animated spacer clears the header and grows with the search bar so
+          everything below shifts down together. */}
+      <Animated.View style={spacerStyle} />
+      {!query.trim() && (
+        <>
+          <FilterChips options={filterOptions} selected={scope} onSelect={setFilter} />
 
-        {/* Tonight's plan — AI briefing + numbered study queue */}
-        <SectionTitle title={`Your plan ${planWord(today)}`} />
-        <DailyBriefing />
-        <View style={styles.queueCard}>
-          {todaySession.map((s, i) => (
-            <SessionCard key={s.id} data={s} index={i} last={i === todaySession.length - 1} />
-          ))}
-          <Pressable onPress={() => router.push('/dna')} style={styles.queueFooter}>
-            <Text style={styles.queueFooterText}>Built from your Study DNA</Text>
-            <Text style={styles.queueChevron}>›</Text>
-          </Pressable>
-        </View>
+          {/* Featured carousel — paper sets that are live today */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={featuredWidth + 12}
+            decelerationRate="fast"
+            onScroll={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / (featuredWidth + 12));
+              const clamped = Math.max(0, Math.min(featured.length - 1, i));
+              if (clamped !== featIdx) setFeatIdx(clamped);
+            }}
+            scrollEventThrottle={32}
+            contentContainerStyle={styles.carousel}>
+            {featured.map((f, i) => {
+              const years = [...new Set(f.years)].sort((a, b) => a - b);
+              // Gap-aware: a clean range only when the years are actually
+              // contiguous; otherwise list the years so 2019 · 2021 · 2023
+              // never reads as an unbroken 2019–2023.
+              const contiguous = years[years.length - 1] - years[0] + 1 === years.length;
+              const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
+              const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
+              return (
+                <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
+                <Pressable
+                  onPress={() => setPapersSheet({ code: f.code, title: f.title })}
+                  style={({ pressed }) => [
+                    styles.featureCard,
+                    { width: featuredWidth },
+                    pressed && { opacity: 0.92 },
+                  ]}>
+                  {/* Oversized ghost year — background typography, not decoration */}
+                  <Text style={styles.featureGhost}>{years[years.length - 1]}</Text>
 
-        {/* Wrapped entry — ONLY inside the end-of-semester window. */}
-        {isWrappedLive() && (
-          <Pressable onPress={() => router.push('/wrapped')} style={styles.wrappedBanner}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.wrappedTitle}>Your semester, wrapped</Text>
-              <Text style={styles.wrappedMeta}>See what your revision really looked like</Text>
+                  <View style={styles.featureTop}>
+                    <Text style={styles.featureCode}>{f.code}</Text>
+                    {mostUsed ? (
+                      <View style={styles.featurePill}>
+                        <Ionicons name="star" size={12} color={colors.accent} />
+                        <Text style={styles.featurePillText}>Most used</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.featureKicker}>Featured set</Text>
+                    )}
+                  </View>
+
+                  <View>
+                    <Text style={styles.featureTitle} numberOfLines={2}>
+                      {sentenceCase(f.title)}
+                    </Text>
+                    <View style={styles.featureRule} />
+                    <View style={styles.featureMetaRow}>
+                      <Text style={styles.featureMeta} numberOfLines={1}>
+                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {yearLabel}
+                      </Text>
+                      <Text style={styles.featureOpen}>View papers ›</Text>
+                    </View>
+                  </View>
+                </Pressable>
+                </Animated.View>
+              );
+            })}
+          </ScrollView>
+
+          {/* Position dots — one per featured card, the snapped one stretched. */}
+          {featured.length > 1 && (
+            <View style={styles.dotsRow}>
+              {featured.map((f, i) => (
+                <View key={f.code} style={[styles.dot, i === featIdx && styles.dotActive]} />
+              ))}
             </View>
-            <Text style={[styles.queueChevron, { color: colors.ai }]}>›</Text>
-          </Pressable>
-        )}
+          )}
 
-        {/* Class activity — the department room (community scoped to your class) */}
-        <Pressable onPress={() => router.push('/community' as never)}>
-          <SectionTitle title={profile ? `${profile.departmentName} room` : 'Class activity'} />
-        </Pressable>
-        <View style={styles.feedCard}>
-          {communityFeed.slice(0, 3).map((item, i) => (
-            <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>
-              <View style={[styles.feedAvatar, { backgroundColor: item.color }]}>
-                <Text style={styles.feedAvatarText}>{item.initial}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.feedLine}>
-                  <Text style={{ fontFamily: fonts.medium }}>{item.user}</Text> {item.action}
-                </Text>
-                <Text style={styles.feedDetail}>{item.detail}</Text>
-              </View>
-              <Text style={styles.feedTime}>{item.time}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Start here */}
-        <View style={styles.beginCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.beginTitle}>New to Revl?</Text>
-            <Text style={styles.beginBody}>Pick your course and revise with real past papers.</Text>
+          <View style={{ marginTop: 18 }}>
+            <FilterChips
+              options={SUB_CHIPS}
+              selected={subFilter}
+              onSelect={(v) => setSubFilter(v === subFilter ? null : v)}
+              variant="outline"
+            />
           </View>
-          <Pressable
-            onPress={() => router.push('/courses')}
-            style={({ pressed }) => [styles.beginBtn, pressed && { transform: [{ scale: 0.96 }] }]}>
-            <Text style={styles.beginBtnText}>Find courses</Text>
-          </Pressable>
-        </View>
-      </Animated.ScrollView>
-    </View>
-  );
-}
+        </>
+      )}
 
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <View style={styles.sectionTitleRow}>
-      <View style={styles.sectionTick} />
-      <Text style={styles.sectionTitleText}>{title}</Text>
+      {sections.map((section, si) => (
+        <View
+          key={section.title}
+          style={{ marginTop: 30 }}
+          onLayout={si === 0 ? (e) => (sectionY.value = e.nativeEvent.layout.y) : undefined}>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {section.data.length > 4 && (
+              <Pressable hitSlop={8} style={styles.seeAll}>
+                <Text style={styles.seeAllText}>See All</Text>
+                <Text style={styles.seeAllChevron}>›</Text>
+              </Pressable>
+            )}
+          </View>
+          <View style={{ paddingHorizontal: spacing.gutter }}>
+            {section.data.length === 0 ? (
+              <Text style={styles.empty}>
+                {scope === 'Downloaded'
+                  ? 'Nothing downloaded yet. Tap the download button on any course to keep it on your phone.'
+                  : scope === 'Studied'
+                    ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
+                    : subFilter
+                      ? `No courses match “${subFilter}”.`
+                      : 'Nothing here yet.'}
+              </Text>
+            ) : (
+              section.data.map((c, i) => <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} />)
+            )}
+          </View>
+        </View>
+      ))}
+
+        <Text style={styles.footnote}>
+          Catalogue from the official UB 2023/24 teaching timetable and the current national HND program.
+        </Text>
+      </Animated.ScrollView>
+
+      {papersSheet && (
+        <CoursePapersSheet
+          code={papersSheet.code}
+          title={papersSheet.title}
+          visible={!!papersSheet}
+          onClose={() => setPapersSheet(null)}
+        />
+      )}
     </View>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 12,
-    backgroundColor: 'transparent',
-  },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  daypartRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dateLine: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-  countdownText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
-  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  creditChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  searchBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  creditCount: { fontFamily: fonts.medium, fontSize: 13, color: colors.text },
-  bellBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    backgroundColor: colors.badge,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
   },
-  bellBadgeText: { fontFamily: fonts.medium, fontSize: 10, color: '#FFF' },
-  sectionTitleRow: { marginTop: 32, marginBottom: 12, paddingHorizontal: spacing.gutter + 2 },
-  sectionTick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: colors.accent, marginBottom: 8 },
-  sectionTitleText: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
-  queueChevron: { fontFamily: fonts.regular, fontSize: 19, color: colors.textTertiary, marginTop: -2 },
-  queueCard: {
-    marginHorizontal: spacing.gutter,
-    marginTop: 12,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+  iconLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
+  stickyTitle: {
+    position: 'absolute',
+    left: spacing.gutter,
+    right: spacing.gutter,
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
     backgroundColor: colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+  },
+  searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
+  carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 22 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.borderStrong },
+  dotActive: { width: 18, backgroundColor: colors.accent },
+  featureCard: {
+    height: 190,
+    borderRadius: 16,
     overflow: 'hidden',
-  },
-  queueFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  queueFooterText: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
-  wrappedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginHorizontal: spacing.gutter,
-    marginTop: 24,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(157,151,245,0.35)',
-    padding: 16,
-    overflow: 'hidden',
-  },
-  wrappedTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
-  wrappedMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  feedCard: {
-    marginHorizontal: spacing.gutter,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  feedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  feedRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  feedAvatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  feedAvatarText: { fontFamily: fonts.bold, fontSize: 14, color: '#FFF' },
-  feedLine: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
-  feedDetail: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  feedTime: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
-  beginCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginHorizontal: spacing.gutter,
-    marginTop: 26,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
     padding: 18,
+    paddingLeft: 20,
+    justifyContent: 'space-between',
+    backgroundColor: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.13),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: withAlpha(colors.accent, 0.28),
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
   },
-  beginTitle: { fontFamily: fonts.bold, fontSize: 17, color: colors.text },
-  beginBody: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: colors.textSecondary, marginTop: 4 },
-  beginBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  featureGhost: {
+    position: 'absolute',
+    right: -8,
+    bottom: -26,
+    fontFamily: fonts.bold,
+    fontSize: 110,
+    color: withAlpha(colors.accent, 0.1),
+    fontVariant: ['tabular-nums'],
   },
-  beginBtnText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.onAccent },
+  featureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: colors.accent },
+  featureKicker: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary },
+  featurePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.card,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  featurePillText: { fontFamily: fonts.medium, fontSize: 12, color: colors.accent },
+  featureTitle: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 31, color: colors.text, paddingRight: 40 },
+  featureRule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 12 },
+  featureMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.gutter,
+    marginBottom: 12,
+  },
+  sectionTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 21, color: colors.text, paddingRight: 10 },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  seeAllText: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
+  seeAllChevron: { fontFamily: fonts.regular, fontSize: 17, color: colors.textSecondary },
+  empty: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textTertiary, paddingVertical: 8 },
+  footnote: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: colors.textTertiary,
+    paddingHorizontal: spacing.gutter,
+    marginTop: 22,
+  },
 });
 const styles = themedStyleSheet(makeStyles);
