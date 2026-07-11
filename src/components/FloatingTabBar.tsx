@@ -49,8 +49,8 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
           experimentalBlurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}
         />
-        {/* Glass wash: keeps labels legible over whatever scrolls beneath. */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.card, scheme === 'light' ? 0.55 : 0.5) }]} />
+        {/* Glass wash — light enough that content clearly passes beneath. */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.card, scheme === 'light' ? 0.4 : 0.35) }]} />
 
         <View style={styles.row}>
           {state.routes.map((route, index) => {

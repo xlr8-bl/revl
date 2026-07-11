@@ -9,8 +9,8 @@
  * past papers inline (Papers and Courses are one page).
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -78,6 +78,9 @@ function CarouselDot({
   return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
 }
 
+/** Sheet suspended while a paper is open — restored when the tab refocuses. */
+let suspendedPapers: { code: string; title: string } | null = null;
+
 const resolveCourse = (code: string): CatalogCourse | undefined => {
   const cat = courseByCode(code);
   if (cat) return cat;
@@ -110,6 +113,18 @@ export default function CoursesScreen() {
     setSheetData({ code, title });
     setSheetOpen(true);
   };
+  /** Opening a paper from the sheet SUSPENDS it — coming back to this
+      screen restores the sheet exactly as you left it (module-scoped so it
+      survives web remounts). */
+  useFocusEffect(
+    useCallback(() => {
+      if (suspendedPapers) {
+        setSheetData(suspendedPapers);
+        setSheetOpen(true);
+        suspendedPapers = null;
+      }
+    }, [])
+  );
   const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header — seeded close to the measured
       value (inset + placement + title row) so the first layout doesn't jump. */
@@ -454,6 +469,10 @@ export default function CoursesScreen() {
           title={sheetData.title}
           visible={sheetOpen}
           onClose={() => setSheetOpen(false)}
+          onNavigate={() => {
+            suspendedPapers = sheetData;
+            setSheetOpen(false);
+          }}
         />
       )}
     </View>

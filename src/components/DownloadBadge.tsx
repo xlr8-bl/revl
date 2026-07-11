@@ -66,17 +66,23 @@ function DownloadGlyph({ dl, size }: { dl: DownloadState; size: number }) {
   );
 }
 
-/** Per-paper: file size + download state, tap to fetch (or remove when done). */
+/**
+ * Per-paper: the label says exactly where the paper stands — its size when
+ * not downloaded, live percent while fetching, "Downloaded" once stored.
+ * Tap to fetch (or remove when done).
+ */
 export function PaperDownloadBadge({ paper }: { paper: Paper }) {
   useThemeVersion();
   const states = usePaperDownloads();
   const dl = states[paper.id] ?? { status: 'idle' as const, progress: 0 };
+  const label =
+    dl.status === 'done' ? 'Downloaded' : dl.status === 'downloading' ? `${Math.round(dl.progress * 100)}%` : paperSize(paper);
   return (
     <Pressable
       hitSlop={8}
       onPress={() => (dl.status === 'done' ? removePaperDownload(paper.id) : dl.status === 'idle' && downloadPaper(paper.id))}
       style={styles.badge}>
-      <Text style={styles.size}>{paperSize(paper)}</Text>
+      <Text style={[styles.size, dl.status === 'done' && { color: colors.accent }]}>{label}</Text>
       <DownloadGlyph dl={dl} size={20} />
     </Pressable>
   );
@@ -103,14 +109,14 @@ export function CourseDownloadButton({ code }: { code: string }) {
 
 const makeStyles = () => StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  // Fixed-width, right-aligned size label so the download icons form a
-  // perfectly straight column across rows ("7 KB" vs "142 KB").
+  // Fixed-width, right-aligned label so the download icons form a perfectly
+  // straight column across rows ("7 KB" / "63%" / "Downloaded").
   size: {
     fontFamily: fonts.regular,
     fontSize: 11.5,
     color: colors.textTertiary,
     fontVariant: ['tabular-nums'],
-    width: 44,
+    width: 68,
     textAlign: 'right',
   },
 });

@@ -35,7 +35,7 @@ export default function TabLayout() {
 
   return (
     <ThemeProvider value={navTheme}>
-    <NativeTabs tintColor={tint} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={tint} minimizeBehavior="onScrollDown" blurEffect="systemUltraThinMaterial">
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon sf={{ default: 'books.vertical', selected: 'books.vertical.fill' }} md="menu_book" />
         <NativeTabs.Trigger.Label>Courses</NativeTabs.Trigger.Label>

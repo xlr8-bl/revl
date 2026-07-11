@@ -18,11 +18,15 @@ export function CoursePapersSheet({
   title,
   visible,
   onClose,
+  onNavigate,
 }: {
   code: string;
   title: string;
   visible: boolean;
   onClose: () => void;
+  /** Called instead of onClose when a paper is opened — lets the parent
+      SUSPEND the sheet (keep its state) and restore it on return. */
+  onNavigate?: () => void;
 }) {
   useThemeVersion();
   const router = useRouter();
@@ -30,24 +34,22 @@ export function CoursePapersSheet({
 
   const open = (id: string, unlocked: boolean) => {
     recordAccess(code);
-    onClose();
+    (onNavigate ?? onClose)();
     router.push((unlocked ? `/paper/${id}` : `/unlock/${id}`) as never);
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} minHeight={440}>
+    <BottomSheet visible={visible} onClose={onClose} minHeight={520}>
       <Text style={styles.code}>{code}</Text>
       <Text style={styles.title}>{sentenceCase(title)}</Text>
       <Text style={styles.count}>
         {list.length} paper{list.length === 1 ? '' : 's'} available
       </Text>
 
-      {/* Fixed generous height for every course — the list only scrolls when
-          a set is long enough to overflow the sheet's cap. */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={list.length > 7}
-        style={list.length > 7 ? { maxHeight: 460 } : undefined}>
+      {/* Every course gets the same tall sheet. Long sets grow it further —
+          up to the sheet's max — and only past that does the list scroll
+          (flexShrink lets the max height actually constrain it). */}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
         {list.map((p, i) => {
           const unlocked = unlockedPaperIds.has(p.id);
           return (
