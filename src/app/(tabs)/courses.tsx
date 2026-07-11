@@ -20,7 +20,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CourseCard, courseColor, wash } from '../../components/CourseCard';
+import { CourseCard } from '../../components/CourseCard';
 import { CoursePapersSheet } from '../../components/CoursePapersSheet';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
@@ -38,15 +38,6 @@ import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleShe
 // backed by real data, no dead chips.
 const FILTERS = ['My courses', 'All courses', 'Saved', 'Studied'];
 const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
-
-/** Bright tile palette (the look from the original Courses page). */
-// Featured-set / faculty cards carry WHITE text, so they stay mid-to-deep in
-// both themes — the same warm-leaning jewel family as the course tints, one
-// hue per index. Dark is a touch brighter to lift off the ink; light goes
-// deeper to read as a rich premium surface on the paper. Terracotta · teal ·
-// plum · gold · forest · wine · slate · violet — no bright primary blue.
-const TILE_COLORS_DARK = ['#C56A45', '#2E8E82', '#9A5E86', '#B58A38', '#4E9E72', '#B8586A', '#5E72B0', '#8A72B0'];
-const TILE_COLORS_LIGHT = ['#A8492B', '#256E64', '#6E3A5C', '#8A6A2C', '#3B6E4E', '#9A4351', '#465C86', '#5E4E86'];
 
 export default function CoursesScreen() {
   useThemeVersion();
@@ -99,7 +90,6 @@ export default function CoursesScreen() {
   }));
 
   const featuredWidth = width - spacing.gutter * 2 - 36;
-  const TILE = activeScheme() === 'light' ? TILE_COLORS_LIGHT : TILE_COLORS_DARK;
 
   const enrolled = useMemo(
     () =>
@@ -297,7 +287,7 @@ export default function CoursesScreen() {
                   onPress={() => setPapersSheet({ code: f.code, title: f.title })}
                   style={({ pressed }) => [
                     styles.featureCard,
-                    { width: featuredWidth, backgroundColor: TILE[(i + 3) % TILE.length] },
+                    { width: featuredWidth },
                     pressed && { opacity: 0.92 },
                   ]}>
                   {/* Oversized ghost year — background typography, not decoration */}
@@ -305,7 +295,14 @@ export default function CoursesScreen() {
 
                   <View style={styles.featureTop}>
                     <Text style={styles.featureCode}>{f.code}</Text>
-                    <Text style={styles.featureKicker}>{mostUsed ? 'Most used' : 'Featured set'}</Text>
+                    {mostUsed ? (
+                      <View style={styles.featurePill}>
+                        <Ionicons name="star" size={12} color={colors.accent} />
+                        <Text style={styles.featurePillText}>Most used</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.featureKicker}>Featured set</Text>
+                    )}
                   </View>
 
                   <View>
@@ -334,7 +331,6 @@ export default function CoursesScreen() {
                     {enrolled
                       .filter((_, i) => i % 2 === row)
                       .map((c) => {
-                        const tint = courseColor(c.code);
                         const active = focusedCode === c.code;
                         const count = papers.filter((p) => p.courseCode === c.code).length;
                         return (
@@ -343,13 +339,10 @@ export default function CoursesScreen() {
                             onPress={() => setFocusedCode(active ? null : c.code)}
                             style={({ pressed }) => [
                               styles.myTile,
-                              {
-                                backgroundColor: withAlpha(tint, activeScheme() === 'light' ? 0.14 : 0.16),
-                                borderColor: active ? tint : withAlpha(tint, 0.4),
-                              },
+                              active && { borderColor: colors.accent, backgroundColor: colors.accentSoft },
                               pressed && { opacity: 0.85 },
                             ]}>
-                            <Text style={[styles.myTileCode, { color: tint }]}>{c.code}</Text>
+                            <Text style={styles.myTileCode}>{c.code}</Text>
                             <Text style={styles.myTileTitle} numberOfLines={2}>
                               {c.title ? sentenceCase(c.title) : 'Title pending'}
                             </Text>
@@ -469,7 +462,13 @@ const makeStyles = () => StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     padding: 18,
+    paddingLeft: 20,
     justifyContent: 'space-between',
+    backgroundColor: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.13),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: withAlpha(colors.accent, 0.28),
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
   },
   featureGhost: {
     position: 'absolute',
@@ -477,17 +476,29 @@ const makeStyles = () => StyleSheet.create({
     bottom: -26,
     fontFamily: fonts.bold,
     fontSize: 110,
-    color: 'rgba(255,255,255,0.10)',
+    color: withAlpha(colors.accent, 0.1),
     fontVariant: ['tabular-nums'],
   },
-  featureTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: '#FFFFFF' },
-  featureKicker: { fontFamily: fonts.regular, fontSize: 12.5, color: 'rgba(255,255,255,0.75)' },
-  featureTitle: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 33, color: '#FFFFFF', paddingRight: 40 },
-  featureRule: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)', marginTop: 12 },
+  featureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: colors.accent },
+  featureKicker: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary },
+  featurePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.card,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  featurePillText: { fontFamily: fonts.medium, fontSize: 12, color: colors.accent },
+  featureTitle: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 33, color: colors.text, paddingRight: 40 },
+  featureRule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 12 },
   featureMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.85)' },
-  featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: '#FFFFFF' },
+  featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
   tileScroll: { paddingHorizontal: spacing.gutter, marginTop: 24 },
   tileGrid: { gap: 10 },
   tileRow: { flexDirection: 'row', gap: 10 },
@@ -498,11 +509,13 @@ const makeStyles = () => StyleSheet.create({
     width: 158,
     minHeight: 96,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
     padding: 12,
     justifyContent: 'space-between',
   },
-  myTileCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.8 },
+  myTileCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.8, color: colors.accent },
   myTileTitle: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, color: colors.text, marginTop: 5 },
   myTileMeta: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary, marginTop: 7 },
   sectionRow: {

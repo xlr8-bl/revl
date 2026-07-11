@@ -16,22 +16,14 @@ import { sentenceCase } from '../lib/format';
 import { toggleSaved, useSavedCourses } from '../lib/savedCourses';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-// One cohesive, warm-leaning jewel family (terracotta · teal · plum · gold ·
-// forest · wine · slate · violet) shared across the whole Courses page.
-// Same hue index per theme — airy on the dark ink for legible coloured text,
-// deep on the light paper — so a course keeps its identity, just shifting
-// value between themes. No bright primary blue that fights the amber accent.
-const COURSE_COLORS_DARK = ['#E8916E', '#6FC9BE', '#C79BB5', '#E0B76B', '#7FC79A', '#E08A98', '#92A6D8', '#B6A6E0'];
-const COURSE_COLORS_LIGHT = ['#A8492B', '#256E64', '#6E3A5C', '#8A6A2C', '#3B6E4E', '#9A4351', '#465C86', '#5E4E86'];
-
-export function courseColor(code: string) {
-  const arr = activeScheme() === 'light' ? COURSE_COLORS_LIGHT : COURSE_COLORS_DARK;
-  let h = 0;
-  for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return arr[h % arr.length];
+// Monochrome-orange identity: one accent does all the work across the whole
+// Courses page (no per-course jewel tints). Kept as a function so existing
+// call sites stay unchanged.
+export function courseColor(_code?: string) {
+  return colors.accent;
 }
-/** Soft tint wash of the course color for header bands / tiles. */
-export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ? 0.1 : 0.12);
+/** Soft tint wash of the accent for header bands / tiles. */
+export const wash = (hex: string) => withAlpha(hex, activeScheme() === 'light' ? 0.1 : 0.14);
 
 export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index?: number }) {
   useThemeVersion();
