@@ -101,8 +101,15 @@ export default function CoursesScreen() {
   const onCarouselScroll = useAnimatedScrollHandler((e) => {
     carouselX.value = e.contentOffset.x;
   });
-  /** Featured card tapped → show its papers in a sheet. */
-  const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
+  /** Featured card tapped → show its papers in a sheet. `sheetData` sticks
+      around after close so the sheet can play its exit animation instead of
+      unmounting mid-drag. */
+  const [sheetData, setSheetData] = useState<{ code: string; title: string } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const openPapers = (code: string, title: string) => {
+    setSheetData({ code, title });
+    setSheetOpen(true);
+  };
   const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header — seeded close to the measured
       value (inset + placement + title row) so the first layout doesn't jump. */
@@ -336,7 +343,7 @@ export default function CoursesScreen() {
               return (
                 <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
                 <Pressable
-                  onPress={() => setPapersSheet({ code: f.code, title: f.title })}
+                  onPress={() => openPapers(f.code, f.title)}
                   style={({ pressed }) => [
                     styles.featureCard,
                     { width: featuredWidth },
@@ -441,12 +448,12 @@ export default function CoursesScreen() {
         </Text>
       </Animated.ScrollView>
 
-      {papersSheet && (
+      {sheetData && (
         <CoursePapersSheet
-          code={papersSheet.code}
-          title={papersSheet.title}
-          visible={!!papersSheet}
-          onClose={() => setPapersSheet(null)}
+          code={sheetData.code}
+          title={sheetData.title}
+          visible={sheetOpen}
+          onClose={() => setSheetOpen(false)}
         />
       )}
     </View>

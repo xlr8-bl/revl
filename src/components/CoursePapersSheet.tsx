@@ -35,20 +35,19 @@ export function CoursePapersSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} onClose={onClose} minHeight={440}>
       <Text style={styles.code}>{code}</Text>
       <Text style={styles.title}>{sentenceCase(title)}</Text>
       <Text style={styles.count}>
         {list.length} paper{list.length === 1 ? '' : 's'} available
       </Text>
 
-      {/* Papers render inline so the sheet hugs the list — a course only has a
-          handful of years, so there's no dead space and nothing to scroll. If
-          a set ever runs long, the sheet caps and this scrolls within it. */}
+      {/* Fixed generous height for every course — the list only scrolls when
+          a set is long enough to overflow the sheet's cap. */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         scrollEnabled={list.length > 7}
-        style={list.length > 7 ? { maxHeight: 380 } : undefined}>
+        style={list.length > 7 ? { maxHeight: 460 } : undefined}>
         {list.map((p, i) => {
           const unlocked = unlockedPaperIds.has(p.id);
           return (

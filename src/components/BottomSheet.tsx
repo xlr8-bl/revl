@@ -34,9 +34,11 @@ type Props = {
   children: React.ReactNode;
   /** 0–1 share of screen height the sheet may grow to (it hugs content below this). */
   maxHeightPct?: number;
+  /** Fixed floor: the sheet is at least this tall (content can still grow it). */
+  minHeight?: number;
 };
 
-export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88 }: Props) {
+export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, minHeight }: Props) {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const { height: SCREEN_H } = useWindowDimensions();
@@ -98,6 +100,7 @@ export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88 }:
               style={[
                 styles.sheet,
                 { maxHeight: `${Math.round(maxHeightPct * 100)}%` as never, paddingBottom: insets.bottom + 12 },
+                minHeight != null && { minHeight },
                 sheetStyle,
               ]}>
               <View style={styles.grabber} />
