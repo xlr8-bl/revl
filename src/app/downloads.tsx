@@ -9,7 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { papers } from '../data/papers';
@@ -28,8 +28,18 @@ export default function DownloadsScreen() {
   /** Last removed paper — powers the Undo toast. */
   const [removed, setRemoved] = useState<Paper | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [query, setQuery] = useState('');
 
-  const downloaded = papers.filter((p) => states[p.id]?.status === 'done');
+  const allDownloaded = papers.filter((p) => states[p.id]?.status === 'done');
+  const q = query.trim().toLowerCase();
+  const downloaded = q
+    ? allDownloaded.filter(
+        (p) =>
+          p.courseCode.toLowerCase().includes(q) ||
+          p.title.toLowerCase().includes(q) ||
+          String(p.year).includes(q)
+      )
+    : allDownloaded;
   const totalBytes = downloaded.reduce((s, p) => s + JSON.stringify(p).length, 0);
   const totalLabel =
     totalBytes < 1024 * 1024
@@ -67,25 +77,52 @@ export default function DownloadsScreen() {
           </Text>
           <Text style={styles.title}>Downloads</Text>
           <Text style={styles.meta}>
-            {downloaded.length === 0
+            {allDownloaded.length === 0
               ? 'Papers you download live here and open without internet.'
-              : `${downloaded.length} paper${downloaded.length === 1 ? '' : 's'} · ${totalLabel} · works without internet`}
+              : `${allDownloaded.length} paper${allDownloaded.length === 1 ? '' : 's'} · ${totalLabel} · works without internet`}
           </Text>
+
+          {allDownloaded.length > 0 && (
+            <View style={styles.searchBox}>
+              <Ionicons name="search" size={16} color={colors.textTertiary} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search your downloads"
+                placeholderTextColor={colors.textTertiary}
+                style={styles.searchInput}
+                autoCapitalize="characters"
+                returnKeyType="search"
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
 
         {downloaded.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyBadge}>
-              <Ionicons name="arrow-down-circle" size={30} color={colors.accent} />
+          q ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>No downloads match “{query.trim()}”</Text>
+              <Text style={styles.emptyBody}>Try a course code, title or year.</Text>
             </View>
-            <Text style={styles.emptyTitle}>Nothing downloaded yet</Text>
-            <Text style={styles.emptyBody}>
-              Tap the arrow on any paper in Courses and it lands here — ready for the amphi, the bus, or a blackout.
-            </Text>
-            <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.emptyBtn, pressed && { opacity: 0.9 }]}>
-              <Text style={styles.emptyBtnText}>Browse courses</Text>
-            </Pressable>
-          </View>
+          ) : (
+            <View style={styles.empty}>
+              <View style={styles.emptyBadge}>
+                <Ionicons name="arrow-down-circle" size={30} color={colors.accent} />
+              </View>
+              <Text style={styles.emptyTitle}>Nothing downloaded yet</Text>
+              <Text style={styles.emptyBody}>
+                Tap the arrow on any paper in Courses and it lands here — ready for the amphi, the bus, or a blackout.
+              </Text>
+              <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.emptyBtn, pressed && { opacity: 0.9 }]}>
+                <Text style={styles.emptyBtnText}>Browse courses</Text>
+              </Pressable>
+            </View>
+          )
         ) : (
           [...byCourse.entries()].map(([code, list], gi) => {
             const courseBytes = list.reduce((s, p) => s + JSON.stringify(p).length, 0);
@@ -166,6 +203,18 @@ const makeStyles = () =>
     kicker: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 16 },
     title: { fontFamily: fonts.bold, fontSize: 38, color: colors.text, marginTop: 2 },
     meta: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: colors.textSecondary, marginTop: 6 },
+    searchBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 9,
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.borderStrong,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      marginTop: 14,
+    },
+    searchInput: { flex: 1, paddingVertical: 11, fontFamily: fonts.regular, fontSize: 14.5, color: colors.text },
     empty: { alignItems: 'center', gap: 10, marginTop: 64, paddingHorizontal: 34 },
     emptyBadge: {
       width: 60,

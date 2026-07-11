@@ -62,14 +62,15 @@ function deriveCourses(): Record<string, DownloadState> {
   const out: Record<string, DownloadState> = {};
   for (const [code, list] of Object.entries(byCourse)) {
     const progress = list.reduce((s, d) => s + d.progress, 0) / list.length;
+    // Partial-but-not-in-flight is IDLE (tappable to complete the rest) —
+    // 'downloading' is reserved for actual in-flight work, otherwise a
+    // half-downloaded course would show a frozen ring and block taps.
     const status = list.every((d) => d.status === 'done')
       ? 'done'
       : list.some((d) => d.status === 'downloading')
         ? 'downloading'
-        : list.some((d) => d.status === 'done')
-          ? 'downloading' // partially downloaded reads as in-between, not done
-          : 'idle';
-    out[code] = { status: status === 'downloading' && progress === 0 ? 'downloading' : status, progress };
+        : 'idle';
+    out[code] = { status, progress };
   }
   courseCache = out;
   return out;

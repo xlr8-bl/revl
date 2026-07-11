@@ -25,6 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard } from '../../components/CourseCard';
+import { CourseCardMenu } from '../../components/CourseCardMenu';
 import { CoursePapersSheet } from '../../components/CoursePapersSheet';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
@@ -111,6 +112,8 @@ export default function CoursesScreen() {
     setSheetData({ code, title });
     setSheetOpen(true);
   };
+  /** Press-and-hold on a featured card → blur + action menu (WhatsApp-style). */
+  const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
   const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header — seeded close to the measured
       value (inset + placement + title row) so the first layout doesn't jump. */
@@ -369,6 +372,14 @@ export default function CoursesScreen() {
                 <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
                 <Pressable
                   onPress={() => openPapers(f.code, f.title)}
+                  onLongPress={() =>
+                    setCardMenu({
+                      code: f.code,
+                      title: f.title,
+                      meta: `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`,
+                    })
+                  }
+                  delayLongPress={280}
                   style={({ pressed }) => [
                     styles.featureCard,
                     { width: featuredWidth },
@@ -441,14 +452,10 @@ export default function CoursesScreen() {
           key={section.title}
           style={{ marginTop: 30 }}
           onLayout={si === 0 ? (e) => (sectionY.value = e.nativeEvent.layout.y) : undefined}>
+          {/* Sections list every course already — a "See All" would have
+              nothing more to show, so the row is just the title. */}
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
-            {section.data.length > 4 && (
-              <Pressable hitSlop={8} style={styles.seeAll}>
-                <Text style={styles.seeAllText}>See All</Text>
-                <Text style={styles.seeAllChevron}>›</Text>
-              </Pressable>
-            )}
           </View>
           <View style={{ paddingHorizontal: spacing.gutter }}>
             {section.data.length === 0 ? (
@@ -479,6 +486,16 @@ export default function CoursesScreen() {
           title={sheetData.title}
           visible={sheetOpen}
           onClose={() => setSheetOpen(false)}
+        />
+      )}
+
+      {cardMenu && (
+        <CourseCardMenu
+          code={cardMenu.code}
+          title={cardMenu.title}
+          meta={cardMenu.meta}
+          onClose={() => setCardMenu(null)}
+          onViewPapers={() => openPapers(cardMenu.code, cardMenu.title)}
         />
       )}
     </View>
@@ -574,9 +591,6 @@ const makeStyles = () => StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 21, color: colors.text, paddingRight: 10 },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  seeAllText: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
-  seeAllChevron: { fontFamily: fonts.regular, fontSize: 17, color: colors.textSecondary },
   empty: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textTertiary, paddingVertical: 8 },
   footnote: {
     fontFamily: fonts.regular,
