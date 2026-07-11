@@ -49,8 +49,6 @@ export default function CoursesScreen() {
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /** One of my courses, focused from the quick tiles — narrows the list below. */
-  const [focusedCode, setFocusedCode] = useState<string | null>(null);
   /** Featured card tapped → show its papers in a sheet. */
   const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
   const accessCounts = useAccessCounts();
@@ -162,12 +160,7 @@ export default function CoursesScreen() {
   const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
     ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
     : filter === 'My courses'
-      ? [
-          {
-            title: focusedCode ?? deptTitle,
-            data: refine(enrolled).filter((c) => !focusedCode || c.code === focusedCode),
-          },
-        ]
+      ? [{ title: deptTitle, data: refine(enrolled) }]
       : filter === 'All courses'
         ? [{ title: deptTitle, data: refine(departmentCourses) }]
         : filter === 'Saved'
@@ -260,10 +253,7 @@ export default function CoursesScreen() {
           <FilterChips
             options={FILTERS}
             selected={filter}
-            onSelect={(v) => {
-              setFilter(v);
-              setFocusedCode(null);
-            }}
+            onSelect={setFilter}
           />
 
           {/* Featured carousel — paper sets that are live today */}
@@ -321,42 +311,6 @@ export default function CoursesScreen() {
               );
             })}
           </ScrollView>
-
-          {/* Quick tiles: your own courses at a glance (tap to focus one). */}
-          {filter === 'My courses' && enrolled.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
-              <View style={styles.tileGrid}>
-                {[0, 1].map((row) => (
-                  <View key={row} style={styles.tileRow}>
-                    {enrolled
-                      .filter((_, i) => i % 2 === row)
-                      .map((c) => {
-                        const active = focusedCode === c.code;
-                        const count = papers.filter((p) => p.courseCode === c.code).length;
-                        return (
-                          <Pressable
-                            key={c.code}
-                            onPress={() => setFocusedCode(active ? null : c.code)}
-                            style={({ pressed }) => [
-                              styles.myTile,
-                              active && { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-                              pressed && { opacity: 0.85 },
-                            ]}>
-                            <Text style={styles.myTileCode}>{c.code}</Text>
-                            <Text style={styles.myTileTitle} numberOfLines={2}>
-                              {c.title ? sentenceCase(c.title) : 'Title pending'}
-                            </Text>
-                            <Text style={[styles.myTileMeta, count > 0 && { color: colors.textSecondary }]}>
-                              {count > 0 ? `${count} paper${count > 1 ? 's' : ''}` : 'No papers yet'}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          )}
 
           <View style={{ marginTop: 22 }}>
             <FilterChips
@@ -499,25 +453,6 @@ const makeStyles = () => StyleSheet.create({
   featureMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
   featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
-  tileScroll: { paddingHorizontal: spacing.gutter, marginTop: 24 },
-  tileGrid: { gap: 10 },
-  tileRow: { flexDirection: 'row', gap: 10 },
-  tile: { width: 168, height: 74, borderRadius: 13, justifyContent: 'flex-end', padding: 13 },
-  tileActive: { borderWidth: 2, borderColor: '#FFFFFF' },
-  tileText: { fontFamily: fonts.bold, fontSize: 14.5, letterSpacing: 0.4, color: '#FFFFFF' },
-  myTile: {
-    width: 158,
-    minHeight: 96,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    padding: 12,
-    justifyContent: 'space-between',
-  },
-  myTileCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.8, color: colors.accent },
-  myTileTitle: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, color: colors.text, marginTop: 5 },
-  myTileMeta: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary, marginTop: 7 },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
