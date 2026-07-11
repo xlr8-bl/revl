@@ -24,7 +24,7 @@ import { CourseCard, courseColor, wash } from '../../components/CourseCard';
 import { CoursePapersSheet } from '../../components/CoursePapersSheet';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
-import { courseByCode, coursesFor, departmentsFor, facultiesFor, searchCatalog } from '../../data/catalog';
+import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { useAccessCounts } from '../../lib/courseAccess';
@@ -36,7 +36,7 @@ import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleShe
 
 // Primary scope (which set of courses) and secondary refinement — every one
 // backed by real data, no dead chips.
-const FILTERS = ['My courses', 'Browse', 'Saved', 'Studied'];
+const FILTERS = ['My courses', 'All courses', 'Saved', 'Studied'];
 const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
 
 /** Bright tile palette (the look from the original Courses page). */
@@ -58,7 +58,6 @@ export default function CoursesScreen() {
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [tileFacultyId, setTileFacultyId] = useState<string | null>(null);
   /** One of my courses, focused from the quick tiles — narrows the list below. */
   const [focusedCode, setFocusedCode] = useState<string | null>(null);
   /** Featured card tapped → show its papers in a sheet. */
@@ -136,8 +135,6 @@ export default function CoursesScreen() {
 
   if (!profile) return null;
 
-  const faculties = facultiesFor(profile.school);
-  const enrolledSet = new Set(profile.enrolledCourseCodes);
   const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
   const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
 
@@ -169,25 +166,18 @@ export default function CoursesScreen() {
     return list;
   };
 
-  const tileFaculty = tileFacultyId ? faculties.find((f) => f.id === tileFacultyId) : null;
-  const tileCourses = tileFaculty
-    ? departmentsFor(tileFaculty.id).flatMap((d) => coursesFor(profile.school, d.id, profile.level)).slice(0, 8)
-    : [];
-
+  const deptTitle = `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim();
   const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
     ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
     : filter === 'My courses'
       ? [
           {
-            title: focusedCode ?? `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(),
+            title: focusedCode ?? deptTitle,
             data: refine(enrolled).filter((c) => !focusedCode || c.code === focusedCode),
           },
         ]
-      : filter === 'Browse'
-        ? [
-            { title: `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim(), data: refine(departmentCourses) },
-            ...(tileFaculty ? [{ title: tileFaculty.name, data: refine(tileCourses) }] : []),
-          ]
+      : filter === 'All courses'
+        ? [{ title: deptTitle, data: refine(departmentCourses) }]
         : filter === 'Saved'
           ? [{ title: 'Saved courses', data: refine(savedCourses) }]
           : filter === 'Studied'
@@ -210,8 +200,10 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Same clean scroll-blend as the Tonight page. */}
-      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 80} />
+      {/* Solid header + a short soft edge: the saturated featured cards slide
+          under cleanly instead of muddy-fading through a long gradient (which
+          is why the long Tonight-style blend read badly over colour here). */}
+      <TopFade scrollY={scrollY} height={baseH + (searchOpen ? SEARCH_H : 0) + 40} />
 
       {/* Pinned header */}
       <View style={styles.header}>
@@ -327,9 +319,8 @@ export default function CoursesScreen() {
             })}
           </ScrollView>
 
-          {/* Quick tiles: my courses at a glance (tap to focus one) — or
-              faculty tiles when browsing the wider catalogue. */}
-          {filter === 'My courses' && enrolled.length > 0 ? (
+          {/* Quick tiles: your own courses at a glance (tap to focus one). */}
+          {filter === 'My courses' && enrolled.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
               <View style={styles.tileGrid}>
                 {[0, 1].map((row) => (
@@ -366,37 +357,7 @@ export default function CoursesScreen() {
                 ))}
               </View>
             </ScrollView>
-          ) : filter === 'Browse' ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileScroll}>
-              <View style={styles.tileGrid}>
-                {[0, 1].map((row) => (
-                  <View key={row} style={styles.tileRow}>
-                    {faculties
-                      .filter((_, i) => i % 2 === row)
-                      .map((f) => {
-                        const idx = faculties.indexOf(f);
-                        const active = tileFacultyId === f.id;
-                        return (
-                          <Pressable
-                            key={f.id}
-                            onPress={() => setTileFacultyId(active ? null : f.id)}
-                            style={({ pressed }) => [
-                              styles.tile,
-                              { backgroundColor: TILE[idx % TILE.length] },
-                              active && styles.tileActive,
-                              pressed && { opacity: 0.85 },
-                            ]}>
-                            <Text style={styles.tileText} numberOfLines={2}>
-                              {f.name}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          ) : null}
+          )}
 
           <View style={{ marginTop: 22 }}>
             <FilterChips
@@ -461,7 +422,7 @@ export default function CoursesScreen() {
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
+  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4, backgroundColor: colors.bg },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   searchBtn: {
     width: 44,
@@ -477,7 +438,7 @@ const makeStyles = () => StyleSheet.create({
   placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
   stickyTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.textSecondary, marginTop: 6, height: 20 },
-  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
+  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start', backgroundColor: colors.bg },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
