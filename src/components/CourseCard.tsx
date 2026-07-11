@@ -74,8 +74,7 @@ export function CourseCard({ course, index = 0 }: { course: CatalogCourse; index
                   style={({ pressed }) => [styles.paperRow, i > 0 && styles.paperRowDivider, pressed && { opacity: 0.7 }]}>
                   <Text style={styles.paperYear}>{p.year}</Text>
                   <Text style={styles.paperMeta} numberOfLines={1}>
-                    {p.session}
-                    {p.questions.length > 0 ? ` · ${p.questions.length} questions` : ''}
+                    {p.questions.length > 0 ? `${p.questions.length} questions · ${p.session}` : p.session}
                   </Text>
                   <PaperDownloadBadge paper={p} />
                   <Text style={[styles.paperAction, !unlocked && { color: colors.textSecondary }]}>
@@ -123,6 +122,8 @@ const makeStyles = () => StyleSheet.create({
   paperRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   paperYear: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.text, fontVariant: ['tabular-nums'] },
   paperMeta: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-  paperAction: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
+  // Fixed width keeps the download column aligned whether the row says
+  // "Open ›" or "Unlock ›".
+  paperAction: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent, width: 60, textAlign: 'right' },
 });
 const styles = themedStyleSheet(makeStyles);

@@ -57,9 +57,12 @@ export function CoursePapersSheet({
               onPress={() => open(p.id, unlocked)}
               style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { opacity: 0.6 }]}>
               <Text style={styles.year}>{p.year}</Text>
+              {/* Count first — the session name is what truncates, never the
+                  number of questions. */}
               <Text style={styles.meta} numberOfLines={1}>
-                {p.session}
-                {p.questions.length > 0 ? ` · ${p.questions.length} question${p.questions.length === 1 ? '' : 's'}` : ''}
+                {p.questions.length > 0
+                  ? `${p.questions.length} question${p.questions.length === 1 ? '' : 's'} · ${p.session}`
+                  : p.session}
               </Text>
               <PaperDownloadBadge paper={p} />
               <Text style={[styles.action, !unlocked && { color: colors.textSecondary }]}>
@@ -82,6 +85,6 @@ const makeStyles = () =>
     rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
     year: { fontFamily: fonts.bold, fontSize: 15, color: colors.text, fontVariant: ['tabular-nums'] },
     meta: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-    action: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
+    action: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent, width: 60, textAlign: 'right' },
   });
 const styles = themedStyleSheet(makeStyles);

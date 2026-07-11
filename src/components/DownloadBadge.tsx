@@ -48,10 +48,13 @@ function Ring({ progress, size }: { progress: number; size: number }) {
 }
 
 function DownloadGlyph({ dl, size }: { dl: DownloadState; size: number }) {
-  if (dl.status === 'done') return <Ionicons name="checkmark-circle" size={size} color={colors.accent} />;
+  // One fixed box for every state so the icon column never shifts as a
+  // paper moves idle → downloading → done.
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {dl.status === 'downloading' ? (
+      {dl.status === 'done' ? (
+        <Ionicons name="checkmark-circle" size={size} color={colors.accent} />
+      ) : dl.status === 'downloading' ? (
         <>
           <Ring progress={dl.progress} size={size} />
           <Ionicons name="arrow-down" size={size * 0.5} color={colors.accent} />
@@ -100,6 +103,15 @@ export function CourseDownloadButton({ code }: { code: string }) {
 
 const makeStyles = () => StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  size: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
+  // Fixed-width, right-aligned size label so the download icons form a
+  // perfectly straight column across rows ("7 KB" vs "142 KB").
+  size: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    color: colors.textTertiary,
+    fontVariant: ['tabular-nums'],
+    width: 44,
+    textAlign: 'right',
+  },
 });
 const styles = themedStyleSheet(makeStyles);
