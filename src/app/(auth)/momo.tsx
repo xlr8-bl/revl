@@ -26,6 +26,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { suppressOfflineBanner } from '../../lib/connectivity';
 import { signIn } from '../../lib/session';
 import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
@@ -48,6 +49,15 @@ export default function MomoSignInScreen() {
     const t = setTimeout(() => signIn(provider, phone), 3500);
     return () => clearTimeout(t);
   }, [step, provider, phone]);
+
+  // Receiving a USSD prompt cuts mobile data for a few seconds — hold the
+  // "You're offline" banner down for the whole approval step so the drop
+  // never reads as a problem.
+  useEffect(() => {
+    if (step !== 'prompt') return;
+    suppressOfflineBanner(true);
+    return () => suppressOfflineBanner(false);
+  }, [step]);
 
   const providerName = provider === 'momo' ? 'MTN MoMo' : 'Orange Money';
   const valid = phone.trim().length >= 9;
@@ -113,6 +123,18 @@ export default function MomoSignInScreen() {
               PIN.
             </Text>
           </View>
+
+          {/* Verification-cost disclaimer — full transparency, per provider:
+              MTN exposes a free active-wallet check; Orange has no identity
+              API, so a 1 FCFA charge is the proof the wallet is live. */}
+          <View style={styles.feeCard}>
+            <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} style={{ marginTop: 1 }} />
+            <Text style={styles.feeText}>
+              {provider === 'momo'
+                ? 'No charge — MTN confirms your wallet is active for free.'
+                : 'Orange deducts 1 FCFA once to confirm your wallet is active. Nothing else is charged.'}
+            </Text>
+          </View>
         </>
       ) : (
         <View style={styles.promptWrap}>
@@ -126,6 +148,11 @@ export default function MomoSignInScreen() {
           <Text style={styles.promptMeta}>
             Enter your Mobile Money PIN on that prompt to confirm it is you. This screen continues by itself once you
             approve.
+          </Text>
+          <Text style={styles.promptFee}>
+            {provider === 'momo'
+              ? 'No money is deducted — this only confirms your wallet.'
+              : 'Only 1 FCFA is deducted to confirm your wallet is active.'}
           </Text>
           <Pressable onPress={() => setStep('number')} hitSlop={8}>
             <Text style={styles.changeNumber}>Wrong number? Go back</Text>
@@ -257,6 +284,19 @@ const makeStyles = () =>
     primaryText: { fontFamily: fonts.bold, fontSize: 16, color: colors.onAccent },
     trustRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, marginTop: 16, paddingHorizontal: 4 },
     hint: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.textTertiary },
+    feeCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 12,
+    },
+    feeText: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.textSecondary },
+    promptFee: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.textSecondary, textAlign: 'center', marginTop: 2 },
     promptWrap: { alignItems: 'center', gap: 14, marginTop: 64, paddingHorizontal: 10 },
     promptLogo: { marginBottom: 6 },
     promptTitle: { fontFamily: fonts.bold, fontSize: 22, color: colors.text },

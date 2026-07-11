@@ -6,10 +6,11 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getPaper, unlockedPaperIds } from '../../data/papers';
+import { suppressOfflineBanner } from '../../lib/connectivity';
 import { currentUser } from '../../data/user';
 import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
@@ -29,6 +30,14 @@ export default function UnlockScreen() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [phone, setPhone] = useState('');
   const [stage, setStage] = useState<Stage>('choose');
+
+  // The payment USSD prompt cuts mobile data briefly — hold the offline
+  // banner down while the approval is pending.
+  useEffect(() => {
+    if (stage !== 'confirming') return;
+    suppressOfflineBanner(true);
+    return () => suppressOfflineBanner(false);
+  }, [stage]);
 
   if (!paper) return null;
 

@@ -9,13 +9,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useOnline } from '../lib/connectivity';
+import { useBannerSuppressed, useOnline } from '../lib/connectivity';
 import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function ConnectivityBanner() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const online = useOnline();
+  // USSD approval prompts cut data for a few seconds — screens waiting on
+  // one suppress the banner so we never flash a false "You're offline".
+  const suppressed = useBannerSuppressed();
   const prev = useRef<boolean | null>(null);
   const [showBack, setShowBack] = useState(false);
 
@@ -31,7 +34,7 @@ export function ConnectivityBanner() {
   }, [online]);
 
   const offline = online === false;
-  if (!offline && !showBack) return null;
+  if (suppressed || (!offline && !showBack)) return null;
 
   return (
     <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>

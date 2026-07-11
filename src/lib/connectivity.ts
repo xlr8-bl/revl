@@ -62,6 +62,24 @@ AppState.addEventListener('change', (state) => {
 });
 start();
 
+/**
+ * Banner suppression — USSD prompts (MoMo sign-in / payment approval) cut
+ * mobile data for a few seconds, which would flash a false "You're
+ * offline". Screens that trigger USSD hold the banner down while waiting.
+ */
+let suppressCount = 0;
+export function suppressOfflineBanner(on: boolean) {
+  suppressCount = Math.max(0, suppressCount + (on ? 1 : -1));
+  emit();
+}
+export function useBannerSuppressed(): boolean {
+  return useSyncExternalStore(
+    (l) => (listeners.add(l), () => listeners.delete(l)),
+    () => suppressCount > 0,
+    () => suppressCount > 0
+  );
+}
+
 /** Current connectivity — null until the first check completes. */
 export function useOnline(): boolean | null {
   return useSyncExternalStore(

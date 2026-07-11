@@ -1,28 +1,29 @@
 /**
- * Download affordances — the familiar arrow-into-circle download icon, a
- * real progress ring while units complete, and a filled check once the
- * content is on the phone.
+ * Download affordances — one quiet icon per row (Netflix-style): arrow to
+ * download, real progress ring while units complete, filled accent arrow
+ * once on the phone. Sizes appear at decision time (the remove dialog and
+ * the Downloads page), never inline in rows.
  *
- * - <PaperDownloadBadge paper /> : per-paper row control with the file size
- *   printed next to the icon ("48 KB ⬇").
- * - <CourseDownloadButton code /> : course-band control that downloads every
- *   paper of the course.
+ * - <PaperDownloadBadge paper /> : per-paper row control.
+ * - <CourseDownloadButton code /> : course-band collection toggle.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import {
   downloadCourse,
   downloadPaper,
   paperSize,
+  removeDownload,
+  removePaperDownload,
   useDownloads,
   usePaperDownloads,
   type DownloadState,
 } from '../lib/courseDownloads';
 import type { Paper } from '../types';
-import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
+import { colors, useThemeVersion } from '../theme';
 
 function Ring({ progress, size }: { progress: number; size: number }) {
   const r = size / 2 - 2;
@@ -67,59 +68,63 @@ function DownloadGlyph({ dl, size }: { dl: DownloadState; size: number }) {
 }
 
 /**
- * Per-paper: the label says exactly where the paper stands — its size when
- * not downloaded, live percent while fetching, "Downloaded" once stored.
- * Taps are never destructive: idle downloads; done opens the Downloads
- * page, where removal lives (with Undo).
+ * Per-paper: a single quiet icon, Netflix-style — arrow to download, ring
+ * while fetching, filled accent arrow once on the phone. No inline size or
+ * label (Google's guidance: size appears at DECISION time, in the remove
+ * dialog and on the Downloads page). Done-tap opens actions, never deletes
+ * directly.
  */
 export function PaperDownloadBadge({ paper }: { paper: Paper }) {
   useThemeVersion();
   const router = useRouter();
   const states = usePaperDownloads();
   const dl = states[paper.id] ?? { status: 'idle' as const, progress: 0 };
-  const label =
-    dl.status === 'done' ? 'Downloaded' : dl.status === 'downloading' ? `${Math.round(dl.progress * 100)}%` : paperSize(paper);
+
+  const onDone = () => {
+    if (Platform.OS === 'web') {
+      router.push('/downloads' as never);
+      return;
+    }
+    Alert.alert(`${paper.courseCode} ${paper.year}`, `Downloaded · ${paperSize(paper)} on this phone`, [
+      { text: 'Remove download', style: 'destructive', onPress: () => removePaperDownload(paper.id) },
+      { text: 'View downloads', onPress: () => router.push('/downloads' as never) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <Pressable
-      hitSlop={8}
-      onPress={() =>
-        dl.status === 'done' ? router.push('/downloads' as never) : dl.status === 'idle' && downloadPaper(paper.id)
-      }
-      style={styles.badge}>
-      <Text style={[styles.size, dl.status === 'done' && { color: colors.accent }]}>{label}</Text>
+      hitSlop={10}
+      onPress={() => (dl.status === 'done' ? onDone() : dl.status === 'idle' && downloadPaper(paper.id))}>
       <DownloadGlyph dl={dl} size={20} />
     </Pressable>
   );
 }
 
-/** Course band: downloads every paper of the course; done opens Downloads. */
+/** Course band: the collection toggle — downloads every paper of the course. */
 export function CourseDownloadButton({ code }: { code: string }) {
   useThemeVersion();
   const router = useRouter();
   const courses = useDownloads();
   const dl = courses[code] ?? { status: 'idle' as const, progress: 0 };
+
+  const onDone = () => {
+    if (Platform.OS === 'web') {
+      router.push('/downloads' as never);
+      return;
+    }
+    Alert.alert(code, 'All papers downloaded to this phone', [
+      { text: 'Remove downloads', style: 'destructive', onPress: () => removeDownload(code) },
+      { text: 'View downloads', onPress: () => router.push('/downloads' as never) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   return (
     <Pressable
-      onPress={() =>
-        dl.status === 'done' ? router.push('/downloads' as never) : dl.status === 'idle' && downloadCourse(code)
-      }
+      onPress={() => (dl.status === 'done' ? onDone() : dl.status === 'idle' && downloadCourse(code))}
       hitSlop={10}>
       <DownloadGlyph dl={dl} size={dl.status === 'done' ? 22 : 24} />
     </Pressable>
   );
 }
-
-const makeStyles = () => StyleSheet.create({
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  // Fixed-width, right-aligned label so the download icons form a perfectly
-  // straight column across rows ("7 KB" / "63%" / "Downloaded").
-  size: {
-    fontFamily: fonts.regular,
-    fontSize: 11.5,
-    color: colors.textTertiary,
-    fontVariant: ['tabular-nums'],
-    width: 68,
-    textAlign: 'right',
-  },
-});
-const styles = themedStyleSheet(makeStyles);
