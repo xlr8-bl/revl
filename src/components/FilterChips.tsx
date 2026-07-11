@@ -42,14 +42,17 @@ export function FilterChips({ options, selected, onSelect, variant = 'filled' }:
 }
 
 const makeStyles = () => StyleSheet.create({
-  row: { paddingHorizontal: spacing.gutter, gap: 8 },
+  // Fixed heights: the row must never re-measure taller when a chip is
+  // pressed or the list re-renders (that reads as the header "growing").
+  row: { paddingHorizontal: spacing.gutter, gap: 8, height: 40, alignItems: 'center' },
   chip: {
     backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     borderRadius: 999,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    height: 40,
+    justifyContent: 'center',
   },
   chipOutline: {
     backgroundColor: 'transparent',
@@ -57,7 +60,7 @@ const makeStyles = () => StyleSheet.create({
     borderColor: colors.borderStrong,
   },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  text: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.text },
+  text: { fontFamily: fonts.medium, fontSize: 14.5, lineHeight: 18, color: colors.text },
   textActive: { color: colors.onAccent },
 });
 const styles = themedStyleSheet(makeStyles);

@@ -126,7 +126,7 @@ export default function ClassScreen() {
           setSolveRef(null);
           setComposerOpen(true);
         }}
-        style={({ pressed }) => [styles.fab, { bottom: TAB_BAR_CLEARANCE + Math.max(insets.bottom, 6) }, pressed && { opacity: 0.9 }]}>
+        style={({ pressed }) => [styles.fab, { bottom: Math.max(insets.bottom, 10) + 80 }, pressed && { opacity: 0.9 }]}>
         <Text style={styles.fabText}>+ Post</Text>
       </Pressable>
 

@@ -270,5 +270,10 @@ export const radius = {
   tile: 14,
 } as const;
 
-/** Height reserved so scroll content clears the bottom dock. */
-export const TAB_BAR_CLEARANCE = 96;
+/**
+ * Height reserved so scroll content clears the floating dock. The dock's
+ * real footprint is up to ~98px (34px home-indicator inset + ~64px bar), so
+ * anything under 100 leaves the last row cut off behind the glass; 130 gives
+ * the final card clear air below it.
+ */
+export const TAB_BAR_CLEARANCE = 130;

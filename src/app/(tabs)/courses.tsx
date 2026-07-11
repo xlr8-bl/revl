@@ -14,6 +14,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
+  FadeInDown,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -29,15 +30,26 @@ import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { useAccessCounts } from '../../lib/courseAccess';
 import { sentenceCase } from '../../lib/format';
-import { useSavedCourses } from '../../lib/savedCourses';
+import { useDownloads } from '../../lib/courseDownloads';
 import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
 import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
 // Primary scope (which set of courses) and secondary refinement — every one
-// backed by real data, no dead chips.
-const FILTERS = ['My courses', 'All courses', 'Saved', 'Studied'];
+// backed by real data, no dead chips. When the student's enrolled set covers
+// the whole department list (most students), My/All collapse into one chip.
+const FILTERS = ['My courses', 'All courses', 'Downloaded', 'Studied'];
 const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
+
+// Resolve a course code to a catalogue entry, falling back to paper metadata
+// for codes that only exist as papers (e.g. the extracted CEC420 set).
+const resolveCourse = (code: string): CatalogCourse | undefined => {
+  const cat = courseByCode(code);
+  if (cat) return cat;
+  const p = papers.find((pp) => pp.courseCode === code);
+  if (p) return { code, title: p.title, level: p.level, departmentId: '', verified: true, source: 'paper' };
+  return undefined;
+};
 
 export default function CoursesScreen() {
   useThemeVersion();
@@ -49,11 +61,14 @@ export default function CoursesScreen() {
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  /** Which featured card is snapped in view — drives the dots. */
+  const [featIdx, setFeatIdx] = useState(0);
   /** Featured card tapped → show its papers in a sheet. */
   const [papersSheet, setPapersSheet] = useState<{ code: string; title: string } | null>(null);
   const accessCounts = useAccessCounts();
-  /** Height of the fixed part of the header (placement + title + sticky line). */
-  const [baseH, setBaseH] = useState(118);
+  /** Height of the fixed part of the header — seeded close to the measured
+      value (inset + placement + title row) so the first layout doesn't jump. */
+  const [baseH, setBaseH] = useState(insets.top + 82);
   const { scrollY, onScroll } = useScrollFade();
   const listRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -92,7 +107,7 @@ export default function CoursesScreen() {
   const enrolled = useMemo(
     () =>
       (profile?.enrolledCourseCodes ?? [])
-        .map((code) => courseByCode(code))
+        .map(resolveCourse)
         .filter((c): c is CatalogCourse => !!c),
     [profile]
   );
@@ -101,20 +116,15 @@ export default function CoursesScreen() {
     [profile]
   );
 
-  const savedCodes = useSavedCourses();
+  const downloads = useDownloads();
   const logs = useRevealLogs();
-  // Resolve a course code to a catalogue entry, falling back to paper metadata
-  // for codes that only exist as papers (e.g. the extracted CEC420 set).
-  const resolveCourse = (code: string): CatalogCourse | undefined => {
-    const cat = courseByCode(code);
-    if (cat) return cat;
-    const p = papers.find((pp) => pp.courseCode === code);
-    if (p) return { code, title: p.title, level: p.level, departmentId: '', verified: true, source: 'paper' };
-    return undefined;
-  };
-  const savedCourses = useMemo(
-    () => savedCodes.map(resolveCourse).filter((c): c is CatalogCourse => !!c),
-    [savedCodes]
+  const downloadedCourses = useMemo(
+    () =>
+      Object.keys(downloads)
+        .filter((code) => downloads[code].status === 'done')
+        .map(resolveCourse)
+        .filter((c): c is CatalogCourse => !!c),
+    [downloads]
   );
   const studiedCourses = useMemo(() => {
     const codes = [...new Set(logs.map((l) => l.courseCode))];
@@ -122,6 +132,18 @@ export default function CoursesScreen() {
   }, [logs]);
 
   if (!profile) return null;
+
+  // If everything you're enrolled in IS the department list (true for HND and
+  // most UB levels), "My courses" and "All courses" would show the same list —
+  // collapse them into a single chip instead of offering a dead distinction.
+  const myIsAll =
+    enrolled.length === 0 ||
+    (enrolled.length === departmentCourses.length &&
+      enrolled.every((c) => departmentCourses.some((d) => d.code === c.code)));
+  const filterOptions = myIsAll ? ['All courses', 'Downloaded', 'Studied'] : FILTERS;
+  // The selected scope, mapped onto the visible chips (state defaults to
+  // 'My courses', which doesn't exist when the sets are merged).
+  const scope = myIsAll && filter === 'My courses' ? 'All courses' : filter;
 
   const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
   const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
@@ -159,15 +181,15 @@ export default function CoursesScreen() {
   const deptTitle = `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim();
   const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
     ? [{ title: `Results for "${query.trim()}"`, data: searchResults }]
-    : filter === 'My courses'
+    : scope === 'My courses'
       ? [{ title: deptTitle, data: refine(enrolled) }]
-      : filter === 'All courses'
+      : scope === 'All courses'
         ? [{ title: deptTitle, data: refine(departmentCourses) }]
-        : filter === 'Saved'
-          ? [{ title: 'Saved courses', data: refine(savedCourses) }]
-          : filter === 'Studied'
+        : scope === 'Downloaded'
+          ? [{ title: 'Downloaded courses', data: refine(downloadedCourses) }]
+          : scope === 'Studied'
             ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
-            : [{ title: filter, data: [] }];
+            : [{ title: scope, data: [] }];
 
   const stickyTitle = sections[0]?.title ?? '';
   const toggleSearch = () => {
@@ -250,11 +272,7 @@ export default function CoursesScreen() {
       <Animated.View style={spacerStyle} />
       {!query.trim() && (
         <>
-          <FilterChips
-            options={FILTERS}
-            selected={filter}
-            onSelect={setFilter}
-          />
+          <FilterChips options={filterOptions} selected={scope} onSelect={setFilter} />
 
           {/* Featured carousel — paper sets that are live today */}
           <ScrollView
@@ -262,6 +280,12 @@ export default function CoursesScreen() {
             showsHorizontalScrollIndicator={false}
             snapToInterval={featuredWidth + 12}
             decelerationRate="fast"
+            onScroll={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / (featuredWidth + 12));
+              const clamped = Math.max(0, Math.min(featured.length - 1, i));
+              if (clamped !== featIdx) setFeatIdx(clamped);
+            }}
+            scrollEventThrottle={32}
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
               const years = [...new Set(f.years)].sort((a, b) => a - b);
@@ -272,8 +296,8 @@ export default function CoursesScreen() {
               const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
               return (
+                <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
                 <Pressable
-                  key={f.code}
                   onPress={() => setPapersSheet({ code: f.code, title: f.title })}
                   style={({ pressed }) => [
                     styles.featureCard,
@@ -308,11 +332,21 @@ export default function CoursesScreen() {
                     </View>
                   </View>
                 </Pressable>
+                </Animated.View>
               );
             })}
           </ScrollView>
 
-          <View style={{ marginTop: 22 }}>
+          {/* Position dots — one per featured card, the snapped one stretched. */}
+          {featured.length > 1 && (
+            <View style={styles.dotsRow}>
+              {featured.map((f, i) => (
+                <View key={f.code} style={[styles.dot, i === featIdx && styles.dotActive]} />
+              ))}
+            </View>
+          )}
+
+          <View style={{ marginTop: 18 }}>
             <FilterChips
               options={SUB_CHIPS}
               selected={subFilter}
@@ -340,9 +374,9 @@ export default function CoursesScreen() {
           <View style={{ paddingHorizontal: spacing.gutter }}>
             {section.data.length === 0 ? (
               <Text style={styles.empty}>
-                {filter === 'Saved'
-                  ? 'No saved courses yet. Tap the bookmark on any course to save it here.'
-                  : filter === 'Studied'
+                {scope === 'Downloaded'
+                  ? 'Nothing downloaded yet. Tap the download button on any course to keep it on your phone.'
+                  : scope === 'Studied'
                     ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
                     : subFilter
                       ? `No courses match “${subFilter}”.`
@@ -411,6 +445,9 @@ const makeStyles = () => StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
   carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 22 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.borderStrong },
+  dotActive: { width: 18, backgroundColor: colors.accent },
   featureCard: {
     height: 190,
     borderRadius: 16,
