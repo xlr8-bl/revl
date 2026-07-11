@@ -109,8 +109,11 @@ export default function CoursesScreen() {
       unmounting mid-drag. */
   const [sheetData, setSheetData] = useState<{ code: string; title: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  /** True when the sheet reappears from a suspend — skip the slide-up. */
+  const [sheetRestoring, setSheetRestoring] = useState(false);
   const openPapers = (code: string, title: string) => {
     setSheetData({ code, title });
+    setSheetRestoring(false);
     setSheetOpen(true);
   };
   /** Opening a paper from the sheet SUSPENDS it — coming back to this
@@ -120,6 +123,7 @@ export default function CoursesScreen() {
     useCallback(() => {
       if (suspendedPapers) {
         setSheetData(suspendedPapers);
+        setSheetRestoring(true);
         setSheetOpen(true);
         suspendedPapers = null;
       }
@@ -468,6 +472,7 @@ export default function CoursesScreen() {
           code={sheetData.code}
           title={sheetData.title}
           visible={sheetOpen}
+          restoring={sheetRestoring}
           onClose={() => setSheetOpen(false)}
           onNavigate={() => {
             suspendedPapers = sheetData;

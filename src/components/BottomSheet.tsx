@@ -36,9 +36,12 @@ type Props = {
   maxHeightPct?: number;
   /** Fixed floor: the sheet is at least this tall (content can still grow it). */
   minHeight?: number;
+  /** When false, the sheet appears already in place (used when RESTORING a
+      suspended sheet after returning from a paper — no re-slide). */
+  animateIn?: boolean;
 };
 
-export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, minHeight }: Props) {
+export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, minHeight, animateIn = true }: Props) {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const { height: SCREEN_H } = useWindowDimensions();
@@ -51,8 +54,13 @@ export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, m
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      translateY.value = SCREEN_H;
-      translateY.value = withTiming(0, { duration: 340, easing: Easing.out(Easing.cubic) });
+      if (animateIn) {
+        translateY.value = SCREEN_H;
+        translateY.value = withTiming(0, { duration: 340, easing: Easing.out(Easing.cubic) });
+      } else {
+        // Restore: appear already slid up, exactly as it was left.
+        translateY.value = 0;
+      }
     } else if (mounted) {
       translateY.value = withTiming(SCREEN_H, { duration: 240, easing: Easing.in(Easing.cubic) }, (fin) => {
         if (fin) runOnJS(setMounted)(false);

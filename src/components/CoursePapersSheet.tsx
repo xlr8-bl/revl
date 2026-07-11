@@ -19,6 +19,7 @@ export function CoursePapersSheet({
   visible,
   onClose,
   onNavigate,
+  restoring,
 }: {
   code: string;
   title: string;
@@ -27,6 +28,8 @@ export function CoursePapersSheet({
   /** Called instead of onClose when a paper is opened — lets the parent
       SUSPEND the sheet (keep its state) and restore it on return. */
   onNavigate?: () => void;
+  /** True when reopening after a suspend — appears in place, no re-slide. */
+  restoring?: boolean;
 }) {
   useThemeVersion();
   const router = useRouter();
@@ -39,7 +42,7 @@ export function CoursePapersSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} minHeight={520}>
+    <BottomSheet visible={visible} onClose={onClose} minHeight={400} animateIn={!restoring}>
       <Text style={styles.code}>{code}</Text>
       <Text style={styles.title}>{sentenceCase(title)}</Text>
       <Text style={styles.count}>
