@@ -9,6 +9,7 @@
  *   paper of the course.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -16,8 +17,6 @@ import {
   downloadCourse,
   downloadPaper,
   paperSize,
-  removeDownload,
-  removePaperDownload,
   useDownloads,
   usePaperDownloads,
   type DownloadState,
@@ -49,11 +48,12 @@ function Ring({ progress, size }: { progress: number; size: number }) {
 
 function DownloadGlyph({ dl, size }: { dl: DownloadState; size: number }) {
   // One fixed box for every state so the icon column never shifts as a
-  // paper moves idle → downloading → done.
+  // paper moves idle → downloading → done. Done = the filled "on device"
+  // arrow, NOT a checkmark (checks mean success, not storage).
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       {dl.status === 'done' ? (
-        <Ionicons name="checkmark-circle" size={size} color={colors.accent} />
+        <Ionicons name="arrow-down-circle" size={size} color={colors.accent} />
       ) : dl.status === 'downloading' ? (
         <>
           <Ring progress={dl.progress} size={size} />
@@ -69,10 +69,12 @@ function DownloadGlyph({ dl, size }: { dl: DownloadState; size: number }) {
 /**
  * Per-paper: the label says exactly where the paper stands — its size when
  * not downloaded, live percent while fetching, "Downloaded" once stored.
- * Tap to fetch (or remove when done).
+ * Taps are never destructive: idle downloads; done opens the Downloads
+ * page, where removal lives (with Undo).
  */
 export function PaperDownloadBadge({ paper }: { paper: Paper }) {
   useThemeVersion();
+  const router = useRouter();
   const states = usePaperDownloads();
   const dl = states[paper.id] ?? { status: 'idle' as const, progress: 0 };
   const label =
@@ -80,7 +82,9 @@ export function PaperDownloadBadge({ paper }: { paper: Paper }) {
   return (
     <Pressable
       hitSlop={8}
-      onPress={() => (dl.status === 'done' ? removePaperDownload(paper.id) : dl.status === 'idle' && downloadPaper(paper.id))}
+      onPress={() =>
+        dl.status === 'done' ? router.push('/downloads' as never) : dl.status === 'idle' && downloadPaper(paper.id)
+      }
       style={styles.badge}>
       <Text style={[styles.size, dl.status === 'done' && { color: colors.accent }]}>{label}</Text>
       <DownloadGlyph dl={dl} size={20} />
@@ -88,21 +92,19 @@ export function PaperDownloadBadge({ paper }: { paper: Paper }) {
   );
 }
 
-/** Course band: downloads every paper of the course. */
+/** Course band: downloads every paper of the course; done opens Downloads. */
 export function CourseDownloadButton({ code }: { code: string }) {
   useThemeVersion();
+  const router = useRouter();
   const courses = useDownloads();
   const dl = courses[code] ?? { status: 'idle' as const, progress: 0 };
-  if (dl.status === 'done') {
-    return (
-      <Pressable onPress={() => removeDownload(code)} hitSlop={10}>
-        <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
-      </Pressable>
-    );
-  }
   return (
-    <Pressable onPress={() => dl.status === 'idle' && downloadCourse(code)} hitSlop={10}>
-      <DownloadGlyph dl={dl} size={24} />
+    <Pressable
+      onPress={() =>
+        dl.status === 'done' ? router.push('/downloads' as never) : dl.status === 'idle' && downloadCourse(code)
+      }
+      hitSlop={10}>
+      <DownloadGlyph dl={dl} size={dl.status === 'done' ? 22 : 24} />
     </Pressable>
   );
 }

@@ -9,8 +9,8 @@
  * past papers inline (Papers and Courses are one page).
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -33,7 +33,6 @@ import type { CatalogCourse } from '../../data/catalog/types';
 import { papers, unlockedPaperIds } from '../../data/papers';
 import { useAccessCounts } from '../../lib/courseAccess';
 import { sentenceCase } from '../../lib/format';
-import { useDownloads } from '../../lib/courseDownloads';
 import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
 import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
@@ -41,7 +40,7 @@ import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleShe
 // Primary scope (which set of courses) and secondary refinement — every one
 // backed by real data, no dead chips. When the student's enrolled set covers
 // the whole department list (most students), My/All collapse into one chip.
-const FILTERS = ['My courses', 'All courses', 'Downloaded', 'Studied'];
+const FILTERS = ['My courses', 'All courses', 'Studied'];
 const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
 
 // Resolve a course code to a catalogue entry, falling back to paper metadata
@@ -78,9 +77,6 @@ function CarouselDot({
   return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
 }
 
-/** Sheet suspended while a paper is open — restored when the tab refocuses. */
-let suspendedPapers: { code: string; title: string } | null = null;
-
 const resolveCourse = (code: string): CatalogCourse | undefined => {
   const cat = courseByCode(code);
   if (cat) return cat;
@@ -109,26 +105,10 @@ export default function CoursesScreen() {
       unmounting mid-drag. */
   const [sheetData, setSheetData] = useState<{ code: string; title: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  /** True when the sheet reappears from a suspend — skip the slide-up. */
-  const [sheetRestoring, setSheetRestoring] = useState(false);
   const openPapers = (code: string, title: string) => {
     setSheetData({ code, title });
-    setSheetRestoring(false);
     setSheetOpen(true);
   };
-  /** Opening a paper from the sheet SUSPENDS it — coming back to this
-      screen restores the sheet exactly as you left it (module-scoped so it
-      survives web remounts). */
-  useFocusEffect(
-    useCallback(() => {
-      if (suspendedPapers) {
-        setSheetData(suspendedPapers);
-        setSheetRestoring(true);
-        setSheetOpen(true);
-        suspendedPapers = null;
-      }
-    }, [])
-  );
   const accessCounts = useAccessCounts();
   /** Height of the fixed part of the header — seeded close to the measured
       value (inset + placement + title row) so the first layout doesn't jump. */
@@ -180,16 +160,7 @@ export default function CoursesScreen() {
     [profile]
   );
 
-  const downloads = useDownloads();
   const logs = useRevealLogs();
-  const downloadedCourses = useMemo(
-    () =>
-      Object.keys(downloads)
-        .filter((code) => downloads[code].status === 'done')
-        .map(resolveCourse)
-        .filter((c): c is CatalogCourse => !!c),
-    [downloads]
-  );
   const studiedCourses = useMemo(() => {
     const codes = [...new Set(logs.map((l) => l.courseCode))];
     return codes.map(resolveCourse).filter((c): c is CatalogCourse => !!c);
@@ -204,7 +175,7 @@ export default function CoursesScreen() {
     enrolled.length === 0 ||
     (enrolled.length === departmentCourses.length &&
       enrolled.every((c) => departmentCourses.some((d) => d.code === c.code)));
-  const filterOptions = myIsAll ? ['All courses', 'Downloaded', 'Studied'] : FILTERS;
+  const filterOptions = myIsAll ? ['All courses', 'Studied'] : FILTERS;
   // The selected scope, mapped onto the visible chips (state defaults to
   // 'My courses', which doesn't exist when the sets are merged).
   const scope = myIsAll && filter === 'My courses' ? 'All courses' : filter;
@@ -220,11 +191,9 @@ export default function CoursesScreen() {
   const scopeCodes =
     scope === 'My courses'
       ? new Set(enrolled.map((c) => c.code))
-      : scope === 'Downloaded'
-        ? new Set(downloadedCourses.map((c) => c.code))
-        : scope === 'Studied'
-          ? new Set(studiedCourses.map((c) => c.code))
-          : null; // All courses — every paper set qualifies
+      : scope === 'Studied'
+        ? new Set(studiedCourses.map((c) => c.code))
+        : null; // All courses — every paper set qualifies
   const byCourse = new Map<string, { code: string; title: string; years: number[] }>();
   papers.forEach((p) => {
     const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [] };
@@ -253,11 +222,9 @@ export default function CoursesScreen() {
       ? [{ title: deptTitle, data: refine(enrolled) }]
       : scope === 'All courses'
         ? [{ title: deptTitle, data: refine(departmentCourses) }]
-        : scope === 'Downloaded'
-          ? [{ title: 'Downloaded courses', data: refine(downloadedCourses) }]
-          : scope === 'Studied'
-            ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
-            : [{ title: scope, data: [] }];
+        : scope === 'Studied'
+          ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
+          : [{ title: scope, data: [] }];
 
   const stickyTitle = sections[0]?.title ?? '';
   const toggleSearch = () => {
@@ -291,6 +258,9 @@ export default function CoursesScreen() {
           </Text>
           <View style={styles.titleRow}>
             <Text style={styles.title}>Courses</Text>
+            <Pressable onPress={() => router.push('/downloads' as never)} style={styles.searchBtn} hitSlop={8}>
+              <Ionicons name="arrow-down-circle-outline" size={21} color={colors.text} />
+            </Pressable>
             <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
               <Animated.View style={[styles.iconLayer, searchIconStyle]}>
                 <Ionicons name="search" size={20} color={colors.text} />
@@ -447,9 +417,7 @@ export default function CoursesScreen() {
           <View style={{ paddingHorizontal: spacing.gutter }}>
             {section.data.length === 0 ? (
               <Text style={styles.empty}>
-                {scope === 'Downloaded'
-                  ? 'Nothing downloaded yet. Tap the download button on any course to keep it on your phone.'
-                  : scope === 'Studied'
+                {scope === 'Studied'
                     ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
                     : subFilter
                       ? `No courses match “${subFilter}”.`
@@ -472,12 +440,7 @@ export default function CoursesScreen() {
           code={sheetData.code}
           title={sheetData.title}
           visible={sheetOpen}
-          restoring={sheetRestoring}
           onClose={() => setSheetOpen(false)}
-          onNavigate={() => {
-            suspendedPapers = sheetData;
-            setSheetOpen(false);
-          }}
         />
       )}
     </View>

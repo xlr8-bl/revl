@@ -39,9 +39,21 @@ type Props = {
   /** When false, the sheet appears already in place (used when RESTORING a
       suspended sheet after returning from a paper — no re-slide). */
   animateIn?: boolean;
+  /** Render as an in-screen overlay instead of a Modal. An inline sheet
+      stays mounted UNDER a pushed screen, so navigating away and back
+      never re-animates it — it is simply still there. */
+  inline?: boolean;
 };
 
-export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, minHeight, animateIn = true }: Props) {
+export function BottomSheet({
+  visible,
+  onClose,
+  children,
+  maxHeightPct = 0.88,
+  minHeight,
+  animateIn = true,
+  inline = false,
+}: Props) {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const { height: SCREEN_H } = useWindowDimensions();
@@ -92,31 +104,39 @@ export function BottomSheet({ visible, onClose, children, maxHeightPct = 0.88, m
 
   if (!mounted) return null;
 
+  const body = (
+    <>
+      <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.kav}
+        pointerEvents="box-none">
+        <GestureDetector gesture={pan}>
+          <Animated.View
+            onLayout={(e) => (sheetH.value = e.nativeEvent.layout.height)}
+            style={[
+              styles.sheet,
+              { maxHeight: `${Math.round(maxHeightPct * 100)}%` as never, paddingBottom: insets.bottom + 12 },
+              minHeight != null && { minHeight },
+              sheetStyle,
+            ]}>
+            <View style={styles.grabber} />
+            {children}
+          </Animated.View>
+        </GestureDetector>
+      </KeyboardAvoidingView>
+    </>
+  );
+
+  if (inline) {
+    // In-screen overlay: survives navigation on top of it (no Modal layer).
+    return <View style={[StyleSheet.absoluteFill, { zIndex: 60 }]}>{body}</View>;
+  }
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Animated.View style={[styles.backdrop, backdropStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.kav}
-          pointerEvents="box-none">
-          <GestureDetector gesture={pan}>
-            <Animated.View
-              onLayout={(e) => (sheetH.value = e.nativeEvent.layout.height)}
-              style={[
-                styles.sheet,
-                { maxHeight: `${Math.round(maxHeightPct * 100)}%` as never, paddingBottom: insets.bottom + 12 },
-                minHeight != null && { minHeight },
-                sheetStyle,
-              ]}>
-              <View style={styles.grabber} />
-              {children}
-            </Animated.View>
-          </GestureDetector>
-        </KeyboardAvoidingView>
-      </GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>{body}</GestureHandlerRootView>
     </Modal>
   );
 }

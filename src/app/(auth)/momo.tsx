@@ -103,7 +103,7 @@ export default function MomoSignInScreen() {
             disabled={!valid}
             onPress={() => setStep('prompt')}
             style={({ pressed }) => [styles.primaryBtn, !valid && styles.btnDisabled, pressed && { opacity: 0.88 }]}>
-            <Text style={[styles.primaryText, !valid && { color: colors.textTertiary }]}>Send approval prompt</Text>
+            <Text style={[styles.primaryText, !valid && { color: colors.textTertiary }]}>Confirm PIN</Text>
           </Pressable>
 
           <View style={styles.trustRow}>

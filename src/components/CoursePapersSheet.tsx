@@ -18,31 +18,25 @@ export function CoursePapersSheet({
   title,
   visible,
   onClose,
-  onNavigate,
-  restoring,
 }: {
   code: string;
   title: string;
   visible: boolean;
   onClose: () => void;
-  /** Called instead of onClose when a paper is opened — lets the parent
-      SUSPEND the sheet (keep its state) and restore it on return. */
-  onNavigate?: () => void;
-  /** True when reopening after a suspend — appears in place, no re-slide. */
-  restoring?: boolean;
 }) {
   useThemeVersion();
   const router = useRouter();
   const list = papers.filter((p) => p.courseCode === code).sort((a, b) => b.year - a.year);
 
+  // Inline sheet stays open underneath the pushed paper screen — coming
+  // back, it is exactly where you left it, mid-transition, no re-slide.
   const open = (id: string, unlocked: boolean) => {
     recordAccess(code);
-    (onNavigate ?? onClose)();
     router.push((unlocked ? `/paper/${id}` : `/unlock/${id}`) as never);
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} minHeight={400} animateIn={!restoring}>
+    <BottomSheet visible={visible} onClose={onClose} minHeight={400} inline>
       <Text style={styles.code}>{code}</Text>
       <Text style={styles.title}>{sentenceCase(title)}</Text>
       <Text style={styles.count}>

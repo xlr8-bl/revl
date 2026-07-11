@@ -36,6 +36,7 @@ export default function YouScreen() {
   ];
   const study: Row[] = [
     { icon: 'planet-outline', label: 'Study DNA', detail: weakest ? `weakest: ${weakest.tag}` : undefined, route: '/dna' },
+    { icon: 'arrow-down-circle-outline', label: 'Downloads', detail: 'papers on this phone', route: '/downloads' },
     { icon: 'wallet-outline', label: 'Credits & wallet', detail: `${currentUser.credits} credits`, route: '/wallet' },
     { icon: 'document-text-outline', label: 'My notes', detail: 'grounds your AI answers', route: '/notes' },
     { icon: 'cloud-upload-outline', label: 'Upload a paper, earn credits', route: '/contribute' },

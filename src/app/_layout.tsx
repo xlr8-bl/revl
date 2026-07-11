@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
+import { ConnectivityBanner } from '../components/ConnectivityBanner';
 import { seedDemoDataIfEmpty } from '../lib/revealLog';
 import { useSession } from '../lib/session';
 import { colors, useResolvedScheme } from '../theme';
@@ -82,10 +83,12 @@ export default function RootLayout() {
             <Stack.Screen name="account/edit" />
             <Stack.Screen name="account/courses" />
             <Stack.Screen name="account/mobile-money" />
+            <Stack.Screen name="downloads" />
             <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
           </Stack.Protected>
         </Stack>
+        <ConnectivityBanner />
         </Animated.View>
       </ThemeProvider>
     </GestureHandlerRootView>
