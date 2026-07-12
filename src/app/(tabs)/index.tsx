@@ -20,6 +20,7 @@ import Animated, {
   interpolateColor,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withTiming,
   type SharedValue,
@@ -172,25 +173,31 @@ export default function CoursesScreen() {
   // the hand-off is seamless (no double heading, no bleed-through). At the
   // same moment the placement kicker ("Accountancy · HND") animates OUT and
   // the title block lifts to rebalance — no redundant "Accountancy" stack.
-  // Eased over a long 72px scroll range — the linear 34px version snapped;
-  // ease-in-out makes the exchange glide.
-  const stickyStyle = useAnimatedStyle(() => {
+  /** Measured kicker height (+margin) — the lift travels exactly this far,
+      so the title row and buttons take over the kicker's space completely. */
+  const [kickerH, setKickerH] = useState(22);
+  // The handoff runs as a TIMED glide (not scroll-mapped): crossing the
+  // threshold retargets a 280ms ease-in-out, so even a violent flick plays
+  // the same smooth exchange instead of snapping through it.
+  const dedupP = useDerivedValue(() => {
     const end = sectionY.value - baseH - 4;
-    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
+    const active = scrollY.value > end - 40;
+    return withTiming(active ? 1 : 0, { duration: 280, easing: Easing.inOut(Easing.cubic) });
+  });
+  const stickyStyle = useAnimatedStyle(() => {
+    const p = dedupP.value;
     return {
       opacity: p * (1 - open.value),
-      transform: [{ translateY: 9 * (1 - p) - 16 * p }],
+      transform: [{ translateY: 9 * (1 - p) - kickerH * p }],
     };
   });
   const kickerStyle = useAnimatedStyle(() => {
-    const end = sectionY.value - baseH - 4;
-    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
+    const p = dedupP.value;
     return { opacity: 1 - p, transform: [{ translateY: -8 * p }] };
   });
   const liftStyle = useAnimatedStyle(() => {
-    const end = sectionY.value - baseH - 4;
-    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
-    return { transform: [{ translateY: -16 * p }] };
+    const p = dedupP.value;
+    return { transform: [{ translateY: -kickerH * p }] };
   });
   // The search bar grows out of the header; the content spacer grows with it so
   // everything below shifts down together, then back.
@@ -345,7 +352,9 @@ export default function CoursesScreen() {
       <View style={styles.header}>
         {/* Fixed part: placement · title + search button */}
         <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
-          <Animated.Text style={[styles.placement, kickerStyle]}>
+          <Animated.Text
+            style={[styles.placement, kickerStyle]}
+            onLayout={(e) => setKickerH(Math.round(e.nativeEvent.layout.height + 2))}>
             {profile.school === 'hnd'
               ? `${profile.departmentName} · HND`
               : `${profile.departmentName} · ${profile.level} · UB`}
