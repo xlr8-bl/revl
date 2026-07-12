@@ -172,22 +172,24 @@ export default function CoursesScreen() {
   // the hand-off is seamless (no double heading, no bleed-through). At the
   // same moment the placement kicker ("Accountancy · HND") animates OUT and
   // the title block lifts to rebalance — no redundant "Accountancy" stack.
+  // Eased over a long 72px scroll range — the linear 34px version snapped;
+  // ease-in-out makes the exchange glide.
   const stickyStyle = useAnimatedStyle(() => {
     const end = sectionY.value - baseH - 4;
-    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
+    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
     return {
       opacity: p * (1 - open.value),
-      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') - 16 * p }],
+      transform: [{ translateY: 9 * (1 - p) - 16 * p }],
     };
   });
   const kickerStyle = useAnimatedStyle(() => {
     const end = sectionY.value - baseH - 4;
-    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
-    return { opacity: 1 - p, transform: [{ translateY: -6 * p }] };
+    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
+    return { opacity: 1 - p, transform: [{ translateY: -8 * p }] };
   });
   const liftStyle = useAnimatedStyle(() => {
     const end = sectionY.value - baseH - 4;
-    const p = interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp');
+    const p = Easing.inOut(Easing.cubic)(interpolate(scrollY.value, [end - 72, end], [0, 1], 'clamp'));
     return { transform: [{ translateY: -16 * p }] };
   });
   // The search bar grows out of the header; the content spacer grows with it so
@@ -602,13 +604,15 @@ const makeStyles = () => StyleSheet.create({
   iconLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
+  // Balanced against the 38pt "Courses" above it: real ink, bold, sized as
+  // a proper subtitle rather than a grey caption.
   stickyTitle: {
     position: 'absolute',
     left: spacing.gutter,
     right: spacing.gutter,
     fontFamily: fonts.bold,
-    fontSize: 15,
-    color: colors.textSecondary,
+    fontSize: 18,
+    color: colors.text,
   },
   searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
   searchBox: {
