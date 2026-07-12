@@ -51,53 +51,65 @@ export function TopFade({
   useThemeVersion();
   const scheme = useResolvedScheme();
   const height = solid + fade;
-  const solidFrac = solid / height;
+  // The blur STOPS just under the header text (2px past its bottom) —
+  // never bleeding into content. Only a short colour tail follows.
+  const blurEnd = Math.max(0, solid - 2);
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
   }));
-  // Progressive blur. Web: ONE BlurView with a CSS gradient mask — a true
-  // variable blur, perfectly seamless (stacking bands there compounds the
-  // saturate() filter into a colour cast). iOS: BlurView is uniform-only
-  // and unmaskable, so a few gentle overlapping bands approximate the
-  // gradient. Android's experimental blur is too heavy for either — pure
-  // gradient dissolve.
-  const bands = Platform.OS === 'ios' ? [1, 0.85, 0.7, 0.55, 0.4] : [];
+  const tint = scheme === 'light' ? ('systemUltraThinMaterialLight' as const) : ('systemUltraThinMaterialDark' as const);
+  // iOS bands, INVERTED opacity: the longest band is the faintest, so its
+  // terminal edge is nearly invisible — no hard cut; strength accumulates
+  // toward the top where all bands overlap. (BlurView has no mask API on
+  // native, so this is the softest edge it can produce.)
+  const bands =
+    Platform.OS === 'ios'
+      ? [
+          { h: blurEnd, o: 0.28 },
+          { h: blurEnd * 0.92, o: 0.5 },
+          { h: blurEnd * 0.84, o: 0.72 },
+          { h: blurEnd * 0.76, o: 0.88 },
+          { h: blurEnd * 0.68, o: 1 },
+        ]
+      : [];
   return (
     <Animated.View
       pointerEvents="none"
       style={[{ position: 'absolute', top: 0, left: 0, right: 0, height, zIndex: 5 }, style]}>
       {Platform.OS === 'web' && (
         <BlurView
-          intensity={22}
-          tint={scheme === 'light' ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
+          intensity={30}
+          tint={tint}
           style={[
             StyleSheet.absoluteFill,
             {
-              maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+              height: blurEnd,
+              maskImage: 'linear-gradient(to bottom, black 72%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 100%)',
             } as never,
           ]}
         />
       )}
-      {bands.map((frac, i) => (
+      {bands.map((band, i) => (
         <BlurView
           key={i}
-          intensity={8}
-          tint={scheme === 'light' ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
-          style={[StyleSheet.absoluteFill, { height: height * frac }]}
+          intensity={9}
+          tint={tint}
+          style={[StyleSheet.absoluteFill, { height: band.h, opacity: band.o }]}
         />
       ))}
       {/* Brand tint rides on top of the blur — translucent even at the very
-          top, so blurred content ghosts through from the first pixel (the
-          blur is the surface; the tint only warms it). Android has no blur
-          bands, so it keeps the opaque backing for legibility. */}
+          top, so blurred content ghosts through from the first pixel. It
+          stays present where the faint band edges end and dissolves over the
+          short tail, swallowing any residual cut. Android (no blur) keeps
+          the opaque backing for legibility. */}
       <LinearGradient
         colors={
-          bands.length > 0
-            ? [withAlpha(colors.bg, 0.62), withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0.3), withAlpha(colors.bg, 0)]
-            : [colors.bg, colors.bg, withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0)]
+          Platform.OS === 'android'
+            ? [colors.bg, colors.bg, withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0)]
+            : [withAlpha(colors.bg, 0.62), withAlpha(colors.bg, 0.52), withAlpha(colors.bg, 0.4), withAlpha(colors.bg, 0)]
         }
-        locations={[0, solidFrac * 0.9, solidFrac + (1 - solidFrac) * 0.5, 1]}
+        locations={[0, 0.55, Math.min(blurEnd / height, 0.94), 1]}
         style={StyleSheet.absoluteFill}
       />
     </Animated.View>
