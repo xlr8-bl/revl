@@ -6,7 +6,8 @@
  * every paper row fully interactive. The lift shows a compact duplicate
  * of the card's header as the preview.
  */
-import { Button, ContextMenu, Divider, Host, Section } from '@expo/ui/swift-ui';
+import { Button, ContextMenu, Divider, Group, Host, Section } from '@expo/ui/swift-ui';
+import { frame } from '@expo/ui/swift-ui/modifiers';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useCourseMenuItems } from '../lib/useCourseMenu';
@@ -53,17 +54,23 @@ export function CourseBandMenu({
           <View style={{ width: triggerW, height: BAND_H }} />
         </ContextMenu.Trigger>
         <ContextMenu.Preview>
-          <View style={[styles.preview, { width: Math.min(width, 330) }]}>
-            <View style={styles.previewBand}>
-              <Text style={styles.previewCode}>{code}</Text>
+          {/* frame pins the preview plate to this exact size — without it
+              SwiftUI stretches the card into a giant empty slab. */}
+          <Group modifiers={[frame({ width: Math.min(width, 330), height: 124 })]}>
+            <View style={[styles.preview, { width: Math.min(width, 330), height: 124 }]}>
+              <View style={styles.previewBand}>
+                <Text style={styles.previewCode}>{code}</Text>
+              </View>
+              <View style={styles.previewBody}>
+                <Text style={styles.previewTitle} numberOfLines={1}>
+                  {sentenceCase(title)}
+                </Text>
+                <Text style={styles.previewMeta} numberOfLines={1}>
+                  {meta}
+                </Text>
+              </View>
             </View>
-            <View style={styles.previewBody}>
-              <Text style={styles.previewTitle} numberOfLines={2}>
-                {sentenceCase(title)}
-              </Text>
-              <Text style={styles.previewMeta}>{meta}</Text>
-            </View>
-          </View>
+          </Group>
         </ContextMenu.Preview>
         <ContextMenu.Items>
           <Section title={`${code} · ${sentenceCase(title)}`}>{buttons}</Section>

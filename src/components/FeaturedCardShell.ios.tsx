@@ -5,7 +5,8 @@
  * layer sits on top handling tap + long-press, and the lift shows a
  * pixel-identical duplicate of the card via ContextMenu.Preview.
  */
-import { Button, ContextMenu, Divider, Host, Section } from '@expo/ui/swift-ui';
+import { Button, ContextMenu, Divider, Group, Host, Section } from '@expo/ui/swift-ui';
+import { frame } from '@expo/ui/swift-ui/modifiers';
 import React, { useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useCourseMenuItems } from '../lib/useCourseMenu';
@@ -66,7 +67,14 @@ export function FeaturedCardShell({
               style={{ width, height }}
             />
           </ContextMenu.Trigger>
-          {preview ? <ContextMenu.Preview>{preview}</ContextMenu.Preview> : null}
+          {preview ? (
+            <ContextMenu.Preview>
+              {/* frame pins the preview plate to the card's exact size —
+                  without it SwiftUI proposes a huge frame and stretches the
+                  card into a giant empty slab. */}
+              <Group modifiers={[frame({ width, height })]}>{preview}</Group>
+            </ContextMenu.Preview>
+          ) : null}
           <ContextMenu.Items>
             <Section title={`${code} · ${sentenceCase(title)}`}>{buttons}</Section>
           </ContextMenu.Items>
