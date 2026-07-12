@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { ContextMenuShell } from './ContextMenuShell';
+import { CoursePreviewCard } from './CoursePreviewCard';
 import { useCourseMenuItems } from '../lib/useCourseMenu';
 
 export function FeaturedCardShell({
@@ -25,7 +26,10 @@ export function FeaturedCardShell({
 }) {
   const items = useCourseMenuItems(code, title, meta, { onViewPapers });
   return (
-    <ContextMenuShell items={items} style={{ width, height }}>
+    <ContextMenuShell
+      items={items}
+      style={{ width, height }}
+      preview={<CoursePreviewCard code={code} title={title} meta={meta} />}>
       {children}
     </ContextMenuShell>
   );

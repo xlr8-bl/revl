@@ -16,17 +16,23 @@ export function ContextMenuShell({
   items,
   style,
   matchContents,
+  preview,
   children,
 }: {
   items: ShellMenuItem[];
   style?: StyleProp<ViewStyle>;
   matchContents?: boolean;
+  /** Custom lifted preview (the Revl-branded card) shown above the menu
+      instead of a plain snapshot — this is where the menu gets its own
+      identity while the interaction stays 100% system. */
+  preview?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Host style={[{ overflow: 'visible' }, style]} matchContents={matchContents}>
       <ContextMenu>
         <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+        {preview ? <ContextMenu.Preview>{preview}</ContextMenu.Preview> : null}
         <ContextMenu.Items>
           {items.map((item) => (
             <Button

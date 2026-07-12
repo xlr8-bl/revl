@@ -12,12 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import Animated, {
   Easing,
-  FadeIn,
   FadeInDown,
-  FadeOut,
   interpolate,
   interpolateColor,
   useAnimatedScrollHandler,
@@ -84,6 +82,26 @@ function CarouselDot({
   return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
 }
 
+/** Header circle button — real Liquid Glass where iOS 26 provides it,
+    the regular card circle everywhere else. */
+const GLASS = isLiquidGlassAvailable();
+function HeaderCircleButton({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  if (GLASS) {
+    return (
+      <Pressable onPress={onPress} hitSlop={8}>
+        <GlassView isInteractive style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+          {children}
+        </GlassView>
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable onPress={onPress} style={styles.searchBtn} hitSlop={8}>
+      {children}
+    </Pressable>
+  );
+}
+
 const resolveCourse = (code: string): CatalogCourse | undefined => {
   const cat = courseByCode(code);
   if (cat) return cat;
@@ -126,20 +144,12 @@ export default function CoursesScreen() {
     setSheetData({ code, title });
     setSheetOpen(true);
   };
-  /** Press-and-hold fallback menu (Android/web JS overlay). */
+  /** Press-and-hold fallback menu (Android/web JS overlay). iOS relies on
+      the system menu alone — its own dimming plus the branded preview; an
+      extra JS blur has no dismiss signal and gets stuck. */
   const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
-  /** iOS: a soft depth blur behind the native context menu. No dismiss
-      callback exists, so it clears on the next touch (or a failsafe). */
-  const [menuBlur, setMenuBlur] = useState(false);
-  const blurFailsafe = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCardHold = (code: string, title: string, meta: string) => {
-    if (Platform.OS === 'ios') {
-      setMenuBlur(true);
-      if (blurFailsafe.current) clearTimeout(blurFailsafe.current);
-      blurFailsafe.current = setTimeout(() => setMenuBlur(false), 6000);
-    } else {
-      setCardMenu({ code, title, meta });
-    }
+    if (Platform.OS !== 'ios') setCardMenu({ code, title, meta });
   };
   /** Press start time — only QUICK taps open papers, so a hold aimed at the
       context menu can never accidentally open the sheet on release. */
@@ -323,7 +333,7 @@ export default function CoursesScreen() {
   };
 
   return (
-    <View style={styles.root} onTouchStart={() => menuBlur && setMenuBlur(false)}>
+    <View style={styles.root}>
       {/* Same seamless blend as Tonight: a transparent header sits over a
           scroll-linked gradient that dissolves from the page bg to clear, so
           content fades under the title instead of hitting a hard edge. */}
@@ -340,17 +350,17 @@ export default function CoursesScreen() {
           </Animated.Text>
           <Animated.View style={[styles.titleRow, liftStyle]}>
             <Text style={styles.title}>Courses</Text>
-            <Pressable onPress={() => router.push('/downloads' as never)} style={styles.searchBtn} hitSlop={8}>
+            <HeaderCircleButton onPress={() => router.push('/downloads' as never)}>
               <Ionicons name="arrow-down-circle-outline" size={21} color={colors.text} />
-            </Pressable>
-            <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
+            </HeaderCircleButton>
+            <HeaderCircleButton onPress={toggleSearch}>
               <Animated.View style={[styles.iconLayer, searchIconStyle]}>
                 <Ionicons name="search" size={20} color={colors.text} />
               </Animated.View>
               <Animated.View style={[styles.iconLayer, closeIconStyle]}>
                 <Ionicons name="close" size={22} color={colors.text} />
               </Animated.View>
-            </Pressable>
+            </HeaderCircleButton>
           </Animated.View>
         </View>
 
@@ -386,6 +396,11 @@ export default function CoursesScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        // Native tabs make UIKit auto-inset scroll content by the safe area —
+        // stacked on our own header spacer that read as a dead gap between
+        // the heading and the filters. We manage the offset ourselves.
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}>
       {/* Animated spacer clears the header and grows with the search bar so
           everything below shifts down together. */}
@@ -402,6 +417,9 @@ export default function CoursesScreen() {
             decelerationRate="fast"
             onScroll={onCarouselScroll}
             scrollEventThrottle={16}
+            // Never clip the native menu Hosts — clipped-out cards were
+            // occasionally failing to re-render (the vanishing third card).
+            removeClippedSubviews={false}
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
               const years = [...new Set(f.years)].sort((a, b) => a - b);
@@ -412,14 +430,11 @@ export default function CoursesScreen() {
               const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
               const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
-              // Hard-pinned wrapper size: the native Host occasionally
-              // proposes a collapsed height mid-layout, which read as a
-              // vertically shrunken card.
+              // Hard-pinned wrapper size, no entering animation: Reanimated
+              // layout animations around native menu Hosts were behind the
+              // shrunken/missing-card glitches.
               return (
-                <Animated.View
-                  key={f.code}
-                  entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}
-                  style={{ width: featuredWidth, height: 190 }}>
+                <View key={f.code} style={{ width: featuredWidth, height: 190 }}>
                 {/* iOS: the real system context menu (SwiftUI). Others: the
                     JS blur overlay via onLongPress. */}
                 <FeaturedCardShell
@@ -470,7 +485,7 @@ export default function CoursesScreen() {
                   </View>
                 </Pressable>
                 </FeaturedCardShell>
-                </Animated.View>
+                </View>
               );
             })}
           </Animated.ScrollView>
@@ -558,21 +573,6 @@ export default function CoursesScreen() {
         />
       )}
 
-      {/* iOS: soft depth blur under the native context menu (the menu lives
-          in a system window above this). Clears on the next touch. */}
-      {menuBlur && (
-        <Animated.View
-          pointerEvents="none"
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(220)}
-          style={[StyleSheet.absoluteFill, { zIndex: 75 }]}>
-          <BlurView
-            intensity={16}
-            tint={activeScheme() === 'light' ? 'light' : 'dark'}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
-      )}
     </View>
   );
 }

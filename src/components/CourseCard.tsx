@@ -14,6 +14,7 @@ import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
 import { useCourseMenuItems } from '../lib/useCourseMenu';
 import { ContextMenuShell } from './ContextMenuShell';
+import { CoursePreviewCard } from './CoursePreviewCard';
 import { CourseDownloadButton, PaperDownloadBadge } from './DownloadBadge';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
@@ -129,7 +130,10 @@ export function CourseCard({
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)} style={styles.cardWrap}>
       {Platform.OS === 'ios' && cardH > 0 ? (
-        <ContextMenuShell items={menuItems} style={{ height: cardH }}>
+        <ContextMenuShell
+          items={menuItems}
+          style={{ height: cardH }}
+          preview={<CoursePreviewCard code={course.code} title={course.title || `Course ${course.code}`} meta={meta} />}>
           {inner}
         </ContextMenuShell>
       ) : (

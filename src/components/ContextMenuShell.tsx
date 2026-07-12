@@ -23,6 +23,8 @@ export function ContextMenuShell({
   style?: StyleProp<ViewStyle>;
   /** Host adopts the content's own height (dynamic-height cards). */
   matchContents?: boolean;
+  /** Custom lifted preview (iOS only). */
+  preview?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return <View style={style}>{children}</View>;
