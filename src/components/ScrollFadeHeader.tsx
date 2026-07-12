@@ -16,8 +16,10 @@
  * soft dissolve tail *below* that, where scrolling content melts away; keep
  * it short for a crisp blend, longer for a gentler one.
  */
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { Platform, StyleSheet } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -25,7 +27,7 @@ import Animated, {
   useSharedValue,
   type SharedValue,
 } from 'react-native-reanimated';
-import { colors, useThemeVersion, withAlpha } from '../theme';
+import { colors, useResolvedScheme, useThemeVersion, withAlpha } from '../theme';
 
 export function useScrollFade() {
   const scrollY = useSharedValue(0);
@@ -47,20 +49,36 @@ export function TopFade({
   fade?: number;
 }) {
   useThemeVersion();
+  const scheme = useResolvedScheme();
   const height = solid + fade;
   const solidFrac = solid / height;
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
   }));
-  // Opaque under the header, then a short soft dissolve for the tail.
+  // Progressive blur: BlurView is uniform-only, so several stacked bands of
+  // shortening coverage accumulate into a gradient — content under the
+  // heading is properly BLURRED and melts out toward the bottom, instead of
+  // just alpha-fading. Android's experimental blur is too heavy to stack,
+  // so it keeps the pure gradient dissolve.
+  const bands = Platform.OS === 'android' ? [] : [1, 0.86, 0.72, 0.58, 0.45];
   return (
     <Animated.View
       pointerEvents="none"
       style={[{ position: 'absolute', top: 0, left: 0, right: 0, height, zIndex: 5 }, style]}>
+      {bands.map((frac, i) => (
+        <BlurView
+          key={i}
+          intensity={12}
+          tint={scheme === 'light' ? 'light' : 'dark'}
+          style={[StyleSheet.absoluteFill, { height: height * frac }]}
+        />
+      ))}
+      {/* Brand tint rides on top of the blur — slightly lighter mid-stops so
+          the blur does the separating and the color does the identity. */}
       <LinearGradient
-        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0)]}
-        locations={[0, solidFrac, solidFrac + (1 - solidFrac) * 0.5, 1]}
-        style={{ flex: 1 }}
+        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.4), withAlpha(colors.bg, 0)]}
+        locations={[0, solidFrac * 0.9, solidFrac + (1 - solidFrac) * 0.5, 1]}
+        style={StyleSheet.absoluteFill}
       />
     </Animated.View>
   );
