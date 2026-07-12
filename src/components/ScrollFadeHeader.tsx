@@ -73,10 +73,16 @@ export function TopFade({
           style={[StyleSheet.absoluteFill, { height: height * frac }]}
         />
       ))}
-      {/* Brand tint rides on top of the blur — slightly lighter mid-stops so
-          the blur does the separating and the color does the identity. */}
+      {/* Brand tint rides on top of the blur — translucent even at the very
+          top, so blurred content ghosts through from the first pixel (the
+          blur is the surface; the tint only warms it). Android has no blur
+          bands, so it keeps the opaque backing for legibility. */}
       <LinearGradient
-        colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.4), withAlpha(colors.bg, 0)]}
+        colors={
+          bands.length > 0
+            ? [withAlpha(colors.bg, 0.62), withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0.3), withAlpha(colors.bg, 0)]
+            : [colors.bg, colors.bg, withAlpha(colors.bg, 0.55), withAlpha(colors.bg, 0)]
+        }
         locations={[0, solidFrac * 0.9, solidFrac + (1 - solidFrac) * 0.5, 1]}
         style={StyleSheet.absoluteFill}
       />
