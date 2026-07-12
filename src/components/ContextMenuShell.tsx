@@ -12,6 +12,8 @@ export type ShellMenuItem = {
   /** SF Symbol name (iOS only). */
   systemImage?: string;
   destructive?: boolean;
+  /** Render a divider above this item (visual grouping). */
+  divider?: boolean;
   onPress: () => void;
 };
 
@@ -20,6 +22,8 @@ export function ContextMenuShell({
   children,
 }: {
   items: ShellMenuItem[];
+  /** Section header line above the options (iOS only). */
+  header?: string;
   style?: StyleProp<ViewStyle>;
   /** Host adopts the content's own height (dynamic-height cards). */
   matchContents?: boolean;

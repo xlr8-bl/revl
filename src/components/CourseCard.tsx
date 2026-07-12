@@ -129,7 +129,10 @@ export function CourseCard({
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)} style={styles.cardWrap}>
       {Platform.OS === 'ios' && cardH > 0 ? (
-        <ContextMenuShell items={menuItems} style={{ height: cardH }}>
+        <ContextMenuShell
+          items={menuItems}
+          header={`${course.code} · ${sentenceCase(course.title || `Course ${course.code}`)}`}
+          style={{ height: cardH }}>
           {inner}
         </ContextMenuShell>
       ) : (

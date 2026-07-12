@@ -46,6 +46,7 @@ export function useCourseMenuItems(
   items.push({
     label: 'Share course',
     systemImage: 'square.and.arrow.up',
+    divider: true,
     onPress: async () => {
       try {
         await Share.share({
