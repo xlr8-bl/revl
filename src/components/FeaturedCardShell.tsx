@@ -18,6 +18,8 @@ export function FeaturedCardShell({
   title: string;
   meta: string;
   onViewPapers: () => void;
+  /** Lift preview (iOS only). */
+  preview?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return <View style={{ width, height }}>{children}</View>;

@@ -55,21 +55,35 @@ export function TopFade({
   const style = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
   }));
-  // Progressive blur: BlurView is uniform-only, so several stacked bands of
-  // shortening coverage accumulate into a gradient — content under the
-  // heading is properly BLURRED and melts out toward the bottom, instead of
-  // just alpha-fading. Android's experimental blur is too heavy to stack,
-  // so it keeps the pure gradient dissolve.
-  const bands = Platform.OS === 'android' ? [] : [1, 0.86, 0.72, 0.58, 0.45];
+  // Progressive blur. Web: ONE BlurView with a CSS gradient mask — a true
+  // variable blur, perfectly seamless (stacking bands there compounds the
+  // saturate() filter into a colour cast). iOS: BlurView is uniform-only
+  // and unmaskable, so a few gentle overlapping bands approximate the
+  // gradient. Android's experimental blur is too heavy for either — pure
+  // gradient dissolve.
+  const bands = Platform.OS === 'ios' ? [1, 0.85, 0.7, 0.55, 0.4] : [];
   return (
     <Animated.View
       pointerEvents="none"
       style={[{ position: 'absolute', top: 0, left: 0, right: 0, height, zIndex: 5 }, style]}>
+      {Platform.OS === 'web' && (
+        <BlurView
+          intensity={22}
+          tint={scheme === 'light' ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+            } as never,
+          ]}
+        />
+      )}
       {bands.map((frac, i) => (
         <BlurView
           key={i}
-          intensity={12}
-          tint={scheme === 'light' ? 'light' : 'dark'}
+          intensity={8}
+          tint={scheme === 'light' ? 'systemUltraThinMaterialLight' : 'systemUltraThinMaterialDark'}
           style={[StyleSheet.absoluteFill, { height: height * frac }]}
         />
       ))}

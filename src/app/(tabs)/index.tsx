@@ -337,7 +337,7 @@ export default function CoursesScreen() {
       {/* Same seamless blend as Tonight: a transparent header sits over a
           scroll-linked gradient that dissolves from the page bg to clear, so
           content fades under the title instead of hitting a hard edge. */}
-      <TopFade scrollY={scrollY} solid={baseH + (searchOpen ? SEARCH_H : 0)} fade={54} />
+      <TopFade scrollY={scrollY} solid={baseH + (searchOpen ? SEARCH_H : 0)} fade={90} />
 
       {/* Pinned header */}
       <View style={styles.header}>
@@ -430,32 +430,10 @@ export default function CoursesScreen() {
               const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
               const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
-              // Hard-pinned wrapper size, no entering animation: Reanimated
-              // layout animations around native menu Hosts were behind the
-              // shrunken/missing-card glitches.
-              return (
-                <View key={f.code} style={{ width: featuredWidth, height: 190 }}>
-                {/* iOS: the real system context menu (SwiftUI). Others: the
-                    JS blur overlay via onLongPress. */}
-                <FeaturedCardShell
-                  width={featuredWidth}
-                  height={190}
-                  code={f.code}
-                  title={f.title}
-                  meta={cardMeta}
-                  onViewPapers={() => openPapers(f.code, f.title)}>
-                <Pressable
-                  onPressIn={() => (pressStart.current = Date.now())}
-                  onPress={() => {
-                    if (Date.now() - pressStart.current < 250) openPapers(f.code, f.title);
-                  }}
-                  onLongPress={() => onCardHold(f.code, f.title, cardMeta)}
-                  delayLongPress={Platform.OS === 'ios' ? 420 : 280}
-                  style={({ pressed }) => [
-                    styles.featureCard,
-                    { width: featuredWidth },
-                    pressed && { opacity: 0.92 },
-                  ]}>
+              // Shared body: rendered once as the visible card and once as
+              // the context-menu lift preview (pixel-identical duplicate).
+              const cardBody = (
+                <>
                   {/* Oversized ghost year — background typography, not decoration */}
                   <Text style={styles.featureGhost}>{years[years.length - 1]}</Text>
 
@@ -483,6 +461,35 @@ export default function CoursesScreen() {
                       <Text style={styles.featureOpen}>View papers ›</Text>
                     </View>
                   </View>
+                </>
+              );
+              return (
+                <View key={f.code} style={{ width: featuredWidth, height: 190 }}>
+                {/* iOS: the visible card stays pure RN (no SwiftUI layout can
+                    squash it); a transparent native-menu layer handles tap and
+                    hold, and the lift shows a duplicate. Others: the card's
+                    own handlers + the JS blur overlay. */}
+                <FeaturedCardShell
+                  width={featuredWidth}
+                  height={190}
+                  code={f.code}
+                  title={f.title}
+                  meta={cardMeta}
+                  onViewPapers={() => openPapers(f.code, f.title)}
+                  preview={<View style={[styles.featureCard, { width: featuredWidth }]}>{cardBody}</View>}>
+                <Pressable
+                  onPressIn={() => (pressStart.current = Date.now())}
+                  onPress={() => {
+                    if (Date.now() - pressStart.current < 250) openPapers(f.code, f.title);
+                  }}
+                  onLongPress={() => onCardHold(f.code, f.title, cardMeta)}
+                  delayLongPress={280}
+                  style={({ pressed }) => [
+                    styles.featureCard,
+                    { width: featuredWidth },
+                    pressed && { opacity: 0.92 },
+                  ]}>
+                  {cardBody}
                 </Pressable>
                 </FeaturedCardShell>
                 </View>

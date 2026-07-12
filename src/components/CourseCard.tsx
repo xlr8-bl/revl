@@ -12,8 +12,7 @@ import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
-import { useCourseMenuItems } from '../lib/useCourseMenu';
-import { ContextMenuShell } from './ContextMenuShell';
+import { CourseBandMenu } from './CourseBandMenu';
 import { CourseDownloadButton, PaperDownloadBadge } from './DownloadBadge';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
@@ -46,15 +45,11 @@ export function CourseCard({
     .sort((a, b) => b.year - a.year);
   const meta =
     coursePapers.length > 0 ? `${coursePapers.length} paper${coursePapers.length > 1 ? 's' : ''}` : 'Papers coming soon';
-  const menuItems = useCourseMenuItems(course.code, course.title || `Course ${course.code}`, meta);
   /** Only QUICK taps open rows — a hold aimed at the context menu can
       never accidentally open a paper on release. */
   const pressStart = useRef(0);
-  /** Measured card height: the native Host needs an EXPLICIT size (its
-      content-matching collapses RN children to zero — invisible cards).
-      First paint renders the bare card to measure; then the shell wraps
-      it at that exact height. */
-  const [cardH, setCardH] = useState(0);
+  /** Measured card width — sizes the iOS band-menu overlay. */
+  const [cardW, setCardW] = useState(0);
 
   const inner = (
       <Pressable
@@ -63,8 +58,8 @@ export function CourseCard({
       <View
         style={styles.card}
         onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          if (Math.abs(h - cardH) > 1) setCardH(h);
+          const w = e.nativeEvent.layout.width;
+          if (Math.abs(w - cardW) > 1) setCardW(w);
         }}>
         {/* Tinted header band: code + level + save */}
         <View style={[styles.band, { backgroundColor: wash(tint) }]}>
@@ -128,15 +123,11 @@ export function CourseCard({
 
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)} style={styles.cardWrap}>
-      {Platform.OS === 'ios' && cardH > 0 ? (
-        <ContextMenuShell
-          items={menuItems}
-          header={`${course.code} · ${sentenceCase(course.title || `Course ${course.code}`)}`}
-          style={{ height: cardH }}>
-          {inner}
-        </ContextMenuShell>
-      ) : (
-        inner
+      {inner}
+      {/* iOS: native context menu on the header band only — the card itself
+          never enters SwiftUI layout, so spacing can't drift or overlap. */}
+      {Platform.OS === 'ios' && cardW > 0 && (
+        <CourseBandMenu code={course.code} title={course.title || `Course ${course.code}`} meta={meta} width={cardW} />
       )}
     </Animated.View>
   );
