@@ -12,7 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import Animated, {
   Easing,
   FadeInDown,
@@ -30,6 +29,7 @@ import { CourseCard } from '../../components/CourseCard';
 import { CourseCardMenu } from '../../components/CourseCardMenu';
 import { CoursePapersSheet } from '../../components/CoursePapersSheet';
 import { FeaturedCardShell } from '../../components/FeaturedCardShell';
+import { GlassCircleButton } from '../../components/GlassCircleButton';
 import { FilterChips } from '../../components/FilterChips';
 import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
 import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
@@ -81,26 +81,6 @@ function CarouselDot({
     };
   });
   return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
-}
-
-/** Header circle button — real Liquid Glass where iOS 26 provides it,
-    the regular card circle everywhere else. */
-const GLASS = isLiquidGlassAvailable();
-function HeaderCircleButton({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
-  if (GLASS) {
-    return (
-      <Pressable onPress={onPress} hitSlop={8}>
-        <GlassView isInteractive style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-          {children}
-        </GlassView>
-      </Pressable>
-    );
-  }
-  return (
-    <Pressable onPress={onPress} style={styles.searchBtn} hitSlop={8}>
-      {children}
-    </Pressable>
-  );
 }
 
 const resolveCourse = (code: string): CatalogCourse | undefined => {
@@ -364,17 +344,17 @@ export default function CoursesScreen() {
           </Animated.Text>
           <Animated.View style={[styles.titleRow, liftStyle]}>
             <Text style={styles.title}>Courses</Text>
-            <HeaderCircleButton onPress={() => router.push('/downloads' as never)}>
+            <GlassCircleButton onPress={() => router.push('/downloads' as never)}>
               <Ionicons name="arrow-down-circle-outline" size={21} color={colors.text} />
-            </HeaderCircleButton>
-            <HeaderCircleButton onPress={toggleSearch}>
+            </GlassCircleButton>
+            <GlassCircleButton onPress={toggleSearch}>
               <Animated.View style={[styles.iconLayer, searchIconStyle]}>
                 <Ionicons name="search" size={20} color={colors.text} />
               </Animated.View>
               <Animated.View style={[styles.iconLayer, closeIconStyle]}>
                 <Ionicons name="close" size={22} color={colors.text} />
               </Animated.View>
-            </HeaderCircleButton>
+            </GlassCircleButton>
           </Animated.View>
         </View>
 

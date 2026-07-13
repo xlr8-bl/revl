@@ -12,7 +12,6 @@
  * header as you scroll.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -24,6 +23,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreditMark } from '../../components/CreditMark';
+import { GlassCircleButton } from '../../components/GlassCircleButton';
+import { TopFade } from '../../components/ScrollFadeHeader';
 import { DailyBriefing } from '../../components/DailyBriefing';
 import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
@@ -49,26 +50,15 @@ export default function HomeScreen() {
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
   });
-  const gradientStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 70], [0, 1], 'clamp'),
-  }));
-
   const today = new Date();
   const dateLine = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   const daytime = isDaytime(today);
 
   return (
     <View style={styles.root}>
-      {/* Scroll-linked top fade: content dissolves under the header. */}
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.topFade, { height: headerHeight + 80 }, gradientStyle]}>
-        <LinearGradient
-          colors={[colors.bg, colors.bg, withAlpha(colors.bg, 0.7), withAlpha(colors.bg, 0)]}
-          locations={[0, 0.5, 0.75, 1]}
-          style={{ flex: 1 }}
-        />
-      </Animated.View>
+      {/* Same progressive-blur blend as Courses: content properly blurs as
+          it slides under the greeting, ending just below the header. */}
+      <TopFade scrollY={scrollY} solid={headerHeight} fade={26} />
 
       {/* Pinned header */}
       <View
@@ -90,18 +80,21 @@ export default function HomeScreen() {
             {getGreeting()}, {firstName}
           </Text>
           <View style={styles.headerIcons}>
-            <Pressable onPress={() => router.push('/wallet')} style={styles.creditChip} hitSlop={8}>
-              <CreditMark size={15} />
-              <Text style={styles.creditCount}>{currentUser.credits}</Text>
-            </Pressable>
-            <Pressable hitSlop={8}>
-              <Ionicons name="notifications-outline" size={23} color={colors.text} />
+            {/* Same glass circle controls as the Courses header */}
+            <GlassCircleButton onPress={() => router.push('/wallet')}>
+              <View style={styles.creditInner}>
+                <CreditMark size={14} />
+                <Text style={styles.creditCount}>{currentUser.credits}</Text>
+              </View>
+            </GlassCircleButton>
+            <GlassCircleButton>
+              <Ionicons name="notifications-outline" size={21} color={colors.text} />
               {currentUser.notifications > 0 && (
                 <View style={styles.bellBadge}>
                   <Text style={styles.bellBadgeText}>{currentUser.notifications}</Text>
                 </View>
               )}
-            </Pressable>
+            </GlassCircleButton>
           </View>
         </View>
       </View>
@@ -110,6 +103,10 @@ export default function HomeScreen() {
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        // Native tabs auto-inset scroll content on iOS — stacked on our own
+        // header padding it reads as a dead gap (same fix as Courses).
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
         <HeroCard />
 
@@ -186,7 +183,6 @@ function SectionTitle({ title }: { title: string }) {
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  topFade: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5 },
   header: {
     position: 'absolute',
     top: 0,
@@ -209,17 +205,8 @@ const makeStyles = () => StyleSheet.create({
   },
   greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  creditChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  creditCount: { fontFamily: fonts.medium, fontSize: 13, color: colors.text },
+  creditInner: { alignItems: 'center', gap: 0 },
+  creditCount: { fontFamily: fonts.medium, fontSize: 11, color: colors.text, marginTop: 1 },
   bellBadge: {
     position: 'absolute',
     top: -4,
@@ -254,7 +241,7 @@ const makeStyles = () => StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: withAlpha(colors.text, 0.02),
   },
   queueFooterText: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
   wrappedBanner: {
@@ -265,7 +252,7 @@ const makeStyles = () => StyleSheet.create({
     marginTop: 24,
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(157,151,245,0.35)',
+    borderColor: withAlpha(colors.ai, 0.35),
     padding: 16,
     overflow: 'hidden',
   },
