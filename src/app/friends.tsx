@@ -123,6 +123,20 @@ export default function FriendsScreen() {
           </View>
         )}
 
+        {/* Privacy contract — revision effort is nobody's business */}
+        <View style={styles.privacyCard}>
+          <View style={styles.contactsHead}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
+            <Text style={styles.contactsTitle}>What friends can see</Text>
+          </View>
+          <Text style={styles.contactsBody}>
+            Only what you choose to publish: papers you upload, answers you verify, and posts you
+            make in the room. Friends never see your study activity — no sessions, streaks, reveal
+            counts or "last studied" — so nobody can measure how hard you are (or aren't)
+            revising.
+          </Text>
+        </View>
+
         {/* Contact matching — designed, visibly stubbed */}
         <View style={styles.contactsCard}>
           <View style={styles.contactsHead}>
@@ -281,9 +295,18 @@ const makeStyles = () =>
     quietText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.textSecondary },
     stateTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4 },
     stateText: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-    contactsCard: {
+    privacyCard: {
       marginHorizontal: spacing.gutter,
       marginTop: 30,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      padding: 16,
+    },
+    contactsCard: {
+      marginHorizontal: spacing.gutter,
+      marginTop: 14,
       borderRadius: 18,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: withAlpha(colors.accent, 0.35),

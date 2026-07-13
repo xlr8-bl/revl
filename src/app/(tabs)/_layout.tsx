@@ -4,7 +4,8 @@
  * system — not our BlurView imitation. Android gets the platform Material
  * bar; web keeps the custom floating dock via _layout.web.tsx.
  *
- * Courses is the index route (the system always lands on `index`), and the
+ * Today is the index route (the system always lands on `index`) — the
+ * daily plan is the front door, Courses is the library one tab over. The
  * Home tab reads the clock: sun + "Today" by day, moon + "Tonight" by night.
  */
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
@@ -39,10 +40,6 @@ export default function TabLayout() {
         into a stray corner pill and sticking there. */}
     <NativeTabs tintColor={tint} blurEffect="systemUltraThinMaterial">
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Icon sf={{ default: 'books.vertical', selected: 'books.vertical.fill' }} md="menu_book" />
-        <NativeTabs.Trigger.Label>Courses</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="today">
         <NativeTabs.Trigger.Icon
           sf={
             daytime
@@ -52,6 +49,10 @@ export default function TabLayout() {
           md={daytime ? 'sunny' : 'dark_mode'}
         />
         <NativeTabs.Trigger.Label>{daytime ? 'Today' : 'Tonight'}</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="courses">
+        <NativeTabs.Trigger.Icon sf={{ default: 'books.vertical', selected: 'books.vertical.fill' }} md="menu_book" />
+        <NativeTabs.Trigger.Label>Courses</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="community">
         <NativeTabs.Trigger.Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} md="group" />

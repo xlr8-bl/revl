@@ -44,8 +44,12 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Demo Study DNA rows so personalization screens are alive on first run.
-    seedDemoDataIfEmpty();
+    // Demo Study DNA rows keep personalization screens alive while
+    // DEVELOPING — production first-runs stay honest: a new student sees
+    // the real cold-start (starter session, "still learning you" briefing)
+    // instead of fake weak topics. Devices that already seeded keep their
+    // rows; this only stops NEW production installs from being seeded.
+    if (__DEV__ && !process.env.EXPO_PUBLIC_COLD_START) seedDemoDataIfEmpty();
   }, []);
 
   useEffect(() => {

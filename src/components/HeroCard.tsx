@@ -48,7 +48,9 @@ export function HeroCard() {
           <Text style={styles.statSub}>Attempt it before you peek at the answer</Text>
         </View>
         <Pressable
-          onPress={() => router.push(`/paper/${paper.id}`)}
+          // Deep-link straight to the picked question — the reader scrolls
+          // to it and frames it (same ?q= anchor the Class posts use).
+          onPress={() => router.push(`/paper/${paper.id}?q=${question.id}`)}
           style={({ pressed }) => [styles.attemptBtn, pressed && { opacity: 0.85 }]}>
           <Text style={styles.attemptText}>Attempt</Text>
         </Pressable>

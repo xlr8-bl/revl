@@ -18,7 +18,7 @@ export default function TabLayout() {
         sceneStyle: { backgroundColor: colors.bg },
       }}>
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="today" />
+      <Tabs.Screen name="courses" />
       <Tabs.Screen name="community" />
       <Tabs.Screen name="discover" />
       <Tabs.Screen name="you" />

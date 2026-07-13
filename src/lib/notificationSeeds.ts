@@ -5,6 +5,11 @@
  * matching the review pipeline (docs/PAPER_REVIEW.md). Every entry is
  * deduped by key, so this is idempotent across launches; the server phase
  * replaces this file with real pushes into the same store.
+ *
+ * Privacy rule (docs/FRIENDS_PRIVACY.md): friend items may only describe
+ * PUBLIC acts — uploads, verified answers, room posts. Never study
+ * activity (sessions finished, streaks, reveal counts) — friends must not
+ * be able to measure how hard someone is revising.
  */
 import { friendIdSet, person } from './friendsStore';
 import { checkExamMilestones, pushNotification } from './notificationsStore';
@@ -38,12 +43,12 @@ export function seedDemoNotifications(opts: {
       {
         kind: 'friend',
         lead: 'Grace',
-        body: 'finished Weak Topic Warm-up — 5 of 5 got it.',
+        body: 'asked the room about CEC420 Q2b — you attempted that one.',
         avatar: { initial: grace.initial, color: grace.color },
         createdAt: now - 9 * HOUR,
         unread: false,
       },
-      'friend:seed:grace-session'
+      'friend:seed:grace-asked'
     );
   }
 
