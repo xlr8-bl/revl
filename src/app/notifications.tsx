@@ -1,22 +1,43 @@
 /**
- * Notifications — everything that concerns you, in the app's own voice:
- * circle back button, kicker, big bold title, then Today / Earlier groups
- * of rows (kind icon tile, title, detail, time, unread accent dot).
+ * Notifications — a flat, feed-style stream (no boxed cards): avatar or
+ * glyph disc left, inline bold lead + regular body, relative time right,
+ * unread marked by a thin accent rail on the left edge. Day sections are
+ * small uppercase labels. Content comes from the working engine
+ * (lib/notificationsStore): real app events + your friends' activity —
+ * never strangers.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { markAllRead, useNotifications, type NotificationKind } from '../data/notifications';
+import {
+  markAllRead,
+  relativeTime,
+  useNotifications,
+  type AppNotification,
+  type NotificationKind,
+} from '../lib/notificationsStore';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-const KIND_ICON: Record<NotificationKind, keyof typeof Ionicons.glyphMap> = {
+const KIND_ICON: Record<Exclude<NotificationKind, 'friend'>, keyof typeof Ionicons.glyphMap> = {
   paper: 'document-text',
-  class: 'people',
   credits: 'server',
   reminder: 'alarm',
+  download: 'arrow-down',
 };
+
+function sectionOf(ts: number): 'today' | 'week' | 'earlier' {
+  const d = new Date(ts);
+  const now = new Date();
+  if (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  )
+    return 'today';
+  return now.getTime() - ts < 7 * 86400000 ? 'week' : 'earlier';
+}
 
 export default function NotificationsScreen() {
   useThemeVersion();
@@ -24,10 +45,19 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const all = useNotifications();
   const unread = all.filter((n) => n.unread).length;
-  const groups: { label: string; key: 'today' | 'earlier' }[] = [
-    { label: 'Today', key: 'today' },
-    { label: 'Earlier', key: 'earlier' },
-  ];
+
+  // Leaving the screen counts as having seen everything.
+  useEffect(() => () => markAllRead(), []);
+
+  const sections = useMemo(() => {
+    const buckets: { key: string; label: string; rows: AppNotification[] }[] = [
+      { key: 'today', label: 'Today', rows: [] },
+      { key: 'week', label: 'This week', rows: [] },
+      { key: 'earlier', label: 'Earlier', rows: [] },
+    ];
+    for (const n of all) buckets.find((b) => b.key === sectionOf(n.createdAt))!.rows.push(n);
+    return buckets.filter((b) => b.rows.length > 0);
+  }, [all]);
 
   return (
     <View style={styles.root}>
@@ -38,59 +68,64 @@ export default function NotificationsScreen() {
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 60 }}>
         <View style={styles.header}>
           <View style={styles.topRow}>
-            <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+            <Pressable onPress={() => router.back()} hitSlop={10} style={styles.circleBtn}>
               <Ionicons name="chevron-back" size={22} color={colors.text} />
             </Pressable>
-            {unread > 0 && (
-              <Pressable onPress={markAllRead} hitSlop={8}>
-                <Text style={styles.markRead}>Mark all read</Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => router.push('/friends' as never)}
+              hitSlop={10}
+              style={styles.circleBtn}>
+              <Ionicons name="person-add-outline" size={19} color={colors.text} />
+            </Pressable>
           </View>
-          <Text style={styles.kicker}>
-            {unread > 0 ? `${unread} unread` : 'All caught up'}
-          </Text>
+          <Text style={styles.kicker}>{unread > 0 ? `${unread} unread` : 'All caught up'}</Text>
           <Text style={styles.title}>Notifications</Text>
         </View>
 
-        {groups.map((g) => {
-          const rows = all.filter((n) => n.group === g.key);
-          if (rows.length === 0) return null;
-          return (
-            <View key={g.key} style={styles.group}>
-              <Text style={styles.groupLabel}>{g.label}</Text>
-              <View style={styles.card}>
-                {rows.map((n, i) => (
-                  <View key={n.id} style={[styles.row, i > 0 && styles.rowDivider]}>
-                    <View style={[styles.iconTile, n.kind === 'credits' && { backgroundColor: withAlpha(colors.accent, 0.16) }]}>
-                      <Ionicons
-                        name={KIND_ICON[n.kind]}
-                        size={16}
-                        color={n.kind === 'credits' ? colors.accent : colors.textSecondary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.rowTitle, n.unread && { fontFamily: fonts.bold }]} numberOfLines={1}>
-                        {n.title}
-                      </Text>
-                      <Text style={styles.rowDetail} numberOfLines={2}>
-                        {n.detail}
-                      </Text>
-                    </View>
-                    <View style={styles.rowRight}>
-                      <Text style={styles.time}>{n.time}</Text>
-                      {n.unread && <View style={styles.unreadDot} />}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          );
-        })}
+        {sections.length === 0 && (
+          <View style={styles.empty}>
+            <Ionicons name="notifications-off-outline" size={26} color={colors.textTertiary} />
+            <Text style={styles.emptyText}>
+              Nothing yet. Paper drops, your friends' activity and credit earnings land here.
+            </Text>
+          </View>
+        )}
 
-        <Text style={styles.footnote}>
-          Paper drops, class-room activity and credit earnings for your courses land here.
-        </Text>
+        {sections.map((s) => (
+          <View key={s.key} style={styles.section}>
+            <Text style={styles.sectionLabel}>{s.label}</Text>
+            {s.rows.map((n, i) => (
+              <View key={n.id} style={[styles.row, i > 0 && styles.rowDivider]}>
+                {/* Unread rail — a quiet accent edge, not a badge */}
+                <View style={[styles.rail, n.unread && styles.railUnread]} />
+                {n.kind === 'friend' && n.avatar ? (
+                  <View style={[styles.disc, { backgroundColor: n.avatar.color }]}>
+                    <Text style={styles.discInitial}>{n.avatar.initial}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.glyphDisc}>
+                    <Ionicons
+                      name={KIND_ICON[n.kind as Exclude<NotificationKind, 'friend'>] ?? 'ellipse'}
+                      size={15}
+                      color={n.kind === 'credits' ? colors.accent : colors.textSecondary}
+                    />
+                  </View>
+                )}
+                <Text style={[styles.line, n.unread && styles.lineUnread]}>
+                  <Text style={styles.lead}>{n.lead}</Text> {n.body}
+                </Text>
+                <Text style={styles.time}>{relativeTime(n.createdAt)}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+
+        {sections.length > 0 && (
+          <Text style={styles.footnote}>
+            Only your courses and your friends show up here — add people from the person icon
+            above.
+          </Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -101,7 +136,7 @@ const makeStyles = () =>
     root: { flex: 1, backgroundColor: colors.bg },
     header: { paddingHorizontal: spacing.gutter, marginBottom: 4 },
     topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    backBtn: {
+    circleBtn: {
       width: 40,
       height: 40,
       borderRadius: 20,
@@ -111,50 +146,70 @@ const makeStyles = () =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    markRead: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
     kicker: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 16 },
     title: { fontFamily: fonts.bold, fontSize: 38, color: colors.text, marginTop: 2 },
-    group: { marginTop: 20 },
-    groupLabel: {
+    section: { marginTop: 18 },
+    sectionLabel: {
       fontFamily: fonts.medium,
       fontSize: 11,
       letterSpacing: 1.2,
       textTransform: 'uppercase',
-      color: colors.textSecondary,
+      color: colors.textTertiary,
       paddingHorizontal: spacing.gutter,
-      marginBottom: 8,
+      marginBottom: 4,
     },
-    card: {
-      marginHorizontal: spacing.gutter,
-      borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.borderStrong,
-      backgroundColor: colors.card,
-      overflow: 'hidden',
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 13,
+      paddingRight: spacing.gutter,
+      paddingLeft: spacing.gutter - 3,
     },
-    row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
     rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-    iconTile: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.surface,
+    rail: { width: 3, height: '72%', borderRadius: 1.5, backgroundColor: 'transparent' },
+    railUnread: { backgroundColor: colors.accent },
+    disc: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 1,
     },
-    rowTitle: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.text },
-    rowDetail: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.textSecondary, marginTop: 2 },
-    rowRight: { alignItems: 'flex-end', gap: 6, marginTop: 2 },
+    discInitial: { fontFamily: fonts.bold, fontSize: 15, color: '#FFF' },
+    glyphDisc: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: withAlpha(colors.text, 0.05),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    line: {
+      flex: 1,
+      fontFamily: fonts.regular,
+      fontSize: 13.5,
+      lineHeight: 19,
+      color: colors.textSecondary,
+    },
+    lineUnread: { color: colors.text },
+    lead: { fontFamily: fonts.bold, color: colors.text },
     time: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
+    empty: { alignItems: 'center', gap: 12, paddingHorizontal: 44, marginTop: 70 },
+    emptyText: {
+      fontFamily: fonts.regular,
+      fontSize: 13.5,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
     footnote: {
       fontFamily: fonts.regular,
       fontSize: 11.5,
       lineHeight: 17,
       color: colors.textTertiary,
       paddingHorizontal: spacing.gutter,
-      marginTop: 22,
+      marginTop: 26,
     },
   });
 const styles = themedStyleSheet(makeStyles);

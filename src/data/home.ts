@@ -1,32 +1,9 @@
-import type { Question } from '../types';
-
 /**
- * Home screen content — Question of the Day + today's session cards.
- * The session cards will eventually be *derived* from Study DNA
+ * Home screen content — today's session cards. The Question of the Day is
+ * no longer a mock: it comes from lib/questionOfTheDay (real per-student
+ * selector). The session cards will eventually be *derived* from Study DNA
  * (see lib/selectors.ts → buildDailySession); these mocks define the shape.
  */
-
-export const questionOfTheDay: {
-  label: string;
-  sourceLine: string; // like "Isaiah 26:4 KJV" → "CEC420 · Data Mining · 2023"
-  question: Question;
-  stats: { reveals: string; comments: string; shares: string };
-} = {
-  label: 'Question of the Day',
-  sourceLine: 'CEC420 · Data Mining · 2023',
-  question: {
-    id: 'q1',
-    number: '1',
-    text: 'Define entropy as used in decision-tree learning, and explain what $H(S) = 0$ tells you about the training set.',
-    marks: 6,
-    topics: ['entropy', 'decision-trees'],
-    difficulty: 'easy',
-    diagrams: [],
-    subQuestions: [],
-    answers: {},
-  },
-  stats: { reveals: '12.4K', comments: '358', shares: '1.2K' },
-};
 
 export type SessionCardData = {
   id: string;

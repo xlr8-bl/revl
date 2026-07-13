@@ -13,7 +13,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -22,14 +22,15 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CreditMark } from '../../components/CreditMark';
 import { GlassCircleButton } from '../../components/GlassCircleButton';
 import { TopFade } from '../../components/ScrollFadeHeader';
 import { DailyBriefing } from '../../components/DailyBriefing';
 import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
 import { communityFeed, todaySession } from '../../data/home';
-import { useNotifications } from '../../data/notifications';
+import { DIRECTORY, useFriends } from '../../lib/friendsStore';
+import { seedDemoNotifications } from '../../lib/notificationSeeds';
+import { useNotifications } from '../../lib/notificationsStore';
 import { currentUser } from '../../data/user';
 import { getGreeting, planWord } from '../../lib/greeting';
 import { useSession } from '../../lib/session';
@@ -47,6 +48,24 @@ export default function HomeScreen() {
     : null;
   const [headerHeight, setHeaderHeight] = useState(120);
   const unread = useNotifications().filter((n) => n.unread).length;
+  const { friends } = useFriends();
+  // Your people first: feed rows from friends sort above the rest of the class.
+  const friendFirstNames = new Set(
+    friends
+      .map((id) => DIRECTORY.find((p) => p.id === id)?.name.split(' ')[0])
+      .filter(Boolean) as string[]
+  );
+  const roomFeed = [...communityFeed].sort(
+    (a, b) => Number(friendFirstNames.has(b.user)) - Number(friendFirstNames.has(a.user))
+  );
+
+  // Demo event pipeline — idempotent; the server phase pushes for real.
+  useEffect(() => {
+    seedDemoNotifications({
+      enrolledCourseCodes: profile?.enrolledCourseCodes,
+      examDateISO: profile?.examDate,
+    });
+  }, [profile]);
 
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -77,17 +96,11 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>
             {getGreeting()}, {firstName}
           </Text>
-          <View style={styles.headerControls}>
-            {/* Coin balance — a comfortable pill, not a squeezed circle */}
-            <GlassCircleButton pill onPress={() => router.push('/wallet')}>
-              <CreditMark size={19} />
-              <Text style={styles.creditCount}>{currentUser.credits}</Text>
-            </GlassCircleButton>
-            <GlassCircleButton onPress={() => router.push('/notifications' as never)}>
-              <Ionicons name="notifications-outline" size={20} color={colors.text} />
-              {unread > 0 && <View style={styles.bellDot} />}
-            </GlassCircleButton>
-          </View>
+          {/* ONE control. Credits live on You → wallet and the unlock sheet. */}
+          <GlassCircleButton onPress={() => router.push('/notifications' as never)}>
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
+            {unread > 0 && <View style={styles.bellDot} />}
+          </GlassCircleButton>
         </View>
       </View>
 
@@ -131,7 +144,7 @@ export default function HomeScreen() {
           <SectionTitle title={profile ? `${profile.departmentName} room` : 'Class activity'} />
         </Pressable>
         <View style={styles.feedCard}>
-          {communityFeed.slice(0, 3).map((item, i) => (
+          {roomFeed.slice(0, 3).map((item, i) => (
             <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>
               <View style={[styles.feedAvatar, { backgroundColor: item.color }]}>
                 <Text style={styles.feedAvatarText}>{item.initial}</Text>
@@ -194,8 +207,6 @@ const makeStyles = () => StyleSheet.create({
     marginTop: 6,
   },
   greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
-  headerControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  creditCount: { fontFamily: fonts.bold, fontSize: 15, color: colors.text },
   bellDot: {
     position: 'absolute',
     top: 10,

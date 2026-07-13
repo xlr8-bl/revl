@@ -85,6 +85,7 @@ export default function RootLayout() {
             <Stack.Screen name="account/mobile-money" />
             <Stack.Screen name="downloads" />
             <Stack.Screen name="notifications" />
+            <Stack.Screen name="friends" />
             <Stack.Screen name="wrapped" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="unlock/[id]" options={{ presentation: 'modal' }} />
           </Stack.Protected>

@@ -1,22 +1,31 @@
 /**
  * HeroCard — "Tonight's question" as a set exam paper: flat ink card,
  * hairline border, course line with a marks tag, the question in serif,
- * a rule, then attempt stats and a plain amber Attempt button.
- * No gradients, no icons.
+ * a rule, then the honest reason it was picked and a plain amber Attempt
+ * button. The pick comes from the real per-student selector
+ * (lib/questionOfTheDay) — enrolled courses, weighted by weak topics,
+ * rotating daily. No gradients, no icons, no invented stats.
  */
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { questionOfTheDay } from '../data/home';
 import { planWord } from '../lib/greeting';
+import { useQuestionOfTheDay } from '../lib/questionOfTheDay';
+import { useRevealLogs } from '../lib/selectors';
+import { useSession } from '../lib/session';
 import { colors, fonts, radius, spacing, type, themedStyleSheet, useThemeVersion } from '../theme';
 import { MathRichText } from './MathRichText';
 
 export function HeroCard() {
   useThemeVersion();
   const router = useRouter();
-  const { sourceLine, question, stats } = questionOfTheDay;
+  const { profile } = useSession();
+  const logs = useRevealLogs();
+  const pick = useQuestionOfTheDay(profile?.enrolledCourseCodes ?? [], logs);
   const when = planWord();
+
+  if (!pick) return null;
+  const { question, paper, sourceLine, reason } = pick;
 
   return (
     <View style={styles.card}>
@@ -35,15 +44,11 @@ export function HeroCard() {
 
       <View style={styles.footerRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.statLine}>
-            <Text style={styles.statStrong}>{stats.reveals}</Text> attempts {when}
-          </Text>
-          <Text style={styles.statLine}>
-            <Text style={styles.statStrong}>38%</Text> got it before revealing
-          </Text>
+          <Text style={styles.statLine}>{reason}</Text>
+          <Text style={styles.statSub}>Attempt it before you peek at the answer</Text>
         </View>
         <Pressable
-          onPress={() => router.push('/paper/cec420-2023')}
+          onPress={() => router.push(`/paper/${paper.id}`)}
           style={({ pressed }) => [styles.attemptBtn, pressed && { opacity: 0.85 }]}>
           <Text style={styles.attemptText}>Attempt</Text>
         </Pressable>
@@ -73,8 +78,8 @@ const makeStyles = () => StyleSheet.create({
   questionWrap: { marginTop: 18, marginBottom: 20 },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   footerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 14 },
-  statLine: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.textSecondary },
-  statStrong: { fontFamily: fonts.medium, color: colors.text },
+  statLine: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 19, color: colors.text },
+  statSub: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.textSecondary, marginTop: 2 },
   attemptBtn: {
     backgroundColor: colors.accent,
     borderRadius: 10,

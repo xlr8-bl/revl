@@ -11,6 +11,7 @@ import { useSyncExternalStore } from 'react';
 import { Image } from 'react-native';
 import { papers } from '../data/papers';
 import type { Paper } from '../types';
+import { pushNotification } from './notificationsStore';
 
 const KEY = 'revl.downloads.v2';
 const LEGACY_KEY = 'revl.downloads.v1'; // course codes from the first version
@@ -121,6 +122,14 @@ export async function downloadPaper(id: string) {
   paperStates[id] = { status: 'done', progress: 1 };
   persist();
   emit();
+  pushNotification(
+    {
+      kind: 'download',
+      lead: `${p.courseCode} ${p.year}`,
+      body: 'saved to your phone — it opens offline now.',
+    },
+    `download:${p.id}`
+  );
 }
 
 /** Download every paper of a course, in sequence. */
