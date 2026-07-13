@@ -5,13 +5,12 @@
  * tappable year rows. No gradients, no icons: color, type, and rules.
  */
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { recordAccess } from '../lib/courseAccess';
 import { sentenceCase } from '../lib/format';
-import { CourseBandMenu } from './CourseBandMenu';
 import { CourseDownloadButton, PaperDownloadBadge } from './DownloadBadge';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
@@ -47,19 +46,11 @@ export function CourseCard({
   /** Only QUICK taps open rows — a hold aimed at the context menu can
       never accidentally open a paper on release. */
   const pressStart = useRef(0);
-  /** Measured card width — sizes the iOS band-menu overlay. */
-  const [cardW, setCardW] = useState(0);
-
   const inner = (
       <Pressable
         onLongPress={onHold ? () => onHold(course.code, course.title || `Course ${course.code}`, meta) : undefined}
         delayLongPress={420}>
-      <View
-        style={styles.card}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width;
-          if (Math.abs(w - cardW) > 1) setCardW(w);
-        }}>
+      <View style={styles.card}>
         {/* Tinted header band: code + level + save */}
         <View style={[styles.band, { backgroundColor: wash(tint) }]}>
           <Text style={[styles.code, { color: tint }]}>{course.code}</Text>
@@ -120,19 +111,11 @@ export function CourseCard({
       </Pressable>
   );
 
-  // No entering animation: Reanimated layout animations freeze when the
-  // native menu Hosts mount mid-flight, leaving cards stuck half-faded and
-  // displaced (the grey first card / uneven spacing glitch).
-  return (
-    <View style={styles.cardWrap}>
-      {inner}
-      {/* iOS: native context menu on the header band only — the card itself
-          never enters SwiftUI layout, so spacing can't drift or overlap. */}
-      {Platform.OS === 'ios' && cardW > 0 && (
-        <CourseBandMenu code={course.code} title={course.title || `Course ${course.code}`} meta={meta} width={cardW} />
-      )}
-    </View>
-  );
+  // Deliberately ZERO native/menu machinery here: every action lives on the
+  // card itself (download button, paper rows), so there is nothing left
+  // that can morph, shift or glitch. Android/web keep the JS long-press
+  // overlay via onHold.
+  return <View style={styles.cardWrap}>{inner}</View>;
 }
 
 const makeStyles = () => StyleSheet.create({

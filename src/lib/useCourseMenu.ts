@@ -7,9 +7,18 @@
 import { useRouter } from 'expo-router';
 import { Share } from 'react-native';
 import { papers } from '../data/papers';
-import type { ShellMenuItem } from '../components/ContextMenuShell';
 import { downloadCourse, usePaperDownloads } from './courseDownloads';
 import { sentenceCase } from './format';
+
+export type ShellMenuItem = {
+  label: string;
+  /** SF Symbol name (iOS only). */
+  systemImage?: string;
+  destructive?: boolean;
+  /** Render a divider above this item (visual grouping). */
+  divider?: boolean;
+  onPress: () => void;
+};
 
 export function useCourseMenuItems(
   code: string,
