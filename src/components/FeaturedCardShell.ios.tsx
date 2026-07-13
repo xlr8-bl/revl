@@ -69,10 +69,12 @@ export function FeaturedCardShell({
           </ContextMenu.Trigger>
           {preview ? (
             <ContextMenu.Preview>
-              {/* Plate pinned to 1.06x the card — the lifted duplicate pops
-                  slightly LARGER than the card, the way system lifts read.
-                  (The preview view carries the matching scale transform.) */}
-              <Group modifiers={[frame({ width: width * 1.06, height: height * 1.06 })]}>{preview}</Group>
+              {/* Exactly card-sized: iOS keeps the ORIGINAL visible under a
+                  custom preview, so the duplicate must land precisely on it
+                  to cover it completely — an oversized plate gets nudged by
+                  the system to fit the menu and exposes the original's edge.
+                  UIKit adds its own scale-up during the lift animation. */}
+              <Group modifiers={[frame({ width, height })]}>{preview}</Group>
             </ContextMenu.Preview>
           ) : null}
           <ContextMenu.Items>

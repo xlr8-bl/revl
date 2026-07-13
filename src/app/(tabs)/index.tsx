@@ -490,11 +490,7 @@ export default function CoursesScreen() {
                   title={f.title}
                   meta={cardMeta}
                   onViewPapers={() => openPapers(f.code, f.title)}
-                  preview={
-                    <View style={[styles.featureCard, { width: featuredWidth, transform: [{ scale: 1.06 }] }]}>
-                      {cardBody}
-                    </View>
-                  }>
+                  preview={<View style={[styles.featureCard, { width: featuredWidth }]}>{cardBody}</View>}>
                 <Pressable
                   onPressIn={() => (pressStart.current = Date.now())}
                   onPress={() => {
