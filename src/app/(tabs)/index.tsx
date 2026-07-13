@@ -271,10 +271,11 @@ export default function CoursesScreen() {
     e.years.push(p.year);
     byCourse.set(p.courseCode, e);
   });
+  // Hard cap of THREE: featured means featured — your top sets, nothing more.
   const featured = [...byCourse.values()]
     .filter((f) => f.years.length > 0 && (!scopeCodes || scopeCodes.has(f.code)))
     .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
-    .slice(0, 10);
+    .slice(0, 3);
 
   // Context-aware search: online searches the full index (the "database");
   // offline searches only what's on this phone — courses whose papers are
@@ -489,7 +490,11 @@ export default function CoursesScreen() {
                   title={f.title}
                   meta={cardMeta}
                   onViewPapers={() => openPapers(f.code, f.title)}
-                  preview={<View style={[styles.featureCard, { width: featuredWidth }]}>{cardBody}</View>}>
+                  preview={
+                    <View style={[styles.featureCard, { width: featuredWidth, transform: [{ scale: 1.06 }] }]}>
+                      {cardBody}
+                    </View>
+                  }>
                 <Pressable
                   onPressIn={() => (pressStart.current = Date.now())}
                   onPress={() => {

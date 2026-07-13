@@ -69,10 +69,10 @@ export function FeaturedCardShell({
           </ContextMenu.Trigger>
           {preview ? (
             <ContextMenu.Preview>
-              {/* frame pins the preview plate to the card's exact size —
-                  without it SwiftUI proposes a huge frame and stretches the
-                  card into a giant empty slab. */}
-              <Group modifiers={[frame({ width, height })]}>{preview}</Group>
+              {/* Plate pinned to 1.06x the card — the lifted duplicate pops
+                  slightly LARGER than the card, the way system lifts read.
+                  (The preview view carries the matching scale transform.) */}
+              <Group modifiers={[frame({ width: width * 1.06, height: height * 1.06 })]}>{preview}</Group>
             </ContextMenu.Preview>
           ) : null}
           <ContextMenu.Items>
