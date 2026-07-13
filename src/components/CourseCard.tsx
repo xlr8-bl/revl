@@ -7,7 +7,6 @@
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { papers, unlockedPaperIds } from '../data/papers';
 import type { CatalogCourse } from '../data/catalog/types';
 import { recordAccess } from '../lib/courseAccess';
@@ -121,15 +120,18 @@ export function CourseCard({
       </Pressable>
   );
 
+  // No entering animation: Reanimated layout animations freeze when the
+  // native menu Hosts mount mid-flight, leaving cards stuck half-faded and
+  // displaced (the grey first card / uneven spacing glitch).
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(240)} style={styles.cardWrap}>
+    <View style={styles.cardWrap}>
       {inner}
       {/* iOS: native context menu on the header band only — the card itself
           never enters SwiftUI layout, so spacing can't drift or overlap. */}
       {Platform.OS === 'ios' && cardW > 0 && (
         <CourseBandMenu code={course.code} title={course.title || `Course ${course.code}`} meta={meta} width={cardW} />
       )}
-    </Animated.View>
+    </View>
   );
 }
 

@@ -14,8 +14,9 @@ import { useCourseMenuItems } from '../lib/useCourseMenu';
 import { sentenceCase } from '../lib/format';
 import { activeScheme, colors, fonts, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-/** Height of the band strip the menu listens on (matches CourseCard band). */
-const BAND_H = 42;
+/** The hold zone: band + title area (everything above the paper rows), so
+    holding the card's head reliably opens the menu. */
+const BAND_H = 88;
 /** Right inset so the band's download button stays tappable. */
 const RIGHT_INSET = 64;
 
@@ -56,8 +57,8 @@ export function CourseBandMenu({
         <ContextMenu.Preview>
           {/* frame pins the preview plate to this exact size — without it
               SwiftUI stretches the card into a giant empty slab. */}
-          <Group modifiers={[frame({ width: Math.min(width, 330), height: 124 })]}>
-            <View style={[styles.preview, { width: Math.min(width, 330), height: 124 }]}>
+          <Group modifiers={[frame({ width: Math.min(width, 330), height: 106 })]}>
+            <View style={[styles.preview, { width: Math.min(width, 330), height: 106 }]}>
               <View style={styles.previewBand}>
                 <Text style={styles.previewCode}>{code}</Text>
               </View>

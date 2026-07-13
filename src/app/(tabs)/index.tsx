@@ -184,11 +184,13 @@ export default function CoursesScreen() {
     const active = scrollY.value > end - 40;
     return withTiming(active ? 1 : 0, { duration: 280, easing: Easing.inOut(Easing.cubic) });
   });
+  // Lift = kicker height + 6 of the top padding: the title block ends up
+  // nearly flush under the status bar, just a sliver of air above it.
   const stickyStyle = useAnimatedStyle(() => {
     const p = dedupP.value;
     return {
       opacity: p * (1 - open.value),
-      transform: [{ translateY: 9 * (1 - p) - kickerH * p }],
+      transform: [{ translateY: 9 * (1 - p) - (kickerH + 6) * p }],
     };
   });
   const kickerStyle = useAnimatedStyle(() => {
@@ -197,7 +199,7 @@ export default function CoursesScreen() {
   });
   const liftStyle = useAnimatedStyle(() => {
     const p = dedupP.value;
-    return { transform: [{ translateY: -kickerH * p }] };
+    return { transform: [{ translateY: -(kickerH + 6) * p }] };
   });
   // The search bar grows out of the header; the content spacer grows with it so
   // everything below shifts down together, then back.
@@ -649,9 +651,10 @@ const makeStyles = () => StyleSheet.create({
     overflow: 'hidden',
     padding: 18,
     justifyContent: 'space-between',
-    backgroundColor: mixColor(colors.accent, colors.bg, activeScheme() === 'light' ? 0.09 : 0.13),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: withAlpha(colors.accent, 0.3),
+    // Richer wash + stronger border: the 9% version read flat against the page.
+    backgroundColor: mixColor(colors.accent, colors.bg, activeScheme() === 'light' ? 0.16 : 0.22),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.accent, 0.45),
   },
   featureGhost: {
     position: 'absolute',
