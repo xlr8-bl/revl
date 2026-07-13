@@ -21,7 +21,9 @@ export default function DiscoverScreen() {
       style={styles.root}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE }}>
+      contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE }}>
       <Text style={styles.title}>Discover</Text>
 
       <View style={styles.searchBox}>

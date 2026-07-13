@@ -66,6 +66,8 @@ export default function DownloadsScreen() {
     <View style={styles.root}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 90 }}>
         {/* Header — the app's voice: circle back, kicker, big bold title */}
         <View style={styles.header}>

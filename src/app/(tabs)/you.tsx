@@ -46,7 +46,9 @@ export default function YouScreen() {
     <ScrollView
       style={styles.root}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: TAB_BAR_CLEARANCE }}>
+      contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: TAB_BAR_CLEARANCE }}>
       {/* Top row: title + settings gear */}
       <View style={styles.topRow}>
         <Text style={styles.topTitle}>Profile</Text>

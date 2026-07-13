@@ -58,6 +58,8 @@ export default function ClassScreen() {
     <View style={styles.root}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: TAB_BAR_CLEARANCE + 70 }}>
         {/* Room header */}
         <Text style={styles.roomKicker}>{profile.school === 'ub' ? 'University of Buea' : 'HND'} · 128 classmates</Text>

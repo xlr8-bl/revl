@@ -29,8 +29,9 @@ import { DailyBriefing } from '../../components/DailyBriefing';
 import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
 import { communityFeed, todaySession } from '../../data/home';
+import { useNotifications } from '../../data/notifications';
 import { currentUser } from '../../data/user';
-import { getGreeting, isDaytime, planWord } from '../../lib/greeting';
+import { getGreeting, planWord } from '../../lib/greeting';
 import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
@@ -45,6 +46,7 @@ export default function HomeScreen() {
     ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000))
     : null;
   const [headerHeight, setHeaderHeight] = useState(120);
+  const unread = useNotifications().filter((n) => n.unread).length;
 
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -52,7 +54,6 @@ export default function HomeScreen() {
   });
   const today = new Date();
   const dateLine = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  const daytime = isDaytime(today);
 
   return (
     <View style={styles.root}>
@@ -64,36 +65,27 @@ export default function HomeScreen() {
       <View
         style={[styles.header, { paddingTop: insets.top + 8 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <View style={styles.kickerRow}>
-          <View style={styles.daypartRow}>
-            <Ionicons
-              name={daytime ? 'sunny' : 'moon'}
-              size={14}
-              color={daytime ? colors.accent : colors.ai}
-            />
-            <Text style={styles.dateLine}>{dateLine}</Text>
-          </View>
-          {examDays !== null && <Text style={styles.countdownText}>Exams in {examDays} days</Text>}
-        </View>
+        {/* One quiet kicker line — date and countdown as a single sentence,
+            no icon (the tab bar already carries the daypart). */}
+        <Text style={styles.dateLine}>
+          {dateLine}
+          {examDays !== null && (
+            <Text style={styles.countdownText}> · Exams in {examDays} days</Text>
+          )}
+        </Text>
         <View style={styles.greetingRow}>
           <Text style={styles.greeting}>
             {getGreeting()}, {firstName}
           </Text>
-          <View style={styles.headerIcons}>
-            {/* Same glass circle controls as the Courses header */}
-            <GlassCircleButton onPress={() => router.push('/wallet')}>
-              <View style={styles.creditInner}>
-                <CreditMark size={14} />
-                <Text style={styles.creditCount}>{currentUser.credits}</Text>
-              </View>
+          <View style={styles.headerControls}>
+            {/* Coin balance — a comfortable pill, not a squeezed circle */}
+            <GlassCircleButton pill onPress={() => router.push('/wallet')}>
+              <CreditMark size={19} />
+              <Text style={styles.creditCount}>{currentUser.credits}</Text>
             </GlassCircleButton>
-            <GlassCircleButton>
-              <Ionicons name="notifications-outline" size={21} color={colors.text} />
-              {currentUser.notifications > 0 && (
-                <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{currentUser.notifications}</Text>
-                </View>
-              )}
+            <GlassCircleButton onPress={() => router.push('/notifications' as never)}>
+              <Ionicons name="notifications-outline" size={20} color={colors.text} />
+              {unread > 0 && <View style={styles.bellDot} />}
             </GlassCircleButton>
           </View>
         </View>
@@ -193,8 +185,6 @@ const makeStyles = () => StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: 'transparent',
   },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  daypartRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dateLine: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   countdownText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
   greetingRow: {
@@ -204,22 +194,17 @@ const makeStyles = () => StyleSheet.create({
     marginTop: 6,
   },
   greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
-  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  creditInner: { alignItems: 'center', gap: 0 },
-  creditCount: { fontFamily: fonts.medium, fontSize: 11, color: colors.text, marginTop: 1 },
-  bellBadge: {
+  headerControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  creditCount: { fontFamily: fonts.bold, fontSize: 15, color: colors.text },
+  bellDot: {
     position: 'absolute',
-    top: -4,
-    right: -6,
-    backgroundColor: colors.badge,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+    top: 10,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   },
-  bellBadgeText: { fontFamily: fonts.medium, fontSize: 10, color: '#FFF' },
   sectionTitleRow: { marginTop: 32, marginBottom: 12, paddingHorizontal: spacing.gutter + 2 },
   sectionTick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: colors.accent, marginBottom: 8 },
   sectionTitleText: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
