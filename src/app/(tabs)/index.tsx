@@ -29,8 +29,6 @@ import { TopFade } from '../../components/ScrollFadeHeader';
 import { DailyBriefing } from '../../components/DailyBriefing';
 import { HeroCard } from '../../components/HeroCard';
 import { SessionCard } from '../../components/SessionCard';
-import { communityFeed } from '../../data/home';
-import { DIRECTORY, useFriends } from '../../lib/friendsStore';
 import { seedDemoNotifications } from '../../lib/notificationSeeds';
 import { useNotifications } from '../../lib/notificationsStore';
 import { useRevealLogs } from '../../lib/selectors';
@@ -52,16 +50,6 @@ export default function HomeScreen() {
     : null;
   const [headerHeight, setHeaderHeight] = useState(120);
   const unread = useNotifications().filter((n) => n.unread).length;
-  const { friends } = useFriends();
-  // Your people first: feed rows from friends sort above the rest of the class.
-  const friendFirstNames = new Set(
-    friends
-      .map((id) => DIRECTORY.find((p) => p.id === id)?.name.split(' ')[0])
-      .filter(Boolean) as string[]
-  );
-  const roomFeed = [...communityFeed].sort(
-    (a, b) => Number(friendFirstNames.has(b.user)) - Number(friendFirstNames.has(a.user))
-  );
 
   // The plan is a real query over your reveal log — not mock cards. A brand
   // new account gets an honest starter session instead of fake sessions.
@@ -152,26 +140,18 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* Class activity — the department room (community scoped to your class) */}
-        <Pressable onPress={() => router.push('/community' as never)}>
-          <SectionTitle title={profile ? `${profile.departmentName} room` : 'Class activity'} />
+        {/* The department room lives in the Class tab — Today just carries a
+            slim doorway to it, not a second copy of the feed. */}
+        <Pressable
+          onPress={() => router.push('/community' as never)}
+          style={({ pressed }) => [styles.roomLink, pressed && { opacity: 0.7 }]}>
+          <Ionicons name="people-outline" size={19} color={colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.roomLinkTitle}>{profile ? `${profile.departmentName} room` : 'Your class room'}</Text>
+            <Text style={styles.roomLinkSub}>Ask, solve and see what the class is working on</Text>
+          </View>
+          <Text style={styles.queueChevron}>›</Text>
         </Pressable>
-        <View style={styles.feedCard}>
-          {roomFeed.slice(0, 3).map((item, i) => (
-            <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>
-              <View style={[styles.feedAvatar, { backgroundColor: item.color }]}>
-                <Text style={styles.feedAvatarText}>{item.initial}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.feedLine}>
-                  <Text style={{ fontFamily: fonts.medium }}>{item.user}</Text> {item.action}
-                </Text>
-                <Text style={styles.feedDetail}>{item.detail}</Text>
-              </View>
-              <Text style={styles.feedTime}>{item.time}</Text>
-            </View>
-          ))}
-        </View>
 
         {/* Start here */}
         <View style={styles.beginCard}>
@@ -267,20 +247,21 @@ const makeStyles = () => StyleSheet.create({
   },
   wrappedTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
   wrappedMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  feedCard: {
+  roomLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginHorizontal: spacing.gutter,
+    marginTop: 24,
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     backgroundColor: colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
   },
-  feedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  feedRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  feedAvatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  feedAvatarText: { fontFamily: fonts.bold, fontSize: 14, color: '#FFF' },
-  feedLine: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
-  feedDetail: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  feedTime: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
+  roomLinkTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
+  roomLinkSub: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
   beginCard: {
     flexDirection: 'row',
     alignItems: 'center',

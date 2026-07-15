@@ -61,15 +61,3 @@ export async function askAboutQuestion(q: Question, userMessage: string): Promis
     text: `Good question. For Q${q.number}, focus on ${q.topics[0] ?? 'the definition'} first — "${userMessage.slice(0, 60)}" usually comes down to applying the formula carefully and interpreting the result. (Mock reply — this will be grounded in your uploaded notes once the AI is wired.)`,
   };
 }
-
-/**
- * Mock daily briefing — one small AI call turns raw Study DNA tallies
- * into a human line. Real version: POST /ai/briefing { topicStats }.
- */
-export function getDailyBriefing(hasEnoughData: boolean): string {
-  if (!hasEnoughData) {
-    // Honest early state, before there's data to personalize with.
-    return 'Still learning how you think. The more you revise, the sharper this gets.';
-  }
-  return 'You keep losing marks on definition-style questions. Three of tonight’s five target exactly that. Your information-gain work is clean now, so I’ve eased off it.';
-}

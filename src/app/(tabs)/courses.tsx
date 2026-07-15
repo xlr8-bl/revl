@@ -41,7 +41,7 @@ import { usePaperDownloads } from '../../lib/courseDownloads';
 import { sentenceCase } from '../../lib/format';
 import { useRevealLogs } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
-import { activeScheme, colors, fonts, mixColor, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
+import { activeScheme, colors, fonts, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
 // Primary scope (which set of courses) and secondary refinement — every one
 // backed by real data, no dead chips. When the student's enrolled set covers
@@ -623,27 +623,30 @@ const makeStyles = () => StyleSheet.create({
   // edge clips against the scroll bounds.
   carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 12, paddingVertical: 10 },
   dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 6, marginTop: 4, height: 14 },
-  // Clean geometric card — uniform hairline, no asymmetric "spine" bar.
-  // OPAQUE background (accent composited over the page) so the iOS context
-  // menu lift never shows the neighbouring card through the preview.
+  // Same calm surface as the Question-of-the-Day hero: a flat card on the
+  // page, hairline border, accent used only as small accents (the code, the
+  // action) — not a full orange wash, which read harsh. OPAQUE (colors.card
+  // is a solid hex) so the iOS context-menu lift never shows the neighbour
+  // through the preview.
   featureCard: {
     height: 190,
     borderRadius: 20,
     overflow: 'hidden',
     padding: 18,
     justifyContent: 'space-between',
-    // Richer wash + stronger border: the 9% version read flat against the page.
-    backgroundColor: mixColor(colors.accent, colors.bg, activeScheme() === 'light' ? 0.16 : 0.22),
-    borderWidth: 1,
-    borderColor: withAlpha(colors.accent, 0.45),
+    backgroundColor: colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
   },
+  // The oversized year is now the card's one warm signature — a faint accent
+  // watermark, low enough to sit under the text without shouting.
   featureGhost: {
     position: 'absolute',
     right: -8,
     bottom: -26,
     fontFamily: fonts.bold,
     fontSize: 110,
-    color: withAlpha(colors.accent, 0.1),
+    color: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.12),
     fontVariant: ['tabular-nums'],
   },
   featureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

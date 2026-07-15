@@ -6,8 +6,17 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
 import {
@@ -47,6 +56,45 @@ export default function StudyDnaScreen() {
   const positions = new Map(stats.map((s) => [s.tag, starPosition(s.tag, skyW, skyH)]));
   const nemesisQ = nemesis ? findQuestion(nemesis.questionId) : null;
 
+  // Depth without a 3D engine: two SVG layers (a far starfield, the near
+  // constellation) drift at different rates on a single looping shared
+  // value. The transform runs on the UI thread, so it stays smooth on
+  // entry-level Android — no OpenGL/WebGL, no per-frame JS. (See
+  // docs/STUDY_DNA_3D.md for why Three.js was rejected for these devices.)
+  const drift = useSharedValue(0);
+  useEffect(() => {
+    drift.value = withRepeat(
+      withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    );
+  }, [drift]);
+  const nearStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(drift.value, [0, 1], [-9, 9]) },
+      { translateY: interpolate(drift.value, [0, 1], [5, -5]) },
+    ],
+  }));
+  const farStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(drift.value, [0, 1], [3, -3]) },
+      { translateY: interpolate(drift.value, [0, 1], [-1.5, 1.5]) },
+    ],
+  }));
+
+  // Faint background starfield — deterministic, oversized so the drift
+  // never uncovers an empty corner. Pure decoration, no data.
+  const backdrop = useMemo(() => {
+    return Array.from({ length: 46 }, (_, i) => {
+      let h = ((i + 1) * 2654435761) >>> 0;
+      const x = (h % 1000) / 1000 * (skyW + 40);
+      const y = ((h >> 10) % 1000) / 1000 * (skyH + 40);
+      const r = 0.6 + ((h >> 20) % 100) / 100 * 1.1;
+      const o = 0.05 + ((h >> 5) % 100) / 100 * 0.13;
+      return { x, y, r, o };
+    });
+  }, [skyW, skyH]);
+
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
@@ -59,56 +107,71 @@ export default function StudyDnaScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         <Text style={styles.subtitle}>
-          Your course as a star map — bright stars are mastered, dim ones need work.
+          Your course as a star map — bright stars are mastered, dim ones need work. It drifts
+          gently so the sky feels alive.
         </Text>
 
-        {/* Constellation */}
+        {/* Constellation — two drifting layers for depth (see note above) */}
         <View style={styles.sky}>
-          <Svg width={skyW} height={skyH}>
-            {/* Prerequisite edges — faint lines between related stars */}
-            {edges.map((e) => {
-              const a = positions.get(e.from);
-              const b = positions.get(e.to);
-              if (!a || !b) return null;
-              return (
-                <Line
-                  key={`${e.from}-${e.to}`}
-                  x1={a.x}
-                  y1={a.y}
-                  x2={b.x}
-                  y2={b.y}
-                  stroke="rgba(94,107,255,0.25)"
-                  strokeWidth={1}
-                  strokeDasharray="3 4"
-                />
-              );
-            })}
-            {stats.map((s) => {
-              const p = positions.get(s.tag)!;
-              const r = 5 + Math.min(6, s.seen * 1.2);
-              const brightness = 1 - s.weakness; // mastered → bright
-              const fill = `rgba(255,255,255,${(0.2 + brightness * 0.8).toFixed(2)})`;
-              return (
-                <React.Fragment key={s.tag}>
-                  {/* glow for mastered stars */}
-                  {brightness > 0.6 && <Circle cx={p.x} cy={p.y} r={r + 6} fill="rgba(255,255,255,0.08)" />}
-                  {/* accent ring = false confidence lives here */}
-                  {s.falseConfidence > 0 && (
-                    <Circle cx={p.x} cy={p.y} r={r + 4} stroke={colors.accent} strokeWidth={1.5} fill="none" />
-                  )}
-                  <Circle cx={p.x} cy={p.y} r={r} fill={fill} />
-                  <SvgText
-                    x={p.x}
-                    y={p.y + r + 15}
-                    fontSize={10}
-                    fill={s.weakness > 0.5 ? colors.textSecondary : colors.textTertiary}
-                    textAnchor="middle">
-                    {s.tag}
-                  </SvgText>
-                </React.Fragment>
-              );
-            })}
-          </Svg>
+          <View style={{ width: skyW, height: skyH }}>
+            {/* Far starfield — drifts slowly behind the constellation */}
+            <Animated.View style={[StyleSheet.absoluteFill, farStyle]} pointerEvents="none">
+              <Svg width={skyW + 40} height={skyH + 40} style={{ marginLeft: -20, marginTop: -20 }}>
+                {backdrop.map((d, i) => (
+                  <Circle key={i} cx={d.x} cy={d.y} r={d.r} fill={`rgba(255,255,255,${d.o.toFixed(2)})`} />
+                ))}
+              </Svg>
+            </Animated.View>
+
+            {/* Near constellation — stars + edges together so they always align */}
+            <Animated.View entering={FadeIn.duration(650)} style={[StyleSheet.absoluteFill, nearStyle]}>
+              <Svg width={skyW} height={skyH}>
+                {/* Prerequisite edges — faint lines between related stars */}
+                {edges.map((e) => {
+                  const a = positions.get(e.from);
+                  const b = positions.get(e.to);
+                  if (!a || !b) return null;
+                  return (
+                    <Line
+                      key={`${e.from}-${e.to}`}
+                      x1={a.x}
+                      y1={a.y}
+                      x2={b.x}
+                      y2={b.y}
+                      stroke="rgba(94,107,255,0.25)"
+                      strokeWidth={1}
+                      strokeDasharray="3 4"
+                    />
+                  );
+                })}
+                {stats.map((s) => {
+                  const p = positions.get(s.tag)!;
+                  const r = 5 + Math.min(6, s.seen * 1.2);
+                  const brightness = 1 - s.weakness; // mastered → bright
+                  const fill = `rgba(255,255,255,${(0.2 + brightness * 0.8).toFixed(2)})`;
+                  return (
+                    <React.Fragment key={s.tag}>
+                      {/* glow for mastered stars */}
+                      {brightness > 0.6 && <Circle cx={p.x} cy={p.y} r={r + 6} fill="rgba(255,255,255,0.08)" />}
+                      {/* accent ring = false confidence lives here */}
+                      {s.falseConfidence > 0 && (
+                        <Circle cx={p.x} cy={p.y} r={r + 4} stroke={colors.accent} strokeWidth={1.5} fill="none" />
+                      )}
+                      <Circle cx={p.x} cy={p.y} r={r} fill={fill} />
+                      <SvgText
+                        x={p.x}
+                        y={p.y + r + 15}
+                        fontSize={10}
+                        fill={s.weakness > 0.5 ? colors.textSecondary : colors.textTertiary}
+                        textAnchor="middle">
+                        {s.tag}
+                      </SvgText>
+                    </React.Fragment>
+                  );
+                })}
+              </Svg>
+            </Animated.View>
+          </View>
           <View style={styles.legend}>
             <LegendDot color="rgba(255,255,255,0.95)" label="mastered" />
             <LegendDot color="rgba(255,255,255,0.3)" label="weak" />
