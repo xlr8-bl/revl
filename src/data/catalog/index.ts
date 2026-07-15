@@ -49,6 +49,13 @@ export function courseByCode(code: string): CatalogCourse | undefined {
   return [...ubPool, ...hndGeneralCourses, ...hndCourses].find((c) => c.code === code);
 }
 
+/** Every course in a department, across ALL levels/semesters — used for
+ *  carry-over (retake) search, which reaches outside the current level. */
+export function coursesInDepartment(school: SchoolId, departmentId: string): CatalogCourse[] {
+  const pool = school === 'hnd' ? [...hndGeneralCourses, ...hndCourses] : ubPool;
+  return pool.filter((c) => c.departmentId === departmentId);
+}
+
 export function searchCatalog(school: SchoolId, departmentId: string, query: string): CatalogCourse[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];

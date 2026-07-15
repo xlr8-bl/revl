@@ -16,7 +16,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -34,8 +34,9 @@ import { useNotifications } from '../../lib/notificationsStore';
 import { useRevealLogs } from '../../lib/selectors';
 import { buildTodayPlan } from '../../lib/studySessions';
 import { currentUser } from '../../data/user';
+import { academicYear, isNewAcademicYear, nextExamSitting, nextLevel } from '../../lib/academic';
 import { getGreeting, planWord } from '../../lib/greeting';
-import { useSession } from '../../lib/session';
+import { updateProfile, useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
 import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
@@ -64,6 +65,32 @@ export default function HomeScreen() {
     });
   }, [profile]);
 
+  // Level awareness: keep the exam countdown live, and at each academic-year
+  // rollover ask whether the student has moved up a level (we can't know
+  // pass/fail — the student confirms).
+  const [showProgress, setShowProgress] = useState(false);
+  const up = profile ? nextLevel(profile.level) : null;
+  useEffect(() => {
+    if (!profile) return;
+    // Refresh a stale exam date to the next sitting so the countdown is live.
+    if (profile.examDate && new Date(profile.examDate).getTime() < Date.now()) {
+      updateProfile({ examDate: nextExamSitting().iso });
+    }
+    if (isNewAcademicYear(profile.academicYear) && nextLevel(profile.level)) {
+      setShowProgress(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.academicYear, profile?.examDate]);
+
+  const stayAtLevel = () => {
+    updateProfile({ academicYear: academicYear() });
+    setShowProgress(false);
+  };
+  const advanceLevel = () => {
+    if (up) updateProfile({ level: up, academicYear: academicYear() });
+    setShowProgress(false);
+  };
+
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.value = e.contentOffset.y;
@@ -73,6 +100,26 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Academic-year rollover: confirm the move up a level */}
+      <Modal visible={showProgress && !!up} transparent animationType="fade" onRequestClose={stayAtLevel}>
+        <View style={styles.progressBackdrop}>
+          <View style={styles.progressCard}>
+            <Text style={styles.progressTitle}>New academic year</Text>
+            <Text style={styles.progressBody}>
+              It's now {academicYear()}. Have you moved up to{' '}
+              <Text style={{ fontFamily: fonts.bold, color: colors.text }}>{up}</Text>? We'll reload your courses for
+              the new level.
+            </Text>
+            <Pressable onPress={advanceLevel} style={styles.progressPrimary}>
+              <Text style={styles.progressPrimaryText}>Yes, I'm in {up}</Text>
+            </Pressable>
+            <Pressable onPress={stayAtLevel} style={styles.progressSecondary}>
+              <Text style={styles.progressSecondaryText}>Still in {profile?.level} (repeating)</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Same progressive-blur blend as Courses: content properly blurs as
           it slides under the greeting, ending just below the header. */}
       <TopFade scrollY={scrollY} solid={headerHeight} fade={26} />
@@ -181,6 +228,14 @@ function SectionTitle({ title }: { title: string }) {
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  progressBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  progressCard: { width: '100%', maxWidth: 360, backgroundColor: colors.card, borderRadius: 22, padding: 22, gap: 10 },
+  progressTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.text },
+  progressBody: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, marginBottom: 6 },
+  progressPrimary: { backgroundColor: colors.accent, borderRadius: 12, alignItems: 'center', paddingVertical: 14 },
+  progressPrimaryText: { fontFamily: fonts.bold, fontSize: 15.5, color: colors.onAccent },
+  progressSecondary: { alignItems: 'center', paddingVertical: 12 },
+  progressSecondaryText: { fontFamily: fonts.medium, fontSize: 14, color: colors.textSecondary },
   header: {
     position: 'absolute',
     top: 0,

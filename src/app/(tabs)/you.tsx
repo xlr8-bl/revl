@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar } from '../../components/Avatar';
 import { currentUser } from '../../data/user';
 import { useFriends } from '../../lib/friendsStore';
 import { formatMoney, useWallet } from '../../lib/money';
@@ -71,9 +72,7 @@ export default function YouScreen() {
 
       {/* Identity */}
       <View style={styles.profile}>
-        <View style={[styles.avatar, profile && { backgroundColor: profile.avatarColor }]}>
-          <Text style={styles.avatarText}>{(profile?.name[0] ?? currentUser.initial).toUpperCase()}</Text>
-        </View>
+        <Avatar uri={profile?.avatarUri} useDefault color={profile?.avatarColor} initial={profile?.name?.[0]} size={84} />
         <Text style={styles.name}>{profile?.name ?? currentUser.name}</Text>
         {profile && <Text style={styles.username}>@{profile.username}</Text>}
         <Text style={styles.meta}>

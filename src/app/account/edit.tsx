@@ -5,9 +5,11 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar } from '../../components/Avatar';
 import { schools } from '../../data/catalog';
 import { AVATAR_COLORS, isUsernameAvailable, updateProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
@@ -20,7 +22,8 @@ export default function EditProfileScreen() {
 
   const [name, setName] = useState(profile?.name ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
-  const [avatarColor, setAvatarColor] = useState(profile?.avatarColor ?? AVATAR_COLORS[0]);
+  const [avatarColor] = useState(profile?.avatarColor ?? AVATAR_COLORS[0]);
+  const [avatarUri, setAvatarUri] = useState<string | undefined>(profile?.avatarUri);
   const [level, setLevel] = useState(profile?.level ?? '');
 
   if (!profile) return null;
@@ -29,9 +32,19 @@ export default function EditProfileScreen() {
   const usernameOk = username === profile.username || isUsernameAvailable(username);
   const canSave = name.trim().length > 1 && usernameOk;
 
+  const pickPhoto = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    }).catch(() => null);
+    if (res && !res.canceled && res.assets?.[0]) setAvatarUri(res.assets[0].uri);
+  };
+
   const save = () => {
     if (!canSave) return;
-    updateProfile({ name: name.trim(), username: username.trim().toLowerCase(), avatarColor, level });
+    updateProfile({ name: name.trim(), username: username.trim().toLowerCase(), avatarColor, avatarUri, level });
     router.back();
   };
 
@@ -51,20 +64,24 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: spacing.gutter }}>
-        {/* Avatar preview */}
+        {/* Avatar — tap to change photo */}
         <View style={styles.avatarWrap}>
-          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-            <Text style={styles.avatarText}>{(name[0] ?? 'R').toUpperCase()}</Text>
-          </View>
+          <Pressable onPress={pickPhoto}>
+            <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name[0]} size={88} />
+            <View style={styles.photoBadge}>
+              <Ionicons name="camera" size={15} color="#FFFFFF" />
+            </View>
+          </Pressable>
         </View>
-        <View style={styles.swatchRow}>
-          {AVATAR_COLORS.map((c) => (
-            <Pressable
-              key={c}
-              onPress={() => setAvatarColor(c)}
-              style={[styles.swatch, { backgroundColor: c }, avatarColor === c && styles.swatchActive]}
-            />
-          ))}
+        <View style={styles.photoActions}>
+          <Pressable onPress={pickPhoto}>
+            <Text style={styles.photoBtn}>Change photo</Text>
+          </Pressable>
+          {avatarUri && (
+            <Pressable onPress={() => setAvatarUri(undefined)}>
+              <Text style={styles.photoRemove}>Use default</Text>
+            </Pressable>
+          )}
         </View>
 
         <Text style={styles.label}>Full name</Text>
@@ -121,11 +138,22 @@ const makeStyles = () =>
     topTitle: { fontFamily: fonts.bold, fontSize: 17, color: colors.text },
     save: { fontFamily: fonts.bold, fontSize: 16, color: colors.accent },
     avatarWrap: { alignItems: 'center', marginTop: 16 },
-    avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontFamily: fonts.bold, fontSize: 38, color: '#141414' },
-    swatchRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16 },
-    swatch: { width: 30, height: 30, borderRadius: 15 },
-    swatchActive: { borderWidth: 3, borderColor: colors.text },
+    photoBadge: {
+      position: 'absolute',
+      right: -2,
+      bottom: -2,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.bg,
+    },
+    photoActions: { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 12 },
+    photoBtn: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.accent },
+    photoRemove: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
     label: { fontFamily: fonts.bold, fontSize: 13, color: colors.textSecondary, marginTop: 24, marginBottom: 8 },
     input: {
       backgroundColor: colors.card,
