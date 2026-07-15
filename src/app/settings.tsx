@@ -7,10 +7,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setPref, usePrefs } from '../lib/prefs';
-import { signOut, updateProfile, useSession } from '../lib/session';
+import { deleteAccount, signOut, useSession } from '../lib/session';
 import {
   colors,
   fonts,
@@ -32,11 +32,6 @@ export default function SettingsScreen() {
 
   const go = (path: string) => router.push(path as never);
   const momoLinked = !!phone;
-  const studyTimes: { id: NonNullable<typeof profile>['studyTime']; label: string }[] = [
-    { id: 'morning', label: 'Morning' },
-    { id: 'evening', label: 'Evening' },
-    { id: 'night', label: 'Night' },
-  ];
 
   return (
     <View style={styles.root}>
@@ -65,21 +60,19 @@ export default function SettingsScreen() {
             detail={momoLinked ? 'Linked' : 'Not linked'}
             onPress={() => go('/account/mobile-money')}
           />
-          <LinkRow icon="wallet-outline" label="Credits & wallet" onPress={() => go('/wallet')} bordered />
+          <LinkRow icon="wallet-outline" label="Wallet" onPress={() => go('/wallet')} bordered />
+          <SegmentRow
+            icon="cash-outline"
+            label="Currency label"
+            options={[
+              { id: 'FRS', label: 'FRS' },
+              { id: 'XAF', label: 'XAF' },
+            ]}
+            value={prefs.currency}
+            onSelect={(v) => setPref('currency', v as 'XAF' | 'FRS')}
+            bordered
+          />
         </Section>
-
-        {/* Study */}
-        {profile && (
-          <Section title="Study">
-            <SegmentRow
-              icon="time-outline"
-              label="Study time"
-              options={studyTimes.map((s) => ({ id: s.id, label: s.label }))}
-              value={profile.studyTime}
-              onSelect={(v) => updateProfile({ studyTime: v as NonNullable<typeof profile>['studyTime'] })}
-            />
-          </Section>
-        )}
 
         {/* Appearance */}
         <Section title="Appearance">
@@ -130,6 +123,30 @@ export default function SettingsScreen() {
           <Ionicons name="log-out-outline" size={19} color={colors.danger} />
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
+
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              'Delete account?',
+              'This permanently removes your profile, courses and study history from this device. This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete account',
+                  style: 'destructive',
+                  onPress: () => {
+                    deleteAccount();
+                    router.replace('/' as never);
+                  },
+                },
+              ]
+            )
+          }
+          style={styles.deleteRow}>
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          <Text style={styles.deleteText}>Delete account</Text>
+        </Pressable>
+        <Text style={styles.deleteHint}>Permanently erases your data from this device.</Text>
       </ScrollView>
     </View>
   );
@@ -276,5 +293,15 @@ const makeStyles = () =>
       marginTop: 24,
     },
     signOutText: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.danger },
+    deleteRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      marginTop: 10,
+    },
+    deleteText: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.danger },
+    deleteHint: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginTop: -2 },
   });
 const styles = themedStyleSheet(makeStyles);

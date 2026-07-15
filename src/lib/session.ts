@@ -26,7 +26,10 @@ export type StudentProfile = {
   enrolledCourseCodes: string[];
   /** ISO date of the next exam sitting — drives the home countdown. */
   examDate: string;
-  studyTime: 'morning' | 'evening' | 'night';
+  /** Optional recovery contacts for Mobile Money accounts (no email/phone
+   * from the wallet otherwise). Lets a lost account be recovered. */
+  recoveryPhone?: string;
+  recoveryEmail?: string;
 };
 
 type Session = {
@@ -93,6 +96,17 @@ export function signOut() {
   // Profile survives sign-out so returning students skip onboarding.
   session = { ...session, signedIn: false, method: null, phone: undefined };
   persist();
+  emit();
+}
+
+/**
+ * Delete the account — wipes the profile and all identity, returning the
+ * app to the welcome screen. On the local build this clears the persisted
+ * session entirely (the server call goes here in the backend phase).
+ */
+export function deleteAccount() {
+  AsyncStorage.removeItem(KEY).catch(() => {});
+  session = { hydrated: true, signedIn: false, method: null, phone: undefined, profile: null };
   emit();
 }
 

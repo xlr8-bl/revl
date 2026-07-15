@@ -21,6 +21,9 @@ export type CatalogCourse = {
   /** true = code AND title confirmed from an official/current source. */
   verified: boolean;
   source: string;
+  /** Which semester the course is taught: 'S1' first, 'S2' second. Drives
+   * the semester split on the onboarding course picker. Absent = unknown. */
+  semester?: 'S1' | 'S2';
   /** Past papers known to exist for this course on the source archive
    * (papers.ndetek.com). Metadata only — the structured, answerable paper
    * content is ingested separately (see docs/PAPER_PIPELINE). */

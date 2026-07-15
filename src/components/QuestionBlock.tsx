@@ -42,6 +42,7 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
   useThemeVersion();
   useCommunity(); // re-render when raised hands change
   const hasAnswer = !!(question.answers.verified || question.answers.aiGeneral);
+  const isMcq = (question.options?.length ?? 0) > 0;
   const wanted = handsFor(question.id);
   const isLeaf = question.subQuestions.length === 0;
 
@@ -49,6 +50,23 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
   const [revealed, setRevealed] = useState(false);
   const [resolution, setResolution] = useState<RevealLog['resolution'] | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
+  // MCQ state — the picked option index and whether it's been checked.
+  const [picked, setPicked] = useState<number | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  const checkMcq = () => {
+    if (picked === null || checked) return;
+    setChecked(true);
+    const correct = !!question.options?.[picked]?.correct;
+    logReveal({
+      questionId: question.id,
+      courseCode,
+      tags: question.topics,
+      confidenceBefore: 'sort-of',
+      resolution: correct ? 'got-it' : 'not-yet',
+      hadNotes: hasNotes,
+    });
+  };
   // Prerequisite tags from the AI tail; attached to the log row if known in time.
   const prereqTags = useRef<string[] | undefined>(undefined);
 
@@ -122,8 +140,63 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
         </Pressable>
       )}
 
+      {/* ---- Multiple-choice: pick an option, then Check ---- */}
+      {isLeaf && isMcq && (
+        <View style={styles.loop}>
+          {question.options!.map((opt, idx) => {
+            const isPicked = picked === idx;
+            const showCorrect = checked && opt.correct;
+            const showWrong = checked && isPicked && !opt.correct;
+            return (
+              <Pressable
+                key={idx}
+                disabled={checked}
+                onPress={() => setPicked(idx)}
+                style={[
+                  styles.mcqOption,
+                  isPicked && !checked && styles.mcqPicked,
+                  showCorrect && styles.mcqCorrect,
+                  showWrong && styles.mcqWrong,
+                ]}>
+                <View
+                  style={[
+                    styles.mcqRadio,
+                    isPicked && !checked && { borderColor: colors.accent },
+                    showCorrect && { borderColor: colors.success, backgroundColor: colors.success },
+                    showWrong && { borderColor: colors.danger, backgroundColor: colors.danger },
+                  ]}>
+                  {checked && (opt.correct || showWrong) && (
+                    <Ionicons name={opt.correct ? 'checkmark' : 'close'} size={12} color="#FFF" />
+                  )}
+                </View>
+                <Text style={styles.mcqLabel}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+
+          {!checked ? (
+            <Pressable
+              onPress={checkMcq}
+              style={[styles.revealBtn, picked === null && styles.revealBtnDisabled]}>
+              <Text style={[styles.revealText, picked === null && { color: colors.textTertiary }]}>Check answer</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.resolvedRow}>
+              <Text style={styles.resolvedText}>
+                {question.options![picked!]?.correct ? 'Correct. Logged.' : 'Not quite — this topic will resurface.'}
+              </Text>
+              {hasAnswer && (
+                <Pressable onPress={() => setExplainOpen(true)} style={styles.explainBtn} hitSlop={6}>
+                  <Text style={styles.explainText}>Explain</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* ---- The reveal loop (leaf questions with an answer) ---- */}
-      {isLeaf && hasAnswer && (
+      {isLeaf && !isMcq && hasAnswer && (
         <View style={styles.loop}>
           {!revealed ? (
             <>
@@ -257,6 +330,30 @@ const makeStyles = () => StyleSheet.create({
   },
   revealBtnDisabled: { backgroundColor: colors.surface },
   revealText: { fontFamily: fonts.medium, fontSize: 15, color: colors.onAccent },
+  mcqOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: colors.surface,
+  },
+  mcqPicked: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  mcqCorrect: { borderColor: colors.success, backgroundColor: 'rgba(48,209,88,0.10)' },
+  mcqWrong: { borderColor: colors.danger, backgroundColor: 'rgba(255,69,58,0.10)' },
+  mcqRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mcqLabel: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
   answerBox: { backgroundColor: colors.surface, borderRadius: 14, padding: 14 },
   answerHeader: { marginBottom: 10 },
   verifiedText: { fontFamily: fonts.medium, fontSize: 12, color: colors.verified },

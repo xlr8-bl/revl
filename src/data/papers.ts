@@ -24,8 +24,68 @@ export const papers: Paper[] = [
     duration: '3 hours',
     totalMarks: 70,
     instructions:
-      'Answer **ALL** questions in Section A and any **TWO** questions from Section B. All symbols have their usual meanings. A non-programmable calculator is allowed.',
+      'Answer **ALL** multiple-choice questions in Section A and any **TWO** long questions from Section B. All symbols have their usual meanings. A non-programmable calculator is allowed.',
     questions: [
+      {
+        id: 'mcq1',
+        number: 'A1',
+        text: 'Which quantity does the **ID3** decision-tree algorithm maximise when it chooses an attribute to split on?',
+        marks: 2,
+        topics: ['information-gain', 'decision-trees'],
+        difficulty: 'easy',
+        diagrams: [],
+        subQuestions: [],
+        options: [
+          { label: 'Information gain', correct: true },
+          { label: 'Gini impurity', correct: false },
+          { label: 'Euclidean distance', correct: false },
+          { label: 'Support count', correct: false },
+        ],
+        answers: {
+          verified:
+            'ID3 picks the attribute with the **highest information gain** — the largest expected reduction in entropy. (Gini impurity is what CART uses; the others are unrelated.)',
+        },
+      },
+      {
+        id: 'mcq2',
+        number: 'A2',
+        text: 'In the **Apriori** algorithm, the rule that *every subset of a frequent itemset must itself be frequent* is known as the:',
+        marks: 2,
+        topics: ['apriori', 'association-rules'],
+        difficulty: 'medium',
+        diagrams: [],
+        subQuestions: [],
+        options: [
+          { label: 'Apriori (anti-monotone) property', correct: true },
+          { label: 'Confidence threshold', correct: false },
+          { label: 'Lift ratio', correct: false },
+          { label: 'Bayes rule', correct: false },
+        ],
+        answers: {
+          verified:
+            'This is the **Apriori property** (downward closure / anti-monotonicity): if an itemset is frequent, all its subsets are too — so if any subset is infrequent, the itemset can be pruned without counting it.',
+        },
+      },
+      {
+        id: 'mcq3',
+        number: 'A3',
+        text: 'The standard **k-means** clustering algorithm iteratively minimises which objective?',
+        marks: 2,
+        topics: ['clustering', 'k-means'],
+        difficulty: 'medium',
+        diagrams: [],
+        subQuestions: [],
+        options: [
+          { label: 'Within-cluster sum of squared distances', correct: true },
+          { label: 'Total information gain', correct: false },
+          { label: 'Between-class entropy', correct: false },
+          { label: 'Overall support count', correct: false },
+        ],
+        answers: {
+          verified:
+            'k-means minimises the **within-cluster sum of squares (WCSS)** — the total squared distance of points to their assigned centroid — alternating the assignment and centroid-update steps until it converges.',
+        },
+      },
       {
         id: 'q1',
         number: '1',

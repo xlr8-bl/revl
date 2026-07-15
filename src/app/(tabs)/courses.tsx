@@ -235,26 +235,24 @@ export default function CoursesScreen() {
   const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
 
   /**
-   * Featured carousel: course sets with extracted papers, scoped by the
-   * active filter (your courses / downloaded / studied) and always ranked
-   * by how much you use them — your go-to sets ride first.
+   * Featured carousel — the student's REAL registered courses (not a
+   * hard-coded set), scoped by the active filter. Ranking metric, so the
+   * top three are the most worth revising on first open (before we have
+   * any usage data):
+   *   1. how much you've opened it (once usage exists, your go-to rides first)
+   *   2. courses in the CURRENT semester (what you're sitting this term)
+   *   3. most past papers on record (most you can actually revise)
    */
-  const scopeCodes =
-    scope === 'My courses'
-      ? new Set(enrolled.map((c) => c.code))
-      : scope === 'Studied'
-        ? new Set(studiedCourses.map((c) => c.code))
-        : null; // All courses — every paper set qualifies
-  const byCourse = new Map<string, { code: string; title: string; years: number[] }>();
-  papers.forEach((p) => {
-    const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [] };
-    e.years.push(p.year);
-    byCourse.set(p.courseCode, e);
-  });
-  // Hard cap of THREE: featured means featured — your top sets, nothing more.
-  const featured = [...byCourse.values()]
-    .filter((f) => f.years.length > 0 && (!scopeCodes || scopeCodes.has(f.code)))
-    .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
+  const curSem: 'S1' | 'S2' = (profile.examDate ? new Date(profile.examDate).getMonth() : new Date().getMonth()) <= 2 ? 'S1' : 'S2';
+  const scopeCourses = scope === 'My courses' ? enrolled : scope === 'Studied' ? studiedCourses : departmentCourses;
+  const featured = [...scopeCourses]
+    .sort((a, b) => {
+      const acc = (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0);
+      if (acc) return acc;
+      const sem = (b.semester === curSem ? 1 : 0) - (a.semester === curSem ? 1 : 0);
+      if (sem) return sem;
+      return (b.papersOnRecord ?? 0) - (a.papersOnRecord ?? 0);
+    })
     .slice(0, 3);
 
   // Context-aware search: online searches the full index (the "database");
@@ -416,20 +414,23 @@ export default function CoursesScreen() {
             removeClippedSubviews={false}
             contentContainerStyle={styles.carousel}>
             {featured.map((f, i) => {
-              const years = [...new Set(f.years)].sort((a, b) => a - b);
-              // Gap-aware: a clean range only when the years are actually
-              // contiguous; otherwise list the years so 2019 · 2021 · 2023
-              // never reads as an unbroken 2019–2023.
-              const contiguous = years[years.length - 1] - years[0] + 1 === years.length;
-              const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
+              const count = f.papersOnRecord ?? 0;
+              const yearLabel =
+                f.firstYear && f.lastYear
+                  ? f.firstYear === f.lastYear
+                    ? `${f.firstYear}`
+                    : `${f.firstYear}–${f.lastYear}`
+                  : '';
+              const papersLabel = count > 0 ? `${count} paper${count > 1 ? 's' : ''}${yearLabel ? ` · ${yearLabel}` : ''}` : 'Papers coming soon';
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
-              const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
+              const inSem = !mostUsed && f.semester === curSem;
+              const cardMeta = papersLabel;
               // Shared body: rendered once as the visible card and once as
               // the context-menu lift preview (pixel-identical duplicate).
               const cardBody = (
                 <>
-                  {/* Oversized ghost year — background typography, not decoration */}
-                  <Text style={styles.featureGhost}>{years[years.length - 1]}</Text>
+                  {/* Oversized ghost — the course code, background typography */}
+                  <Text style={styles.featureGhost} numberOfLines={1}>{f.code}</Text>
 
                   <View style={styles.featureTop}>
                     <Text style={styles.featureCode}>{f.code}</Text>
@@ -438,19 +439,23 @@ export default function CoursesScreen() {
                         <Ionicons name="star" size={12} color={colors.accent} />
                         <Text style={styles.featurePillText}>Most used</Text>
                       </View>
+                    ) : inSem ? (
+                      <View style={styles.featurePill}>
+                        <Text style={styles.featurePillText}>This semester</Text>
+                      </View>
                     ) : (
-                      <Text style={styles.featureKicker}>Featured set</Text>
+                      <Text style={styles.featureKicker}>Your course</Text>
                     )}
                   </View>
 
                   <View>
                     <Text style={styles.featureTitle} numberOfLines={2}>
-                      {sentenceCase(f.title)}
+                      {sentenceCase(f.title || f.code)}
                     </Text>
                     <View style={styles.featureRule} />
                     <View style={styles.featureMetaRow}>
                       <Text style={styles.featureMeta} numberOfLines={1}>
-                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {yearLabel}
+                        {papersLabel}
                       </Text>
                       <Text style={styles.featureOpen}>View papers ›</Text>
                     </View>
@@ -642,12 +647,12 @@ const makeStyles = () => StyleSheet.create({
   // watermark, low enough to sit under the text without shouting.
   featureGhost: {
     position: 'absolute',
-    right: -8,
-    bottom: -26,
+    right: 6,
+    bottom: -6,
     fontFamily: fonts.bold,
-    fontSize: 110,
+    fontSize: 58,
+    letterSpacing: -1,
     color: withAlpha(colors.accent, activeScheme() === 'light' ? 0.09 : 0.12),
-    fontVariant: ['tabular-nums'],
   },
   featureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: colors.accent },

@@ -11,15 +11,15 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getPaper, unlockedPaperIds } from '../../data/papers';
 import { suppressOfflineBanner } from '../../lib/connectivity';
-import { currentUser } from '../../data/user';
+import { formatMoney, spend, useWallet } from '../../lib/money';
+import { usePrefs } from '../../lib/prefs';
 import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'mtn' | 'orange';
 type Stage = 'choose' | 'confirming' | 'done';
 
-const PRICE_XAF = 500;
-const PRICE_CREDITS = 3;
+const PRICE = 500; // FCFA
 
 export default function UnlockScreen() {
   useThemeVersion();
@@ -30,6 +30,8 @@ export default function UnlockScreen() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [phone, setPhone] = useState('');
   const [stage, setStage] = useState<Stage>('choose');
+  const { balance } = useWallet();
+  const { currency } = usePrefs();
 
   // The payment USSD prompt cuts mobile data briefly — hold the offline
   // banner down while the approval is pending.
@@ -50,7 +52,8 @@ export default function UnlockScreen() {
     }, 2200);
   };
 
-  const unlockWithCredits = () => {
+  const unlockFromWallet = () => {
+    if (!spend(PRICE, `Unlocked ${paper.courseCode} · ${paper.year} paper`)) return;
     unlockedPaperIds.add(paper.id);
     setStage('done');
   };
@@ -80,24 +83,26 @@ export default function UnlockScreen() {
             <Text style={styles.doneTitle}>Check your phone</Text>
             <Text style={styles.meta}>
               Approve the {provider === 'mtn' ? 'MTN MoMo' : 'Orange Money'} prompt on {phone} to complete payment of{' '}
-              {PRICE_XAF} FCFA.
+              {formatMoney(PRICE, currency)}.
             </Text>
           </View>
         ) : (
           <>
-            {/* Pay with credits */}
+            {/* Pay from wallet balance */}
             <Pressable
-              onPress={currentUser.credits >= PRICE_CREDITS ? unlockWithCredits : undefined}
-              style={[styles.creditCard, currentUser.credits < PRICE_CREDITS && { opacity: 0.5 }]}>
-              <Ionicons name="flash" size={22} color={colors.warning} />
+              onPress={balance >= PRICE ? unlockFromWallet : undefined}
+              style={[styles.creditCard, balance < PRICE && { opacity: 0.5 }]}>
+              <Ionicons name="wallet" size={22} color={colors.accent} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.creditTitle}>Use {PRICE_CREDITS} credits</Text>
-                <Text style={styles.creditMeta}>You have {currentUser.credits} credits</Text>
+                <Text style={styles.creditTitle}>Pay {formatMoney(PRICE, currency)} from wallet</Text>
+                <Text style={styles.creditMeta}>
+                  {balance >= PRICE ? `Balance: ${formatMoney(balance, currency)}` : `Low balance: ${formatMoney(balance, currency)} — top up below`}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </Pressable>
 
-            <Text style={styles.orLabel}>OR PAY {PRICE_XAF} FCFA WITH MOBILE MONEY</Text>
+            <Text style={styles.orLabel}>OR PAY {formatMoney(PRICE, currency)} WITH MOBILE MONEY</Text>
 
             {/* Provider selection */}
             <View style={styles.providerRow}>

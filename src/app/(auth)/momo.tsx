@@ -28,7 +28,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { suppressOfflineBanner } from '../../lib/connectivity';
 import { signIn } from '../../lib/session';
-import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
+import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Provider = 'momo' | 'orange';
@@ -80,13 +80,13 @@ export default function MomoSignInScreen() {
           {/* Provider tiles — big, logo-led, one glance to tell them apart */}
           <View style={styles.providerRow}>
             <ProviderTile
-              logo={<MtnCircle size={38} />}
+              logo={<MtnLogo size={38} />}
               name="MTN MoMo"
               selected={provider === 'momo'}
               onPress={() => setProvider('momo')}
             />
             <ProviderTile
-              logo={<OrangeCircle size={38} />}
+              logo={<OrangeLogo size={38} />}
               name="Orange Money"
               selected={provider === 'orange'}
               onPress={() => setProvider('orange')}
@@ -138,7 +138,7 @@ export default function MomoSignInScreen() {
         </>
       ) : (
         <View style={styles.promptWrap}>
-          <View style={styles.promptLogo}>{provider === 'momo' ? <MtnCircle size={56} /> : <OrangeCircle size={56} />}</View>
+          <View style={styles.promptLogo}>{provider === 'momo' ? <MtnLogo size={56} /> : <OrangeLogo size={56} />}</View>
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.promptTitle}>Approve on your phone</Text>
           <Text style={styles.promptBody}>
