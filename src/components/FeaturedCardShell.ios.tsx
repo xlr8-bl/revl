@@ -1,16 +1,15 @@
 /**
- * FeaturedCardShell (iOS) — wraps a featured card in the REAL system
- * context menu: @expo/ui's SwiftUI ContextMenu (UIKit's own long-press
- * interaction — the card lifts, the rest of the screen gets Apple's blur,
- * and a native menu drops in). Items are true SwiftUI buttons with SF
- * Symbols; the download row reflects live paper state.
+ * FeaturedCardShell (iOS) — the system context menu WITHOUT putting the
+ * visible card inside SwiftUI. The card renders as pure React Native (so
+ * no SwiftUI layout race can ever squash it); a transparent native menu
+ * layer sits on top handling tap + long-press, and the lift shows a
+ * pixel-identical duplicate of the card via ContextMenu.Preview.
  */
-import { Button, ContextMenu, Host } from '@expo/ui/swift-ui';
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Share } from 'react-native';
-import { papers } from '../data/papers';
-import { downloadCourse, usePaperDownloads } from '../lib/courseDownloads';
+import { Button, ContextMenu, Divider, Group, Host, Section } from '@expo/ui/swift-ui';
+import { frame } from '@expo/ui/swift-ui/modifiers';
+import React, { useRef } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useCourseMenuItems } from '../lib/useCourseMenu';
 import { sentenceCase } from '../lib/format';
 
 export function FeaturedCardShell({
@@ -20,6 +19,7 @@ export function FeaturedCardShell({
   title,
   meta,
   onViewPapers,
+  preview,
   children,
 }: {
   width: number;
@@ -28,49 +28,60 @@ export function FeaturedCardShell({
   title: string;
   meta: string;
   onViewPapers: () => void;
+  /** Pixel-identical duplicate of the card, lifted by the system. */
+  preview?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-  const paperStates = usePaperDownloads();
-  const coursePapers = papers.filter((p) => p.courseCode === code);
-  const doneCount = coursePapers.filter((p) => paperStates[p.id]?.status === 'done').length;
-  const inFlight = coursePapers.some((p) => paperStates[p.id]?.status === 'downloading');
-  const allDone = coursePapers.length > 0 && doneCount === coursePapers.length;
+  const items = useCourseMenuItems(code, title, meta, { onViewPapers });
+  /** Quick-tap guard lives here on iOS — the card itself is inert. */
+  const pressStart = useRef(0);
 
-  const share = async () => {
-    try {
-      await Share.share({
-        message: `${code} · ${sentenceCase(title)} — past papers with verified answers on Revl. ${meta}.`,
-      });
-    } catch {}
-  };
+  const buttons = items.map((item) => (
+    <React.Fragment key={item.label}>
+      {item.divider ? <Divider /> : null}
+      <Button
+        label={item.label}
+        systemImage={item.systemImage as never}
+        role={item.destructive ? 'destructive' : undefined}
+        onPress={item.onPress}
+      />
+    </React.Fragment>
+  ));
 
   return (
-    // overflow visible: the system grows the card in place before lifting
-    // it — the Host must never clip that first beat of the animation.
-    <Host style={{ width, height, overflow: 'visible' }}>
-      <ContextMenu>
-        <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
-        <ContextMenu.Items>
-          <Button label="View papers" systemImage="doc.text" onPress={onViewPapers} />
-          {allDone ? (
-            <Button
-              label="Downloaded"
-              systemImage="arrow.down.circle.fill"
-              onPress={() => router.push('/downloads' as never)}
+    <View style={{ width, height }}>
+      {/* The real card: pure RN, never touched by SwiftUI layout. Inert on
+          iOS — the interaction layer above owns tap and hold. */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {children}
+      </View>
+
+      <Host style={StyleSheet.absoluteFill}>
+        <ContextMenu>
+          <ContextMenu.Trigger>
+            <Pressable
+              onPressIn={() => (pressStart.current = Date.now())}
+              onPress={() => {
+                if (Date.now() - pressStart.current < 250) onViewPapers();
+              }}
+              style={{ width, height }}
             />
-          ) : inFlight ? (
-            <Button label="Downloading…" systemImage="arrow.down.circle" onPress={() => {}} />
-          ) : (
-            <Button
-              label={doneCount > 0 ? `Download ${coursePapers.length - doneCount} more` : 'Download all'}
-              systemImage="arrow.down.circle"
-              onPress={() => downloadCourse(code)}
-            />
-          )}
-          <Button label="Share course" systemImage="square.and.arrow.up" onPress={share} />
-        </ContextMenu.Items>
-      </ContextMenu>
-    </Host>
+          </ContextMenu.Trigger>
+          {preview ? (
+            <ContextMenu.Preview>
+              {/* Exactly card-sized: iOS keeps the ORIGINAL visible under a
+                  custom preview, so the duplicate must land precisely on it
+                  to cover it completely — an oversized plate gets nudged by
+                  the system to fit the menu and exposes the original's edge.
+                  UIKit adds its own scale-up during the lift animation. */}
+              <Group modifiers={[frame({ width, height })]}>{preview}</Group>
+            </ContextMenu.Preview>
+          ) : null}
+          <ContextMenu.Items>
+            <Section title={`${code} · ${sentenceCase(title)}`}>{buttons}</Section>
+          </ContextMenu.Items>
+        </ContextMenu>
+      </Host>
+    </View>
   );
 }

@@ -12,6 +12,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentUser } from '../../data/user';
+import { useFriends } from '../../lib/friendsStore';
 import { useRevealLogs, weakTopics } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
@@ -24,9 +25,16 @@ export default function YouScreen() {
   const logs = useRevealLogs();
   const weakest = weakTopics(logs)[0];
   const { profile } = useSession();
+  const { friends, incoming } = useFriends();
 
   const account: Row[] = [
     { icon: 'person-outline', label: 'Edit profile', detail: 'name, username, photo', route: '/account/edit' },
+    {
+      icon: 'people-outline',
+      label: 'Friends',
+      detail: incoming.length > 0 ? `${friends.length} · ${incoming.length} request${incoming.length === 1 ? '' : 's'}` : `${friends.length} friends`,
+      route: '/friends',
+    },
     {
       icon: 'school-outline',
       label: 'My courses',
@@ -46,7 +54,9 @@ export default function YouScreen() {
     <ScrollView
       style={styles.root}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: TAB_BAR_CLEARANCE }}>
+      contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: TAB_BAR_CLEARANCE }}>
       {/* Top row: title + settings gear */}
       <View style={styles.topRow}>
         <Text style={styles.topTitle}>Profile</Text>

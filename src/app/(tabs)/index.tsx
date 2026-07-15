@@ -1,624 +1,306 @@
 /**
- * Courses — landing tab, in the original page architecture:
+ * Today/Tonight (Home) — the LANDING tab (index route): the daily plan is
+ * the front door, Courses is the library one tab over.
  *
- *   search circle · big title · filter chips · featured carousel ·
- *   bright faculty tiles · secondary chips · "Section · See All" lists
+ * - Editorial header: date kicker + exam countdown, big greeting, badged bell.
+ * - "Tonight's Question" exam-paper hero — real per-student pick, Attempt
+ *   deep-links to the exact question.
+ * - AI briefing above the study queue, both real queries over the reveal
+ *   log (lib/studySessions); honest starter state for brand-new accounts.
+ * - "Class activity" strip — public acts only (see docs/FRIENDS_PRIVACY.md).
+ * - Wrapped entry appears only inside its end-of-semester window.
  *
- * ...but everything is driven by the student's profile + the UB/HND
- * catalogue, and course rows use the big index cards with the course's
- * past papers inline (Papers and Courses are one page).
+ * Keeps the scroll-linked top fade: content dissolves under the pinned
+ * header as you scroll.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  Easing,
-  FadeInDown,
   interpolate,
-  interpolateColor,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CourseCard } from '../../components/CourseCard';
-import { CourseCardMenu } from '../../components/CourseCardMenu';
-import { CoursePapersSheet } from '../../components/CoursePapersSheet';
-import { FeaturedCardShell } from '../../components/FeaturedCardShell';
-import { FilterChips } from '../../components/FilterChips';
-import { TopFade, useScrollFade } from '../../components/ScrollFadeHeader';
-import { courseByCode, coursesFor, searchCatalog } from '../../data/catalog';
-import type { CatalogCourse } from '../../data/catalog/types';
-import { papers, unlockedPaperIds } from '../../data/papers';
-import { useOnline } from '../../lib/connectivity';
-import { useAccessCounts } from '../../lib/courseAccess';
-import { usePaperDownloads } from '../../lib/courseDownloads';
-import { sentenceCase } from '../../lib/format';
+import { GlassCircleButton } from '../../components/GlassCircleButton';
+import { TopFade } from '../../components/ScrollFadeHeader';
+import { DailyBriefing } from '../../components/DailyBriefing';
+import { HeroCard } from '../../components/HeroCard';
+import { SessionCard } from '../../components/SessionCard';
+import { communityFeed } from '../../data/home';
+import { DIRECTORY, useFriends } from '../../lib/friendsStore';
+import { seedDemoNotifications } from '../../lib/notificationSeeds';
+import { useNotifications } from '../../lib/notificationsStore';
 import { useRevealLogs } from '../../lib/selectors';
+import { buildTodayPlan } from '../../lib/studySessions';
+import { currentUser } from '../../data/user';
+import { getGreeting, planWord } from '../../lib/greeting';
 import { useSession } from '../../lib/session';
-import { activeScheme, colors, fonts, mixColor, spacing, TAB_BAR_CLEARANCE, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
+import { isWrappedLive } from '../../lib/wrappedGate';
+import { colors, fonts, spacing, TAB_BAR_CLEARANCE, type, themedStyleSheet, useThemeVersion, withAlpha } from '../../theme';
 
-// Primary scope (which set of courses) and secondary refinement — every one
-// backed by real data, no dead chips. When the student's enrolled set covers
-// the whole department list (most students), My/All collapse into one chip.
-const FILTERS = ['My courses', 'All courses', 'Studied'];
-const SUB_CHIPS = ['Has papers', 'Verified', 'Most papers'];
-
-// Resolve a course code to a catalogue entry, falling back to paper metadata
-// for codes that only exist as papers (e.g. the extracted CEC420 set).
-/**
- * One dot of the carousel indicator. Driven directly by the scroll offset:
- * a gaussian "bump" travels through the row as you swipe (each dot lifts
- * and brightens as the motion passes through it), and the dot whose card
- * is at rest stretches into an accent pill.
- */
-function CarouselDot({
-  i,
-  scrollX,
-  interval,
-  on,
-  off,
-}: {
-  i: number;
-  scrollX: SharedValue<number>;
-  interval: number;
-  on: string;
-  off: string;
-}) {
-  const style = useAnimatedStyle(() => {
-    const d = Math.abs(i - scrollX.value / interval);
-    const focus = Math.max(0, 1 - Math.min(d, 1));
-    return {
-      width: 6 + 16 * focus,
-      opacity: 0.45 + 0.55 * focus,
-      backgroundColor: interpolateColor(focus, [0, 1], [off, on]),
-      transform: [{ translateY: -5 * Math.exp(-d * d * 3) }],
-    };
-  });
-  return <Animated.View style={[{ height: 6, borderRadius: 3 }, style]} />;
-}
-
-const resolveCourse = (code: string): CatalogCourse | undefined => {
-  const cat = courseByCode(code);
-  if (cat) return cat;
-  const p = papers.find((pp) => pp.courseCode === code);
-  if (p) return { code, title: p.title, level: p.level, departmentId: '', verified: true, source: 'paper' };
-  return undefined;
-};
-
-export default function CoursesScreen() {
+export default function HomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const router = useRouter();
   const { profile } = useSession();
-  const [filter, setFilter] = useState('My courses');
-  const [subFilter, setSubFilter] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  /** Raw carousel scroll offset — drives the dot wave. */
-  const carouselX = useSharedValue(0);
-  const onCarouselScroll = useAnimatedScrollHandler((e) => {
-    carouselX.value = e.contentOffset.x;
-  });
-  /** Featured card tapped → show its papers in a sheet. `sheetData` sticks
-      around after close so the sheet can play its exit animation instead of
-      unmounting mid-drag. */
-  const [sheetData, setSheetData] = useState<{ code: string; title: string } | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const openPapers = (code: string, title: string) => {
-    setSheetData({ code, title });
-    setSheetOpen(true);
-  };
-  /** Press-and-hold on a featured card → blur + action menu (WhatsApp-style). */
-  const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
-  /** Press start time — only QUICK taps open papers, so a hold aimed at the
-      context menu can never accidentally open the sheet on release. */
-  const pressStart = useRef(0);
-  const accessCounts = useAccessCounts();
-  /** Height of the fixed part of the header — seeded close to the measured
-      value (inset + placement + title row) so the first layout doesn't jump. */
-  const [baseH, setBaseH] = useState(insets.top + 82);
-  const { scrollY, onScroll } = useScrollFade();
-  const listRef = useRef<ScrollView>(null);
-  const inputRef = useRef<TextInput>(null);
-  /** Search open progress (0…1) — drives the expand, content shift and icon morph. */
-  const open = useSharedValue(0);
-  /** Y of the first section title in the scroll content, for the sticky subtitle. */
-  const sectionY = useSharedValue(600);
-  const SEARCH_H = 54;
-
-  // The section title slides up and sticks under "Courses" as you scroll into
-  // it — the fade completes right as the real title reaches the header base so
-  // the hand-off is seamless (no double heading, no bleed-through).
-  const stickyStyle = useAnimatedStyle(() => {
-    const end = sectionY.value - baseH - 4;
-    return {
-      opacity: interpolate(scrollY.value, [end - 34, end], [0, 1], 'clamp') * (1 - open.value),
-      transform: [{ translateY: interpolate(scrollY.value, [end - 34, end], [7, 0], 'clamp') }],
-    };
-  });
-  // The search bar grows out of the header; the content spacer grows with it so
-  // everything below shifts down together, then back.
-  const searchWrapStyle = useAnimatedStyle(() => ({ height: open.value * SEARCH_H, opacity: open.value }));
-  const spacerStyle = useAnimatedStyle(() => ({ height: baseH + open.value * SEARCH_H + 8 }));
-  // Search icon morphs to X and back (crossfade + quarter-turn).
-  const searchIconStyle = useAnimatedStyle(() => ({
-    opacity: 1 - open.value,
-    transform: [{ rotate: `${open.value * 90}deg` }, { scale: 1 - open.value * 0.2 }],
-  }));
-  const closeIconStyle = useAnimatedStyle(() => ({
-    opacity: open.value,
-    transform: [{ rotate: `${(open.value - 1) * 90}deg` }, { scale: 0.8 + open.value * 0.2 }],
-  }));
-
-  const featuredWidth = width - spacing.gutter * 2 - 36;
-
-  const enrolled = useMemo(
-    () =>
-      (profile?.enrolledCourseCodes ?? [])
-        .map(resolveCourse)
-        .filter((c): c is CatalogCourse => !!c),
-    [profile]
+  const firstName = profile?.name.split(' ')[0] || currentUser.name;
+  const examDays = profile?.examDate
+    ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000))
+    : null;
+  const [headerHeight, setHeaderHeight] = useState(120);
+  const unread = useNotifications().filter((n) => n.unread).length;
+  const { friends } = useFriends();
+  // Your people first: feed rows from friends sort above the rest of the class.
+  const friendFirstNames = new Set(
+    friends
+      .map((id) => DIRECTORY.find((p) => p.id === id)?.name.split(' ')[0])
+      .filter(Boolean) as string[]
   );
-  const departmentCourses = useMemo(
-    () => (profile ? coursesFor(profile.school, profile.departmentId, profile.level) : []),
-    [profile]
+  const roomFeed = [...communityFeed].sort(
+    (a, b) => Number(friendFirstNames.has(b.user)) - Number(friendFirstNames.has(a.user))
   );
 
-  const online = useOnline();
-  const paperStates = usePaperDownloads();
+  // The plan is a real query over your reveal log — not mock cards. A brand
+  // new account gets an honest starter session instead of fake sessions.
   const logs = useRevealLogs();
-  const studiedCourses = useMemo(() => {
-    const codes = [...new Set(logs.map((l) => l.courseCode))];
-    return codes.map(resolveCourse).filter((c): c is CatalogCourse => !!c);
-  }, [logs]);
+  const plan = buildTodayPlan(logs, profile?.enrolledCourseCodes ?? []);
 
-  if (!profile) return null;
+  // Demo event pipeline — idempotent; the server phase pushes for real.
+  useEffect(() => {
+    seedDemoNotifications({
+      enrolledCourseCodes: profile?.enrolledCourseCodes,
+      examDateISO: profile?.examDate,
+    });
+  }, [profile]);
 
-  // If everything you're enrolled in IS the department list (true for HND and
-  // most UB levels), "My courses" and "All courses" would show the same list —
-  // collapse them into a single chip instead of offering a dead distinction.
-  const myIsAll =
-    enrolled.length === 0 ||
-    (enrolled.length === departmentCourses.length &&
-      enrolled.every((c) => departmentCourses.some((d) => d.code === c.code)));
-  const filterOptions = myIsAll ? ['All courses', 'Studied'] : FILTERS;
-  // The selected scope, mapped onto the visible chips (state defaults to
-  // 'My courses', which doesn't exist when the sets are merged).
-  const scope = myIsAll && filter === 'My courses' ? 'All courses' : filter;
-
-  const paperCount = (c: CatalogCourse) => papers.filter((p) => p.courseCode === c.code).length;
-  const withPapers = (list: CatalogCourse[]) => list.filter((c) => paperCount(c) > 0);
-
-  /**
-   * Featured carousel: course sets with extracted papers, scoped by the
-   * active filter (your courses / downloaded / studied) and always ranked
-   * by how much you use them — your go-to sets ride first.
-   */
-  const scopeCodes =
-    scope === 'My courses'
-      ? new Set(enrolled.map((c) => c.code))
-      : scope === 'Studied'
-        ? new Set(studiedCourses.map((c) => c.code))
-        : null; // All courses — every paper set qualifies
-  const byCourse = new Map<string, { code: string; title: string; years: number[] }>();
-  papers.forEach((p) => {
-    const e = byCourse.get(p.courseCode) ?? { code: p.courseCode, title: p.title, years: [] };
-    e.years.push(p.year);
-    byCourse.set(p.courseCode, e);
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
   });
-  const featured = [...byCourse.values()]
-    .filter((f) => f.years.length > 0 && (!scopeCodes || scopeCodes.has(f.code)))
-    .sort((a, b) => (accessCounts[b.code] ?? 0) - (accessCounts[a.code] ?? 0))
-    .slice(0, 10);
-
-  // Context-aware search: online searches the full index (the "database");
-  // offline searches only what's on this phone — courses whose papers are
-  // downloaded — so results are always genuinely openable.
-  const searchingOffline = online === false;
-  const searchResults = query.trim()
-    ? (() => {
-        const q = query.trim().toLowerCase();
-        const all = searchCatalog(profile.school, profile.departmentId, query);
-        // Index paper metadata too — courses that only exist as extracted
-        // paper sets (e.g. CEC420) must be findable by code or title.
-        const paperMatches = [
-          ...new Set(
-            papers
-              .filter((p) => p.courseCode.toLowerCase().includes(q) || p.title.toLowerCase().includes(q))
-              .map((p) => p.courseCode)
-          ),
-        ]
-          .filter((code) => !all.some((c) => c.code === code))
-          .map(resolveCourse)
-          .filter((c): c is CatalogCourse => !!c);
-        const combined = [...paperMatches, ...all];
-        if (!searchingOffline) return combined;
-        const local = new Set(
-          papers.filter((p) => paperStates[p.id]?.status === 'done').map((p) => p.courseCode)
-        );
-        return combined.filter((c) => local.has(c.code));
-      })()
-    : [];
-
-  // Sub-chip refinement applied to section lists.
-  const refine = (list: CatalogCourse[]) => {
-    if (subFilter === 'Verified') return list.filter((c) => c.verified && c.title);
-    if (subFilter === 'Has papers') return withPapers(list);
-    if (subFilter === 'Most papers') return [...list].sort((a, b) => paperCount(b) - paperCount(a));
-    return list;
-  };
-
-  const deptTitle = `${profile.departmentName} ${profile.school === 'ub' ? profile.level : ''}`.trim();
-  const sections: { title: string; data: CatalogCourse[] }[] = query.trim()
-    ? [
-        {
-          title: searchingOffline ? `On this phone for "${query.trim()}"` : `Results for "${query.trim()}"`,
-          data: searchResults,
-        },
-      ]
-    : scope === 'My courses'
-      ? [{ title: deptTitle, data: refine(enrolled) }]
-      : scope === 'All courses'
-        ? [{ title: deptTitle, data: refine(departmentCourses) }]
-        : scope === 'Studied'
-          ? [{ title: 'Courses you have studied', data: refine(studiedCourses) }]
-          : [{ title: scope, data: [] }];
-
-  const stickyTitle = sections[0]?.title ?? '';
-  const toggleSearch = () => {
-    const next = !searchOpen;
-    setSearchOpen(next);
-    open.value = withTiming(next ? 1 : 0, { duration: 280, easing: Easing.out(Easing.cubic) });
-    if (next) {
-      listRef.current?.scrollTo({ y: 0, animated: true });
-      setTimeout(() => inputRef.current?.focus(), 180);
-    } else {
-      setQuery('');
-      inputRef.current?.blur();
-    }
-  };
+  const today = new Date();
+  const dateLine = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <View style={styles.root}>
-      {/* Same seamless blend as Tonight: a transparent header sits over a
-          scroll-linked gradient that dissolves from the page bg to clear, so
-          content fades under the title instead of hitting a hard edge. */}
-      <TopFade scrollY={scrollY} solid={baseH + (searchOpen ? SEARCH_H : 0)} fade={54} />
+      {/* Same progressive-blur blend as Courses: content properly blurs as
+          it slides under the greeting, ending just below the header. */}
+      <TopFade scrollY={scrollY} solid={headerHeight} fade={26} />
 
       {/* Pinned header */}
-      <View style={styles.header}>
-        {/* Fixed part: placement · title + search button */}
-        <View style={[styles.headerBase, { paddingTop: insets.top + 8 }]} onLayout={(e) => setBaseH(e.nativeEvent.layout.height)}>
-          <Text style={styles.placement}>
-            {profile.school === 'hnd'
-              ? `${profile.departmentName} · HND`
-              : `${profile.departmentName} · ${profile.level} · UB`}
+      <View
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+        {/* One quiet kicker line — date and countdown as a single sentence,
+            no icon (the tab bar already carries the daypart). */}
+        <Text style={styles.dateLine}>
+          {dateLine}
+          {examDays !== null && (
+            <Text style={styles.countdownText}> · Exams in {examDays} days</Text>
+          )}
+        </Text>
+        <View style={styles.greetingRow}>
+          <Text style={styles.greeting}>
+            {getGreeting()}, {firstName}
           </Text>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>Courses</Text>
-            <Pressable onPress={() => router.push('/downloads' as never)} style={styles.searchBtn} hitSlop={8}>
-              <Ionicons name="arrow-down-circle-outline" size={21} color={colors.text} />
-            </Pressable>
-            <Pressable onPress={toggleSearch} style={styles.searchBtn} hitSlop={8}>
-              <Animated.View style={[styles.iconLayer, searchIconStyle]}>
-                <Ionicons name="search" size={20} color={colors.text} />
-              </Animated.View>
-              <Animated.View style={[styles.iconLayer, closeIconStyle]}>
-                <Ionicons name="close" size={22} color={colors.text} />
-              </Animated.View>
-            </Pressable>
-          </View>
+          {/* ONE control. Credits live on You → wallet and the unlock sheet. */}
+          <GlassCircleButton onPress={() => router.push('/notifications' as never)}>
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
+            {unread > 0 && <View style={styles.bellDot} />}
+          </GlassCircleButton>
         </View>
-
-        {/* Section title floats just under the header base and sticks there as
-            you scroll into a section — absolute so it never reserves an empty
-            gap under "Courses" when hidden. */}
-        <Animated.Text numberOfLines={1} style={[styles.stickyTitle, { top: baseH - 2 }, stickyStyle]}>
-          {stickyTitle}
-        </Animated.Text>
-
-        {/* Search bar grows out of the header */}
-        <Animated.View style={[styles.searchWrap, searchWrapStyle]}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={16} color={colors.textTertiary} />
-            <TextInput
-              ref={inputRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search code or title, e.g. BCH301"
-              placeholderTextColor={colors.textTertiary}
-              style={styles.searchInput}
-              autoCapitalize="characters"
-              returnKeyType="search"
-            />
-          </View>
-        </Animated.View>
       </View>
 
       <Animated.ScrollView
-        ref={listRef}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}>
-      {/* Animated spacer clears the header and grows with the search bar so
-          everything below shifts down together. */}
-      <Animated.View style={spacerStyle} />
-      {!query.trim() && (
-        <>
-          <FilterChips options={filterOptions} selected={scope} onSelect={setFilter} />
+        // Native tabs auto-inset scroll content on iOS — stacked on our own
+        // header padding it reads as a dead gap (same fix as Courses).
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
+        <HeroCard />
 
-          {/* Featured carousel — paper sets that are live today */}
-          <Animated.ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={featuredWidth + 12}
-            decelerationRate="fast"
-            onScroll={onCarouselScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.carousel}>
-            {featured.map((f, i) => {
-              const years = [...new Set(f.years)].sort((a, b) => a - b);
-              // Gap-aware: a clean range only when the years are actually
-              // contiguous; otherwise list the years so 2019 · 2021 · 2023
-              // never reads as an unbroken 2019–2023.
-              const contiguous = years[years.length - 1] - years[0] + 1 === years.length;
-              const yearLabel = years.length === 1 ? `${years[0]}` : contiguous ? `${years[0]}–${years[years.length - 1]}` : years.join(' · ');
-              const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
-              const cardMeta = `${f.years.length} paper${f.years.length > 1 ? 's' : ''} · ${yearLabel}`;
-              return (
-                <Animated.View key={f.code} entering={FadeInDown.delay(Math.min(i, 3) * 70).duration(260)}>
-                {/* iOS: the real system context menu (SwiftUI). Others: the
-                    JS blur overlay via onLongPress. */}
-                <FeaturedCardShell
-                  width={featuredWidth}
-                  height={190}
-                  code={f.code}
-                  title={f.title}
-                  meta={cardMeta}
-                  onViewPapers={() => openPapers(f.code, f.title)}>
-                <Pressable
-                  onPressIn={() => (pressStart.current = Date.now())}
-                  onPress={() => {
-                    if (Date.now() - pressStart.current < 250) openPapers(f.code, f.title);
-                  }}
-                  onLongPress={
-                    Platform.OS === 'ios'
-                      ? undefined
-                      : () => setCardMenu({ code: f.code, title: f.title, meta: cardMeta })
-                  }
-                  delayLongPress={280}
-                  style={({ pressed }) => [
-                    styles.featureCard,
-                    { width: featuredWidth },
-                    pressed && { opacity: 0.92 },
-                  ]}>
-                  {/* Oversized ghost year — background typography, not decoration */}
-                  <Text style={styles.featureGhost}>{years[years.length - 1]}</Text>
-
-                  <View style={styles.featureTop}>
-                    <Text style={styles.featureCode}>{f.code}</Text>
-                    {mostUsed ? (
-                      <View style={styles.featurePill}>
-                        <Ionicons name="star" size={12} color={colors.accent} />
-                        <Text style={styles.featurePillText}>Most used</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.featureKicker}>Featured set</Text>
-                    )}
-                  </View>
-
-                  <View>
-                    <Text style={styles.featureTitle} numberOfLines={2}>
-                      {sentenceCase(f.title)}
-                    </Text>
-                    <View style={styles.featureRule} />
-                    <View style={styles.featureMetaRow}>
-                      <Text style={styles.featureMeta} numberOfLines={1}>
-                        {f.years.length} paper{f.years.length > 1 ? 's' : ''} · {yearLabel}
-                      </Text>
-                      <Text style={styles.featureOpen}>View papers ›</Text>
-                    </View>
-                  </View>
-                </Pressable>
-                </FeaturedCardShell>
-                </Animated.View>
-              );
-            })}
-          </Animated.ScrollView>
-
-          {/* Position dots — a wave: as you swipe, the "energy" travels
-              through the row (dots lift and tint as the scroll passes),
-              and the resting card's dot stretches into a pill. */}
-          {featured.length > 1 && (
-            <View style={styles.dotsRow}>
-              {featured.map((f, i) => (
-                <CarouselDot
-                  key={f.code}
-                  i={i}
-                  scrollX={carouselX}
-                  interval={featuredWidth + 12}
-                  on={colors.accent}
-                  off={colors.borderStrong}
-                />
-              ))}
-            </View>
-          )}
-
-          <View style={{ marginTop: 18 }}>
-            <FilterChips
-              options={SUB_CHIPS}
-              selected={subFilter}
-              onSelect={(v) => setSubFilter(v === subFilter ? null : v)}
-              variant="outline"
-            />
-          </View>
-        </>
-      )}
-
-      {sections.map((section, si) => (
-        <View
-          key={section.title}
-          style={{ marginTop: 30 }}
-          onLayout={si === 0 ? (e) => (sectionY.value = e.nativeEvent.layout.y) : undefined}>
-          {/* Sections list every course already — a "See All" would have
-              nothing more to show, so the row is just the title. */}
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-          </View>
-          <View style={{ paddingHorizontal: spacing.gutter }}>
-            {section.data.length === 0 ? (
-              <Text style={styles.empty}>
-                {query.trim() && searchingOffline
-                  ? "You're offline — only downloaded courses can be searched. Connect to search everything."
-                  : scope === 'Studied'
-                    ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
-                    : subFilter
-                      ? `No courses match “${subFilter}”.`
-                      : 'Nothing here yet.'}
-              </Text>
-            ) : (
-              section.data.map((c, i) => <CourseCard key={`${section.title}-${c.code}`} course={c} index={i} />)
-            )}
-          </View>
+        {/* Tonight's plan — AI briefing + numbered study queue */}
+        <SectionTitle title={`Your plan ${planWord(today)}`} />
+        <DailyBriefing />
+        <View style={styles.queueCard}>
+          {plan.map((s, i) => (
+            <SessionCard key={s.id} data={s} index={i} last={i === plan.length - 1} />
+          ))}
+          <Pressable onPress={() => router.push('/dna')} style={styles.queueFooter}>
+            <Text style={styles.queueFooterText}>
+              {logs.length > 0
+                ? 'Built from your Study DNA'
+                : 'Gets personal as you attempt and reveal'}
+            </Text>
+            <Text style={styles.queueChevron}>›</Text>
+          </Pressable>
         </View>
-      ))}
 
-        <Text style={styles.footnote}>
-          Catalogue from the official UB 2023/24 teaching timetable and the current national HND program.
-        </Text>
+        {/* Wrapped entry — ONLY inside the end-of-semester window. */}
+        {isWrappedLive() && (
+          <Pressable onPress={() => router.push('/wrapped')} style={styles.wrappedBanner}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.wrappedTitle}>Your semester, wrapped</Text>
+              <Text style={styles.wrappedMeta}>See what your revision really looked like</Text>
+            </View>
+            <Text style={[styles.queueChevron, { color: colors.ai }]}>›</Text>
+          </Pressable>
+        )}
+
+        {/* Class activity — the department room (community scoped to your class) */}
+        <Pressable onPress={() => router.push('/community' as never)}>
+          <SectionTitle title={profile ? `${profile.departmentName} room` : 'Class activity'} />
+        </Pressable>
+        <View style={styles.feedCard}>
+          {roomFeed.slice(0, 3).map((item, i) => (
+            <View key={item.id} style={[styles.feedRow, i > 0 && styles.feedRowDivider]}>
+              <View style={[styles.feedAvatar, { backgroundColor: item.color }]}>
+                <Text style={styles.feedAvatarText}>{item.initial}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.feedLine}>
+                  <Text style={{ fontFamily: fonts.medium }}>{item.user}</Text> {item.action}
+                </Text>
+                <Text style={styles.feedDetail}>{item.detail}</Text>
+              </View>
+              <Text style={styles.feedTime}>{item.time}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Start here */}
+        <View style={styles.beginCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.beginTitle}>New to Revl?</Text>
+            <Text style={styles.beginBody}>Pick your course and revise with real past papers.</Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/courses')}
+            style={({ pressed }) => [styles.beginBtn, pressed && { transform: [{ scale: 0.96 }] }]}>
+            <Text style={styles.beginBtnText}>Find courses</Text>
+          </Pressable>
+        </View>
       </Animated.ScrollView>
+    </View>
+  );
+}
 
-      {sheetData && (
-        <CoursePapersSheet
-          code={sheetData.code}
-          title={sheetData.title}
-          visible={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-        />
-      )}
-
-      {cardMenu && (
-        <CourseCardMenu
-          code={cardMenu.code}
-          title={cardMenu.title}
-          meta={cardMenu.meta}
-          onClose={() => setCardMenu(null)}
-          onViewPapers={() => openPapers(cardMenu.code, cardMenu.title)}
-        />
-      )}
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <View style={styles.sectionTick} />
+      <Text style={styles.sectionTitleText}>{title}</Text>
     </View>
   );
 }
 
 const makeStyles = () => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  headerBase: { paddingHorizontal: spacing.gutter, paddingBottom: 4 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
-  searchBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  placement: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  title: { flex: 1, fontFamily: fonts.bold, fontSize: 38, color: colors.text },
-  stickyTitle: {
+  header: {
     position: 'absolute',
-    left: spacing.gutter,
-    right: spacing.gutter,
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    color: colors.textSecondary,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 12,
+    backgroundColor: 'transparent',
   },
-  searchWrap: { overflow: 'hidden', paddingHorizontal: spacing.gutter, justifyContent: 'flex-start' },
-  searchBox: {
+  dateLine: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  countdownText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.accent },
+  greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    backgroundColor: colors.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  searchInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
-  // Vertical padding gives the iOS context-menu "grow" its headroom — the
-  // card scales up in place before lifting, and without this the bottom
-  // edge clips against the scroll bounds.
-  carousel: { paddingHorizontal: spacing.gutter, gap: 12, marginTop: 12, paddingVertical: 10 },
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 6, marginTop: 4, height: 14 },
-  // Clean geometric card — uniform hairline, no asymmetric "spine" bar.
-  // OPAQUE background (accent composited over the page) so the iOS context
-  // menu lift never shows the neighbouring card through the preview.
-  featureCard: {
-    height: 190,
-    borderRadius: 20,
-    overflow: 'hidden',
-    padding: 18,
     justifyContent: 'space-between',
-    backgroundColor: mixColor(colors.accent, colors.bg, activeScheme() === 'light' ? 0.09 : 0.13),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: withAlpha(colors.accent, 0.3),
+    marginTop: 6,
   },
-  featureGhost: {
+  greeting: { fontFamily: fonts.bold, fontSize: 27, color: colors.text },
+  bellDot: {
     position: 'absolute',
-    right: -8,
-    bottom: -26,
-    fontFamily: fonts.bold,
-    fontSize: 110,
-    color: withAlpha(colors.accent, 0.1),
-    fontVariant: ['tabular-nums'],
+    top: 10,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   },
-  featureTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  featureCode: { fontFamily: fonts.bold, fontSize: 14, letterSpacing: 1, color: colors.accent },
-  featureKicker: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary },
-  featurePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.card,
-    borderRadius: 999,
+  sectionTitleRow: { marginTop: 32, marginBottom: 12, paddingHorizontal: spacing.gutter + 2 },
+  sectionTick: { width: 18, height: 3, borderRadius: 1.5, backgroundColor: colors.accent, marginBottom: 8 },
+  sectionTitleText: { fontFamily: fonts.bold, fontSize: 18, color: colors.text },
+  queueChevron: { fontFamily: fonts.regular, fontSize: 19, color: colors.textTertiary, marginTop: -2 },
+  queueCard: {
+    marginHorizontal: spacing.gutter,
+    marginTop: 12,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
   },
-  featurePillText: { fontFamily: fonts.medium, fontSize: 12, color: colors.accent },
-  featureTitle: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 31, color: colors.text, paddingRight: 40 },
-  featureRule: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 12 },
-  featureMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  featureMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
-  featureOpen: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.accent },
-  sectionRow: {
+  queueFooter: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.gutter,
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: withAlpha(colors.text, 0.02),
   },
-  sectionTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 21, color: colors.text, paddingRight: 10 },
-  empty: { fontFamily: fonts.regular, fontSize: 13.5, color: colors.textTertiary, paddingVertical: 8 },
-  footnote: {
-    fontFamily: fonts.regular,
-    fontSize: 11.5,
-    lineHeight: 17,
-    color: colors.textTertiary,
-    paddingHorizontal: spacing.gutter,
-    marginTop: 22,
+  queueFooterText: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
+  wrappedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: spacing.gutter,
+    marginTop: 24,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: withAlpha(colors.ai, 0.35),
+    padding: 16,
+    overflow: 'hidden',
   },
+  wrappedTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
+  wrappedMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
+  feedCard: {
+    marginHorizontal: spacing.gutter,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  feedRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  feedRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  feedAvatar: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  feedAvatarText: { fontFamily: fonts.bold, fontSize: 14, color: '#FFF' },
+  feedLine: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
+  feedDetail: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
+  feedTime: { fontFamily: fonts.regular, fontSize: 12, color: colors.textTertiary },
+  beginCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: spacing.gutter,
+    marginTop: 26,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    padding: 18,
+  },
+  beginTitle: { fontFamily: fonts.bold, fontSize: 17, color: colors.text },
+  beginBody: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: colors.textSecondary, marginTop: 4 },
+  beginBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  beginBtnText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.onAccent },
 });
 const styles = themedStyleSheet(makeStyles);
