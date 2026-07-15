@@ -37,7 +37,10 @@ type Session = {
   profile: StudentProfile | null;
 };
 
-const KEY = 'revl.session.v2';
+// Bumped v2 → v3: resets every existing install to a clean first-run, so
+// the new animated intro + onboarding plays for everyone (no backend users
+// to migrate — accounts live here on-device).
+const KEY = 'revl.session.v3';
 
 let session: Session = { hydrated: false, signedIn: false, method: null, profile: null };
 const listeners = new Set<() => void>();
