@@ -59,6 +59,46 @@ export function falseConfidenceTopics(logs: RevealLog[]): TopicStat[] {
 }
 
 /* ------------------------------------------------------------------ */
+/* Calibration — the two strands: what you FEEL you know vs what you    */
+/* ACTUALLY know, per topic. The gap between them is the whole story:   */
+/* a big positive gap is a blind spot (confident, but wrong), a         */
+/* negative gap means you're better than you think. Both come straight  */
+/* from the reveal flow (confidence before → resolution after).         */
+/* ------------------------------------------------------------------ */
+
+export type Calibration = {
+  tag: string;
+  /** 0–1: weighted confidence before revealing (yes=1, sort-of=0.5, no=0). */
+  felt: number;
+  /** 0–1: share actually resolved "got it". */
+  actual: number;
+  /** felt − actual. Positive = overconfident (blind spot). */
+  gap: number;
+  seen: number;
+};
+
+export function calibrationByTopic(logs: RevealLog[]): Calibration[] {
+  const m = new Map<string, { felt: number; got: number; seen: number }>();
+  for (const l of logs) {
+    for (const tag of l.tags) {
+      const e = m.get(tag) ?? { felt: 0, got: 0, seen: 0 };
+      e.felt += l.confidenceBefore === 'yes' ? 1 : l.confidenceBefore === 'sort-of' ? 0.5 : 0;
+      e.got += l.resolution === 'got-it' ? 1 : 0;
+      e.seen += 1;
+      m.set(tag, e);
+    }
+  }
+  const out: Calibration[] = [];
+  for (const [tag, e] of m) {
+    const felt = e.felt / e.seen;
+    const actual = e.got / e.seen;
+    out.push({ tag, felt, actual, gap: felt - actual, seen: e.seen });
+  }
+  // Worst blind spots first (largest positive gap), ties by exposure.
+  return out.sort((a, b) => b.gap - a.gap || b.seen - a.seen);
+}
+
+/* ------------------------------------------------------------------ */
 /* Daily session — N questions from the weakest, least-recent tags     */
 /* ------------------------------------------------------------------ */
 
