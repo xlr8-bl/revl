@@ -1,23 +1,24 @@
 /**
- * Onboarding wizard — one decision per screen, no layout shift.
+ * Onboarding wizard — one decision per screen, modelled on how the academic
+ * year actually works (see docs/AUTH.md + lib/academic).
  *
- *   identity → school → faculty → department → level (UB only)
- *            → courses → personalize → done
+ *   identity → school → faculty → department → level (UB only) → courses → done
  *
- * Design rules applied here:
- *  - Calm 220ms fades between steps. No springs: springs overshoot and
- *    read as "shaking".
- *  - Every dynamic text (username hint) has RESERVED height so typing
- *    never shifts the layout.
- *  - KeyboardAvoidingView + return-key chaining + delayed focus (focus
- *    after the step transition, not during) keep inputs visible and the
- *    screen still while the keyboard appears.
- *  - Placement is tappable full-width ROWS (not chip clouds); tapping
- *    advances automatically; a breadcrumb shows where you are and each
- *    crumb jumps back.
- *  - HND has a single level: the level step is skipped and set to 'HND'.
+ * Key rules:
+ *  - PREFILL from the sign-in provider: Google/Apple already gave us name +
+ *    email (+ Google a photo), so we confirm rather than re-ask. Username
+ *    (which no provider gives) is suggested from the email/name.
+ *  - The semester and exam are ONE fact, derived from today's date and shown
+ *    with a confirmable "switch" — not two questions that can disagree. Only
+ *    the active semester's courses are pre-selected.
+ *  - Carry-over (retake) courses are an explicit add that reaches across
+ *    levels/semesters — the one reason to pull in another semester's course.
+ *  - Calm 220ms fades; reserved-height hints so typing never shifts layout;
+ *    HND has one level so that step is skipped.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -31,70 +32,79 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { coursesFor, departmentsFor, facultiesFor, schools } from '../../data/catalog';
+import { Avatar } from '../../components/Avatar';
+import { coursesFor, coursesInDepartment, departmentsFor, facultiesFor, schools } from '../../data/catalog';
 import type { SchoolId } from '../../data/catalog/types';
+import {
+  academicYear,
+  currentSemester,
+  nextExamSitting,
+  semesterName,
+  type Semester,
+} from '../../lib/academic';
 import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
-type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'personalize' | 'done';
+type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'done';
 
-// Exam sittings are school-specific: a UB student never sits the HND
-// national exam and vice-versa, so the options are scoped by school.
-const EXAM_DATES_UB = [
-  { label: 'First semester exams (February)', iso: '2027-02-15' },
-  { label: 'Second semester exams (June)', iso: '2027-06-14' },
-  { label: 'Resits (September)', iso: '2026-09-07' },
-];
-const EXAM_DATES_HND = [
-  { label: 'HND national exam (June)', iso: '2027-06-21' },
-  { label: 'Resits (September)', iso: '2026-09-07' },
-];
+const toUsername = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
 export default function OnboardingScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { method } = useSession();
+  const { method, identity } = useSession();
+
+  // Prefill from the provider. Google gives a name+email; Apple gives them
+  // only on first auth (else undefined → we ask). Username: suggested from
+  // the email local-part, or the name when the email is an Apple relay.
+  const suggestedUsername = useMemo(() => {
+    if (!identity) return '';
+    if (identity.email && !identity.emailIsPrivateRelay) return toUsername(identity.email.split('@')[0]);
+    return toUsername((identity.fullName ?? '').replace(/\s+/g, ''));
+  }, [identity]);
 
   const [step, setStep] = useState<Step>('identity');
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [name, setName] = useState(identity?.fullName ?? '');
+  const [username, setUsername] = useState(suggestedUsername);
+  const [avatarUri, setAvatarUri] = useState<string | undefined>(identity?.avatarUrl);
+  const [avatarColor] = useState(AVATAR_COLORS[0]);
   const [school, setSchool] = useState<SchoolId | null>(null);
   const [facultyId, setFacultyId] = useState<string | null>(null);
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [deptFilter, setDeptFilter] = useState('');
+  const [activeSemester, setActiveSemester] = useState<Semester>(currentSemester());
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
-  const [examDate, setExamDate] = useState<string | null>(null);
+  const [carryover, setCarryover] = useState<Set<string>>(new Set());
+  const [carryQuery, setCarryQuery] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryPhone, setRecoveryPhone] = useState('');
-  // Mobile-money accounts have no email/phone-recovery by default — offer it.
+
   const isMomo = method === 'momo' || method === 'orange';
+  const providerLabel =
+    method === 'google' ? 'Google' : method === 'apple' ? 'Apple' : method ? 'Mobile Money' : 'your account';
 
   const usernameRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
 
-  // Focus AFTER the step transition settles — focusing mid-animation is
-  // what makes the screen jump.
   useEffect(() => {
-    if (step === 'identity') {
+    if (step === 'identity' && !name) {
       const t = setTimeout(() => nameRef.current?.focus(), 320);
       return () => clearTimeout(t);
     }
-  }, [step]);
+  }, [step, name]);
 
-  const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const cleanUsername = toUsername(username.trim());
   const usernameOk = cleanUsername.length >= 3 && isUsernameAvailable(cleanUsername);
   const usernameHint =
     cleanUsername.length >= 3 ? (usernameOk ? `@${cleanUsername} is available` : `@${cleanUsername} is taken`) : ' ';
 
-  // Step order depends on school (HND skips level).
   const stepOrder: Step[] = useMemo(
     () =>
       school === 'hnd'
-        ? ['identity', 'school', 'faculty', 'department', 'courses', 'personalize', 'done']
-        : ['identity', 'school', 'faculty', 'department', 'level', 'courses', 'personalize', 'done'],
+        ? ['identity', 'school', 'faculty', 'department', 'courses', 'done']
+        : ['identity', 'school', 'faculty', 'department', 'level', 'courses', 'done'],
     [school]
   );
   const stepIndex = stepOrder.indexOf(step);
@@ -105,42 +115,73 @@ export default function OnboardingScreen() {
     ? departments.filter((d) => d.name.toLowerCase().includes(deptFilter.trim().toLowerCase()))
     : departments;
   const levels = school ? schools.find((sc) => sc.id === school)!.levels : [];
+
   const derivedCourses = useMemo(
     () => (school && departmentId && level ? coursesFor(school, departmentId, level) : []),
     [school, departmentId, level]
   );
-  // Split the course list by teaching semester. When no course carries
-  // semester info we fall back to a single unlabelled group, so the header
-  // only appears when it means something.
-  const courseGroups = useMemo(() => {
-    const s1 = derivedCourses.filter((c) => c.semester === 'S1');
-    const s2 = derivedCourses.filter((c) => c.semester === 'S2');
-    const other = derivedCourses.filter((c) => !c.semester);
-    const hasSplit = s1.length > 0 && s2.length > 0;
-    return [
-      { key: 's1', label: 'First semester', items: s1, showHeader: hasSplit },
-      { key: 's2', label: 'Second semester', items: s2, showHeader: hasSplit },
-      { key: 'other', label: hasSplit ? 'Other' : '', items: other, showHeader: hasSplit && other.length > 0 },
-    ].filter((g) => g.items.length > 0);
-  }, [derivedCourses]);
+  // Only the ACTIVE semester's courses (plus any without a semester tag).
+  const activeCourses = useMemo(
+    () => derivedCourses.filter((c) => school === 'hnd' || c.semester === activeSemester || !c.semester),
+    [derivedCourses, activeSemester, school]
+  );
+  // Reset the tick set whenever the level or semester changes — switching
+  // semester loads THAT semester's set; unticks within a semester persist.
+  useEffect(() => {
+    setSelectedCodes(new Set(activeCourses.map((c) => c.code)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, activeSemester]);
+
+  const deptAllCourses = useMemo(
+    () => (school && departmentId ? coursesInDepartment(school, departmentId) : []),
+    [school, departmentId]
+  );
+  const carryResults = useMemo(() => {
+    const q = carryQuery.trim().toLowerCase();
+    if (!q) return [];
+    return deptAllCourses
+      .filter(
+        (c) =>
+          (c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)) &&
+          // A carry-over is re-sat in the SAME semester it's taught — a failed
+          // first-semester course is written next year's first semester, never
+          // this second-semester sitting. So only same-semester courses qualify.
+          c.semester === activeSemester &&
+          !activeCourses.some((a) => a.code === c.code) &&
+          !carryover.has(c.code)
+      )
+      .slice(0, 10);
+  }, [carryQuery, deptAllCourses, activeCourses, carryover, activeSemester]);
+
+  const totalSelected = selectedCodes.size + carryover.size;
+
+  const pickPhoto = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    }).catch(() => null);
+    if (res && !res.canceled && res.assets?.[0]) setAvatarUri(res.assets[0].uri);
+  };
 
   const back = () => (stepIndex > 0 ? setStep(stepOrder[stepIndex - 1]) : router.back());
 
   const pickDepartment = (id: string) => {
     setDepartmentId(id);
     if (school === 'hnd') {
-      setLevel('HND'); // single level: skip the step entirely
-      openCourses(id, 'HND');
+      setLevel('HND');
+      setStep('courses');
     } else {
       setStep('level');
     }
   };
 
-  const openCourses = (deptId: string, lvl: string) => {
-    const list = coursesFor(school!, deptId, lvl);
-    setSelectedCodes(new Set(list.map((c) => c.code)));
-    setStep('courses');
-  };
+  const derivedExam = useMemo(
+    () => nextExamSitting(new Date(), school === 'hnd' ? 'S2' : activeSemester),
+    [activeSemester, school]
+  );
+  const examDays = Math.max(0, Math.ceil((new Date(derivedExam.iso).getTime() - Date.now()) / 86400000));
 
   const finish = () => {
     const faculty = faculties.find((f) => f.id === facultyId)!;
@@ -149,27 +190,31 @@ export default function OnboardingScreen() {
       name: name.trim(),
       username: cleanUsername,
       avatarColor,
+      avatarUri,
       school: school!,
       facultyId: faculty.id,
       facultyName: faculty.name,
       departmentId: dept.id,
       departmentName: dept.name,
       level: level!,
-      enrolledCourseCodes: [...selectedCodes],
-      examDate: examDate!,
+      academicYear: academicYear(),
+      enrolledCourseCodes: [...new Set([...selectedCodes, ...carryover])],
+      carryoverCourseCodes: [...carryover],
+      examDate: derivedExam.iso,
+      authProvider: method ?? undefined,
+      email: identity?.email,
+      emailIsPrivateRelay: identity?.emailIsPrivateRelay,
       recoveryEmail: recoveryEmail.trim() || undefined,
       recoveryPhone: recoveryPhone.trim() || undefined,
     });
     router.replace('/');
   };
 
-  /** Breadcrumb of confirmed choices; tap a crumb to change it. */
   const crumbs: { label: string; goto: Step }[] = [];
   if (school) crumbs.push({ label: school === 'ub' ? 'UB' : 'HND', goto: 'school' });
   if (facultyId) crumbs.push({ label: faculties.find((f) => f.id === facultyId)?.name ?? '', goto: 'faculty' });
   if (departmentId && (step === 'level' || step === 'courses'))
     crumbs.push({ label: departments.find((d) => d.id === departmentId)?.name ?? '', goto: 'department' });
-
   const showCrumbs = ['faculty', 'department', 'level', 'courses'].includes(step) && crumbs.length > 0;
 
   return (
@@ -205,8 +250,31 @@ export default function OnboardingScreen() {
         {step === 'identity' && (
           <Animated.View key="identity" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-              <Text style={styles.title}>First, who are you?</Text>
-              <Text style={styles.sub}>Signed in with {method ?? 'your account'}. This is how classmates see you.</Text>
+              <Text style={styles.title}>{identity?.fullName ? 'Confirm your details' : 'First, who are you?'}</Text>
+              <Text style={styles.sub}>
+                Signed in with {providerLabel}.
+                {identity?.fullName ? ' We filled in what we could — check it over.' : ' This is how classmates see you.'}
+              </Text>
+
+              {/* Photo — provider photo / default Ronaldo / uploaded */}
+              <View style={styles.photoWrap}>
+                <Pressable onPress={pickPhoto}>
+                  <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={92} />
+                  <View style={styles.photoBadge}>
+                    <Ionicons name="camera" size={15} color="#FFFFFF" />
+                  </View>
+                </Pressable>
+                <View style={{ gap: 6 }}>
+                  <Pressable onPress={pickPhoto}>
+                    <Text style={styles.photoBtn}>Change photo</Text>
+                  </Pressable>
+                  {avatarUri && (
+                    <Pressable onPress={() => setAvatarUri(undefined)}>
+                      <Text style={styles.photoRemove}>Use default</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
 
               <Text style={styles.fieldLabel}>Full name</Text>
               <TextInput
@@ -237,22 +305,14 @@ export default function OnboardingScreen() {
                   style={[styles.input, { flex: 1 }]}
                 />
               </View>
-              {/* Reserved height: this line ALWAYS renders, so typing never shifts the layout. */}
               <Text style={[styles.hintLine, { color: usernameOk ? colors.verified : colors.danger }]}>{usernameHint}</Text>
 
-              <Text style={styles.fieldLabel}>Avatar</Text>
-              <View style={styles.avatarRow}>
-                <View style={[styles.avatarPreview, { backgroundColor: avatarColor }]}>
-                  <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
-                </View>
-                <View style={styles.swatches}>
-                  {AVATAR_COLORS.map((c) => (
-                    <Pressable key={c} onPress={() => setAvatarColor(c)} style={[styles.swatch, { backgroundColor: c }, avatarColor === c && styles.swatchActive]} />
-                  ))}
-                </View>
-              </View>
+              {identity?.email && (
+                <Text style={styles.emailNote}>
+                  {identity.emailIsPrivateRelay ? 'Apple private-relay email' : 'Email'}: {identity.email}
+                </Text>
+              )}
             </ScrollView>
-            {/* CTA pinned above the keyboard, always reachable */}
             <Cta label="Continue" enabled={!!name.trim() && usernameOk} onPress={() => setStep('school')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
@@ -277,7 +337,7 @@ export default function OnboardingScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowTitle}>{sc.name}</Text>
                     <Text style={styles.rowMeta}>
-                      {sc.id === 'ub' ? '10 faculties · 53 departments' : '7 domains · 53 specialties · one national exam'}
+                      {sc.id === 'ub' ? '12 faculties · 95 departments' : '7 domains · 53 specialties · one national exam'}
                     </Text>
                   </View>
                   <Text style={styles.rowChevron}>›</Text>
@@ -342,13 +402,14 @@ export default function OnboardingScreen() {
         {step === 'level' && (
           <Animated.View key="level" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Your level</Text>
+            <Text style={styles.sub}>We'll move you up automatically each academic year — you confirm it.</Text>
             <View style={{ marginTop: 16 }}>
               {levels.map((l) => (
                 <Pressable
                   key={l}
                   onPress={() => {
                     setLevel(l);
-                    openCourses(departmentId!, l);
+                    setStep('courses');
                   }}
                   style={({ pressed }) => [styles.listRow, pressed && styles.rowPressed]}>
                   <Text style={[styles.rowTitle, { flex: 1 }]}>{l}</Text>
@@ -362,75 +423,138 @@ export default function OnboardingScreen() {
         {step === 'courses' && (
           <Animated.View key="courses" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Your courses</Text>
-            <Text style={styles.sub}>
+
+            {/* Derived-semester disclaimer the user can confirm/switch */}
+            {school !== 'hnd' && (
+              <View style={styles.semesterBar}>
+                <Ionicons name="calendar-outline" size={15} color={colors.textSecondary} />
+                <Text style={styles.semesterBarText}>
+                  Set from today's date: <Text style={{ fontFamily: fonts.bold, color: colors.text }}>{semesterName(activeSemester)}</Text>
+                </Text>
+                <Pressable onPress={() => setActiveSemester(activeSemester === 'S1' ? 'S2' : 'S1')} hitSlop={8}>
+                  <Text style={styles.semesterSwitch}>Switch</Text>
+                </Pressable>
+              </View>
+            )}
+            <Text style={[styles.sub, { marginTop: 10 }]}>
               {school === 'hnd'
                 ? 'Your final-exam papers. General papers are written by everyone, so they stay on.'
-                : 'Taught in your department at your level, split by semester. Untick what you are not taking.'}
+                : `Your ${semesterName(activeSemester).toLowerCase()} courses. Untick what you are not taking.`}
             </Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}>
-              {courseGroups.map((g) => (
-                <View key={g.key}>
-                  {g.showHeader && <Text style={styles.semesterHeader}>{g.label}</Text>}
-                  {g.items.map((c) => {
-                    const locked = school === 'hnd' && c.general;
-                    const on = selectedCodes.has(c.code);
+
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 8, paddingBottom: 12 }}>
+              {activeCourses.map((c) => {
+                const locked = school === 'hnd' && c.general;
+                const on = selectedCodes.has(c.code);
+                return (
+                  <Pressable
+                    key={c.code}
+                    disabled={locked}
+                    onPress={() =>
+                      setSelectedCodes((prev) => {
+                        const next = new Set(prev);
+                        on ? next.delete(c.code) : next.add(c.code);
+                        return next;
+                      })
+                    }
+                    style={[styles.courseRow, !on && { opacity: 0.45 }]}>
+                    <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.courseTitle}>{c.title || c.code}</Text>
+                      <Text style={styles.courseMeta}>
+                        {c.title ? c.code : 'title pending confirmation'}
+                        {c.general ? ' · general paper' : ''}
+                        {locked ? ' · required' : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+
+              {/* Carry-over — retakes reach across levels/semesters */}
+              {school !== 'hnd' && (
+                <View style={styles.carrySection}>
+                  <Text style={styles.carryLabel}>
+                    Retaking a {semesterName(activeSemester).toLowerCase()} course from a past year?
+                  </Text>
+                  {[...carryover].map((code) => {
+                    const c = deptAllCourses.find((x) => x.code === code);
                     return (
-                      <Pressable
-                        key={c.code}
-                        disabled={locked}
-                        onPress={() =>
-                          setSelectedCodes((prev) => {
-                            const next = new Set(prev);
-                            on ? next.delete(c.code) : next.add(c.code);
-                            return next;
-                          })
-                        }
-                        style={[styles.courseRow, !on && { opacity: 0.45 }]}>
-                        <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
-                        <View style={{ flex: 1 }}>
-                          {/* Code-first when the official title is unpublished — never show an invented title. */}
-                          <Text style={styles.courseTitle}>{c.title || c.code}</Text>
-                          <Text style={styles.courseMeta}>
-                            {c.title ? c.code : 'title pending confirmation'}
-                            {c.general ? ' · general paper' : ''}
-                            {locked ? ' · required' : ''}
-                          </Text>
+                      <View key={code} style={[styles.courseRow, styles.carryRow]}>
+                        <View style={styles.retakeBadge}>
+                          <Text style={styles.retakeBadgeText}>RETAKE</Text>
                         </View>
-                      </Pressable>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.courseTitle}>{c?.title || code}</Text>
+                          <Text style={styles.courseMeta}>{code}{c?.level ? ` · ${c.level}` : ''}{c?.semester ? ` · ${c.semester === 'S1' ? 'First sem' : 'Second sem'}` : ''}</Text>
+                        </View>
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => setCarryover((p) => { const n = new Set(p); n.delete(code); return n; })}>
+                          <Ionicons name="close-circle" size={22} color={colors.textTertiary} />
+                        </Pressable>
+                      </View>
                     );
                   })}
+                  <View style={styles.carrySearch}>
+                    <Ionicons name="search" size={16} color={colors.textTertiary} />
+                    <TextInput
+                      value={carryQuery}
+                      onChangeText={setCarryQuery}
+                      placeholder={`Search a ${semesterName(activeSemester).toLowerCase()} course`}
+                      placeholderTextColor={colors.textTertiary}
+                      autoCapitalize="characters"
+                      style={styles.carrySearchInput}
+                    />
+                  </View>
+                  {carryResults.map((c) => (
+                    <Pressable
+                      key={c.code}
+                      onPress={() => {
+                        setCarryover((p) => new Set(p).add(c.code));
+                        setCarryQuery('');
+                      }}
+                      style={({ pressed }) => [styles.carryResult, pressed && { opacity: 0.6 }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.courseTitle}>{c.title || c.code}</Text>
+                        <Text style={styles.courseMeta}>{c.code}{c.level ? ` · ${c.level}` : ''}</Text>
+                      </View>
+                      <Ionicons name="add-circle" size={22} color={colors.accent} />
+                    </Pressable>
+                  ))}
                 </View>
-              ))}
+              )}
             </ScrollView>
-            <Cta label={`Continue with ${selectedCodes.size} courses`} enabled={selectedCodes.size > 0} onPress={() => setStep('personalize')} bottomInset={insets.bottom} />
+            <Cta label={`Continue with ${totalSelected} course${totalSelected === 1 ? '' : 's'}`} enabled={totalSelected > 0} onPress={() => setStep('done')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
 
-        {step === 'personalize' && (
-          <Animated.View key="personalize" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-              <Text style={styles.title}>Make it yours</Text>
+        {step === 'done' && (
+          <Animated.View key="done" entering={FadeIn.duration(300)} style={{ flex: 1 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 12 }}>
+              <View style={{ alignItems: 'center' }}>
+                <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={72} />
+                <Text style={[styles.title, { textAlign: 'center', marginTop: 16 }]}>Your library is ready</Text>
+                <Text style={[styles.sub, { textAlign: 'center' }]}>
+                  @{cleanUsername} · {departments.find((d) => d.id === departmentId)?.name} · {level}
+                  {'\n'}
+                  {totalSelected} courses set up{carryover.size ? ` (${carryover.size} carry-over)` : ''}.
+                </Text>
+                <View style={styles.examChip}>
+                  <Ionicons name="alarm-outline" size={15} color={colors.accent} />
+                  <Text style={styles.examChipText}>
+                    {derivedExam.label} — in {examDays} days
+                  </Text>
+                </View>
+              </View>
 
-              <Text style={styles.fieldLabel}>When is your next exam sitting?</Text>
-              {(school === 'hnd' ? EXAM_DATES_HND : EXAM_DATES_UB).map((d) => (
-                <Pressable
-                  key={d.iso}
-                  onPress={() => setExamDate(d.iso)}
-                  style={({ pressed }) => [styles.listRow, examDate === d.iso && styles.listRowActive, pressed && styles.rowPressed]}>
-                  <Text style={[styles.rowTitle, { flex: 1 }, examDate === d.iso && { color: colors.accent }]}>{d.label}</Text>
-                  {examDate === d.iso && <Text style={{ color: colors.accent }}>✓</Text>}
-                </Pressable>
-              ))}
-              <Text style={styles.hintLine}>Drives your exam countdown and daily plan. Change anytime.</Text>
-
-              {/* Mobile-money sign-ups have no email/phone to recover the
-                  account with — offer to add one now (optional). */}
+              {/* Mobile-money accounts have no email/phone to recover with */}
               {isMomo && (
-                <>
+                <View style={{ marginTop: 28 }}>
                   <Text style={styles.fieldLabel}>Recover your account (optional)</Text>
                   <Text style={[styles.sub, { marginTop: 0, marginBottom: 12 }]}>
-                    You signed in with Mobile Money. Add an email or a backup number so you never lose your account
-                    if you change SIM.
+                    You signed in with Mobile Money. Add an email or backup number so a lost SIM never loses your
+                    account.
                   </Text>
                   <TextInput
                     value={recoveryEmail}
@@ -450,26 +574,9 @@ export default function OnboardingScreen() {
                     keyboardType="phone-pad"
                     style={[styles.input, { marginTop: 10 }]}
                   />
-                </>
+                </View>
               )}
             </ScrollView>
-            <Cta label="Continue" enabled={!!examDate} onPress={() => setStep('done')} bottomInset={insets.bottom} />
-          </Animated.View>
-        )}
-
-        {step === 'done' && (
-          <Animated.View key="done" entering={FadeIn.duration(300)} style={{ flex: 1 }}>
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <View style={[styles.avatarPreview, { backgroundColor: avatarColor, alignSelf: 'center' }]}>
-                <Text style={styles.avatarInitial}>{(name.trim()[0] ?? 'R').toUpperCase()}</Text>
-              </View>
-              <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>Your library is ready</Text>
-              <Text style={[styles.sub, { textAlign: 'center' }]}>
-                @{cleanUsername} · {departments.find((d) => d.id === departmentId)?.name} · {level}
-                {'\n'}
-                {selectedCodes.size} courses set up. Past papers appear as they are structured.
-              </Text>
-            </View>
             <Cta label="Start revising" enabled onPress={finish} bottomInset={insets.bottom} />
           </Animated.View>
         )}
@@ -517,14 +624,24 @@ const makeStyles = () => StyleSheet.create({
   },
   handleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   at: { fontFamily: fonts.medium, fontSize: 18, color: colors.textSecondary },
-  /** Always-rendered hint line: fixed height, no layout shift. */
   hintLine: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, height: 18, marginTop: 8 },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  avatarPreview: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontFamily: fonts.bold, fontSize: 24, color: '#141414' },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },
-  swatch: { width: 26, height: 26, borderRadius: 13 },
-  swatchActive: { borderWidth: 2.5, borderColor: colors.text },
+  emailNote: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textTertiary, marginTop: 16 },
+  photoWrap: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 20 },
+  photoBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  photoBtn: { fontFamily: fonts.medium, fontSize: 15, color: colors.accent },
+  photoRemove: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
   bigRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -550,11 +667,22 @@ const makeStyles = () => StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
   },
-  listRowActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   rowPressed: { opacity: 0.75 },
   rowTitle: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
   rowMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 3 },
   rowChevron: { fontFamily: fonts.regular, fontSize: 20, color: colors.textTertiary },
+  semesterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.accentSoft,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 14,
+  },
+  semesterBarText: { flex: 1, fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  semesterSwitch: { fontFamily: fonts.bold, fontSize: 13, color: colors.accent },
   courseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   checkbox: {
     width: 22,
@@ -569,26 +697,40 @@ const makeStyles = () => StyleSheet.create({
   checkMark: { fontFamily: fonts.bold, fontSize: 13, color: colors.onAccent },
   courseTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
   courseMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
-  semesterHeader: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 4,
+  carrySection: {
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  timeRow: { flexDirection: 'row', gap: 8 },
-  timeChip: {
-    flex: 1,
+  carryLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.text, marginBottom: 8 },
+  carryRow: { paddingVertical: 8 },
+  retakeBadge: { backgroundColor: colors.accentSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  retakeBadgeText: { fontFamily: fonts.bold, fontSize: 9.5, letterSpacing: 0.6, color: colors.accent },
+  carrySearch: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 10,
-    paddingVertical: 13,
+    gap: 9,
     backgroundColor: colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    marginTop: 6,
   },
-  timeChipActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  carrySearchInput: { flex: 1, paddingVertical: 11, fontFamily: fonts.regular, fontSize: 15, color: colors.text },
+  carryResult: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+  examChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: colors.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 18,
+  },
+  examChipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.accent },
   cta: { backgroundColor: colors.accent, borderRadius: 10, alignItems: 'center', paddingVertical: 15 },
   ctaDisabled: { backgroundColor: colors.surface },
   ctaText: { fontFamily: fonts.medium, fontSize: 16, color: colors.onAccent },

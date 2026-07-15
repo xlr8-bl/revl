@@ -8,8 +8,9 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { courseByCode, coursesFor } from '../../data/catalog';
+import { courseByCode, coursesInDepartment } from '../../data/catalog';
 import type { CatalogCourse } from '../../data/catalog/types';
+import { currentSemester } from '../../lib/academic';
 import { updateProfile, useSession } from '../../lib/session';
 import { sentenceCase } from '../../lib/format';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
@@ -23,27 +24,46 @@ export default function ManageCoursesScreen() {
 
   const enrolled = useMemo(() => new Set(profile?.enrolledCourseCodes ?? []), [profile]);
 
+  // The WHOLE department (all levels) so retakes/carry-overs can be added.
   const catalogue = useMemo(
-    () => (profile ? coursesFor(profile.school, profile.departmentId, profile.level) : []),
+    () => (profile ? coursesInDepartment(profile.school, profile.departmentId) : []),
     [profile]
   );
 
   if (!profile) return null;
+
+  const sem = currentSemester();
+  const isCarryover = (c: CatalogCourse) => c.level !== profile.level && c.level !== '' && c.level !== 'HND';
 
   const enrolledCourses = [...enrolled]
     .map((c) => courseByCode(c))
     .filter((c): c is CatalogCourse => !!c);
 
   const q = query.trim().toLowerCase();
-  const available = catalogue.filter(
-    (c) => !enrolled.has(c.code) && (!q || c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
-  );
+  const available = catalogue
+    .filter(
+      (c) =>
+        !enrolled.has(c.code) &&
+        (!q || c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)) &&
+        // A carry-over from another level is only re-sat in the SAME semester
+        // it's taught, so only offer same-semester retakes.
+        !(isCarryover(c) && c.semester && c.semester !== sem)
+    )
+    // Current-level courses first, carry-overs (other levels) after.
+    .sort((a, b) => Number(isCarryover(a)) - Number(isCarryover(b)));
 
   const toggle = (code: string) => {
+    const course = catalogue.find((c) => c.code === code);
+    const carry = new Set(profile.carryoverCourseCodes ?? []);
     const next = new Set(enrolled);
-    if (next.has(code)) next.delete(code);
-    else next.add(code);
-    updateProfile({ enrolledCourseCodes: [...next] });
+    if (next.has(code)) {
+      next.delete(code);
+      carry.delete(code);
+    } else {
+      next.add(code);
+      if (course && isCarryover(course)) carry.add(code);
+    }
+    updateProfile({ enrolledCourseCodes: [...next], carryoverCourseCodes: [...carry] });
   };
 
   const label = (c: CatalogCourse) => (c.title ? sentenceCase(c.title) : `Course ${c.code}`);
@@ -86,14 +106,14 @@ export default function ManageCoursesScreen() {
           </View>
         )}
 
-        {/* Add */}
-        <Text style={styles.sectionLabel}>Add a course</Text>
+        {/* Add — the whole department, so retakes from other levels count */}
+        <Text style={styles.sectionLabel}>Add a course or carry-over</Text>
         <View style={styles.searchBox}>
           <Ionicons name="search" size={17} color={colors.textTertiary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search your department"
+            placeholder="Search your department (any level)"
             placeholderTextColor={colors.textTertiary}
             style={styles.searchInput}
             autoCapitalize="characters"
@@ -106,7 +126,14 @@ export default function ManageCoursesScreen() {
             available.slice(0, 40).map((c, i) => (
               <Pressable key={c.code} onPress={() => toggle(c.code)} style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { opacity: 0.6 }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.code}>{c.code}</Text>
+                  <View style={styles.codeRow}>
+                    <Text style={styles.code}>{c.code}</Text>
+                    {isCarryover(c) && (
+                      <View style={styles.retakeBadge}>
+                        <Text style={styles.retakeBadgeText}>CARRY-OVER · {c.level}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.title} numberOfLines={1}>{label(c)}</Text>
                 </View>
                 <Ionicons name="add-circle" size={22} color={colors.accent} />
@@ -143,7 +170,10 @@ const makeStyles = () =>
     },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
     rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+    codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     code: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.text, letterSpacing: 0.4 },
+    retakeBadge: { backgroundColor: colors.accentSoft, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+    retakeBadgeText: { fontFamily: fonts.bold, fontSize: 8.5, letterSpacing: 0.5, color: colors.accent },
     title: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     removeBtn: {},
     searchBox: {

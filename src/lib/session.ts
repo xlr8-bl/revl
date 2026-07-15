@@ -13,19 +13,49 @@ import type { SchoolId } from '../data/catalog/types';
 
 export type AuthMethod = 'google' | 'apple' | 'momo' | 'orange';
 
+/**
+ * What a social provider hands us at sign-in — modelled on exactly what
+ * Supabase's `signInWithIdToken` surfaces so wiring the backend later is a
+ * drop-in (see docs/AUTH.md). Google gives name + email + photo every time;
+ * Apple gives the name ONLY on the first authorization and never a photo.
+ */
+export type ProviderIdentity = {
+  provider: AuthMethod;
+  /** Stable id — becomes Supabase `auth.users.id` (the provider `sub`). */
+  providerUserId: string;
+  email?: string;
+  /** Apple "Hide My Email" relay address (@privaterelay.appleid.com). */
+  emailIsPrivateRelay?: boolean;
+  /** Google: always present. Apple: present ONLY on first auth, else undefined. */
+  fullName?: string;
+  /** Google `picture` URL. Apple never provides one. */
+  avatarUrl?: string;
+  isFirstAppleAuth?: boolean;
+};
+
 export type StudentProfile = {
   name: string;
   username: string; // @handle, lowercase
   avatarColor: string;
+  /** Uploaded / provider profile photo. Absent → Avatar shows the default. */
+  avatarUri?: string;
   school: SchoolId;
   facultyId: string;
   facultyName: string;
   departmentId: string;
   departmentName: string;
   level: string;
+  /** Academic year this level was set, e.g. "2026/2027" — drives progression. */
+  academicYear: string;
   enrolledCourseCodes: string[];
-  /** ISO date of the next exam sitting — drives the home countdown. */
+  /** Courses being retaken from a past semester/level (subset of enrolled). */
+  carryoverCourseCodes?: string[];
+  /** ISO date of the next exam sitting — DERIVED (lib/academic), auto-refreshed. */
   examDate: string;
+  /** How they signed in, and the email we hold (from Google/Apple). */
+  authProvider?: AuthMethod;
+  email?: string;
+  emailIsPrivateRelay?: boolean;
   /** Optional recovery contacts for Mobile Money accounts (no email/phone
    * from the wallet otherwise). Lets a lost account be recovered. */
   recoveryPhone?: string;
@@ -37,13 +67,44 @@ type Session = {
   signedIn: boolean;
   method: AuthMethod | null;
   phone?: string;
+  /** The provider identity for this sign-in (google/apple); momo has none. */
+  identity?: ProviderIdentity;
   profile: StudentProfile | null;
 };
 
-// Bumped v2 → v3: resets every existing install to a clean first-run, so
-// the new animated intro + onboarding plays for everyone (no backend users
-// to migrate — accounts live here on-device).
-const KEY = 'revl.session.v3';
+/**
+ * Mock provider identity — mirrors the shape Supabase will return so the
+ * onboarding prefill logic is written against the real contract. When
+ * Supabase lands, replace this with the `user` + `user_metadata` mapping in
+ * docs/AUTH.md; nothing downstream changes.
+ */
+function mockIdentity(method: AuthMethod): ProviderIdentity | undefined {
+  if (method === 'google')
+    return {
+      provider: 'google',
+      providerUserId: 'g_1029384756',
+      email: 'ashley.mbah@gmail.com',
+      emailIsPrivateRelay: false,
+      fullName: 'Ashley Mbah',
+      // Google returns a `picture` URL here; left undefined in the mock so
+      // the demo shows the bundled default rather than a network image.
+      avatarUrl: undefined,
+    };
+  if (method === 'apple')
+    return {
+      provider: 'apple',
+      providerUserId: 'a_000462.7f3c',
+      email: 'ashley@privaterelay.appleid.com',
+      emailIsPrivateRelay: true,
+      fullName: 'Ashley Mbah', // present ONLY because this models FIRST auth
+      isFirstAppleAuth: true,
+    };
+  return undefined; // momo / orange carry no identity → onboarding asks
+}
+
+// Bumped v3 → v4: profile shape changed (academicYear, derived examDate,
+// provider identity) — reset every install so the rebuilt onboarding runs.
+const KEY = 'revl.session.v4';
 
 let session: Session = { hydrated: false, signedIn: false, method: null, profile: null };
 const listeners = new Set<() => void>();
@@ -66,7 +127,7 @@ AsyncStorage.getItem(KEY)
   });
 
 export function signIn(method: AuthMethod, phone?: string) {
-  session = { ...session, signedIn: true, method, phone };
+  session = { ...session, signedIn: true, method, phone, identity: mockIdentity(method) };
   persist();
   emit();
 }
@@ -94,7 +155,7 @@ export function linkMobileMoney(phone: string) {
 
 export function signOut() {
   // Profile survives sign-out so returning students skip onboarding.
-  session = { ...session, signedIn: false, method: null, phone: undefined };
+  session = { ...session, signedIn: false, method: null, phone: undefined, identity: undefined };
   persist();
   emit();
 }
@@ -106,7 +167,7 @@ export function signOut() {
  */
 export function deleteAccount() {
   AsyncStorage.removeItem(KEY).catch(() => {});
-  session = { hydrated: true, signedIn: false, method: null, phone: undefined, profile: null };
+  session = { hydrated: true, signedIn: false, method: null, phone: undefined, identity: undefined, profile: null };
   emit();
 }
 
