@@ -1,23 +1,20 @@
 /**
- * DailyBriefing — one small AI call turns the raw Study DNA tallies into
- * a human line above the daily session. Shows the honest early state
- * ("Still learning how you think…") until there's enough data.
- * Text is mocked in data/ai.ts until the API is wired.
+ * DailyBriefing — the "AI insight" line above the plan. The facts come
+ * from a real reduction over the reveal log (lib/studyBriefing); it is not
+ * a mock and not a live model call. See docs/AI_INSIGHT.md for where the
+ * engine sits and what an LLM would (and wouldn't) do here.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { getDailyBriefing } from '../data/ai';
 import { useRevealLogs } from '../lib/selectors';
+import { buildBriefing } from '../lib/studyBriefing';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
-
-/** Below this many logged reveals we show the honest "still learning" state. */
-const MIN_DATA = 8;
 
 export function DailyBriefing() {
   useThemeVersion();
   const logs = useRevealLogs();
-  const text = getDailyBriefing(logs.length >= MIN_DATA);
+  const text = buildBriefing(logs);
 
   return (
     <View style={styles.wrap}>
