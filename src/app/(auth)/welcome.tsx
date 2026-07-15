@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RevlLogo } from '../../components/RevlLogo';
 import { IntroSequence } from '../../components/IntroSequence';
 import { signIn } from '../../lib/session';
-import { introHydrated, markIntroSeen, useIntroSeen } from '../../lib/intro';
+import { markIntroSeen, useIntroState } from '../../lib/intro';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
@@ -33,12 +33,12 @@ export default function WelcomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const introSeen = useIntroSeen();
+  const intro = useIntroState();
 
   // Wait for the intro flag to hydrate so we never flash welcome first.
-  if (!introHydrated()) return <View style={styles.root} />;
+  if (intro === 'loading') return <View style={styles.root} />;
   // First launch: play the animated opening, then fall through to welcome.
-  if (!introSeen) return <IntroSequence onDone={markIntroSeen} />;
+  if (intro === 'unseen') return <IntroSequence onDone={markIntroSeen} />;
 
   return (
     <View style={styles.root}>
