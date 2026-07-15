@@ -13,8 +13,10 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RevlLogo } from '../../components/RevlLogo';
+import { IntroSequence } from '../../components/IntroSequence';
 import { signIn } from '../../lib/session';
-import { MtnLogo, OrangeLogo } from '../../components/BrandLogos';
+import { introHydrated, markIntroSeen, useIntroSeen } from '../../lib/intro';
+import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const PAPER = '#F2ECDF';
@@ -31,6 +33,12 @@ export default function WelcomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const introSeen = useIntroSeen();
+
+  // Wait for the intro flag to hydrate so we never flash welcome first.
+  if (!introHydrated()) return <View style={styles.root} />;
+  // First launch: play the animated opening, then fall through to welcome.
+  if (!introSeen) return <IntroSequence onDone={markIntroSeen} />;
 
   return (
     <View style={styles.root}>
@@ -105,9 +113,9 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/momo' as never)}
             style={({ pressed }) => [styles.btn, styles.btnMomo, pressed && styles.pressed]}>
             <View style={styles.momoDots}>
-              <MtnLogo size={16} />
+              <MtnCircle size={16} />
               <View style={{ marginLeft: -4 }}>
-                <OrangeLogo size={16} />
+                <OrangeCircle size={16} />
               </View>
             </View>
             <Text style={styles.btnText}>Continue with Mobile Money</Text>

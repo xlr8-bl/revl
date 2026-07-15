@@ -3,22 +3,14 @@
  * Courses screen use. Data files are generated from official sources
  * (see headers in ub.ts / hnd.ts).
  */
-import { ndetekCecCourses } from '../ndetek';
 import { hndCourses, hndDepartments, hndFaculties, hndGeneralCourses } from './hnd';
 import type { CatalogCourse, Department, Faculty, School, SchoolId } from './types';
 import { ubCourses, ubDepartments, ubFaculties } from './ub';
 
-// Computer Engineering courses come from the real papers.ndetek.com archive
-// (52 courses, actual titles and paper counts) — they supersede the sparse,
-// partly-untitled timetable entries for that department. Every other UB
-// department keeps its timetable-sourced list.
-const ndetekCodes = new Set(ndetekCecCourses.map((c) => c.code));
-const ubPool: CatalogCourse[] = [
-  ...ubCourses.filter(
-    (c) => !(c.departmentId === 'computer-engineering' && ndetekCodes.has(c.code))
-  ),
-  ...ndetekCecCourses,
-];
+// ub.ts is now the complete papers.ndetek.com harvest (every UB faculty,
+// department and course), so it is the pool directly — no per-department
+// patching needed.
+const ubPool: CatalogCourse[] = ubCourses;
 
 export const schools: School[] = [
   { id: 'ub', name: 'University of Buea', shortName: 'UB', levels: ['L200', 'L300', 'L400', 'L500', 'L600'] },
