@@ -21,4 +21,10 @@ export type CatalogCourse = {
   /** true = code AND title confirmed from an official/current source. */
   verified: boolean;
   source: string;
+  /** Past papers known to exist for this course on the source archive
+   * (papers.ndetek.com). Metadata only — the structured, answerable paper
+   * content is ingested separately (see docs/PAPER_PIPELINE). */
+  papersOnRecord?: number;
+  firstYear?: number;
+  lastYear?: number;
 };

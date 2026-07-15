@@ -1,99 +1,44 @@
 /**
- * Study DNA — the constellation. Every topic the student has touched is
- * a star on a dark sky: bright = mastered, dim = weak, ringed = false
- * confidence. Prerequisite edges draw faint lines between related
- * stars. All of it is derived live from the local RevealLog tallies.
+ * Study DNA — rebuilt around ONE idea anyone gets at a glance:
+ * calibration. Two strands per topic — what you FEEL you know, and what
+ * you ACTUALLY know — on a shared 0→100% track. The distance between the
+ * two markers is the gap. A big gap where feel is ahead of know is a blind
+ * spot: the exam trap of "I was sure I knew that." Nothing here is a mock
+ * or a black box — every number is counted from your reveal flow
+ * (confidence before → got-it/not-yet after) in lib/selectors.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, {
-  Easing,
-  FadeIn,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
-import {
-  falseConfidenceTopics,
-  findNemesis,
-  findQuestion,
-  prerequisiteEdges,
-  useRevealLogs,
-  weakTopics,
-} from '../lib/selectors';
-import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../theme';
+import { calibrationByTopic, findNemesis, findQuestion, useRevealLogs, type Calibration } from '../lib/selectors';
+import { colors, fonts, spacing, themedStyleSheet, useThemeVersion, withAlpha } from '../theme';
 
-/** Deterministic star position from the tag name (stable across renders). */
-function starPosition(tag: string, width: number, height: number) {
-  let h = 0;
-  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
-  const pad = 44;
-  const x = pad + (h % 1000) / 1000 * (width - pad * 2);
-  const y = pad + ((h >> 10) % 1000) / 1000 * (height - pad * 2);
-  return { x, y };
+/** Below this we don't have two honest strands to draw yet. */
+const MIN_DATA = 4;
+const BLIND = 0.15; // gap above which "feel" is dangerously ahead of "know"
+
+type Band = { key: 'blindspot' | 'underrated' | 'solid' | 'weak'; label: string; color: string };
+function bandFor(c: Calibration, colorsRef: typeof colors): Band {
+  if (c.gap > BLIND) return { key: 'blindspot', label: 'Blind spot', color: colorsRef.danger };
+  if (c.gap < -BLIND) return { key: 'underrated', label: 'Underrated', color: '#3E8E7E' };
+  if (c.actual >= 0.6) return { key: 'solid', label: 'Solid', color: '#4C8DB8' };
+  return { key: 'weak', label: 'Working on it', color: colorsRef.accent };
 }
 
 export default function StudyDnaScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const logs = useRevealLogs();
 
-  const stats = weakTopics(logs);
-  const falseConf = falseConfidenceTopics(logs);
+  const cal = calibrationByTopic(logs).filter((c) => c.seen >= 1);
+  const blindSpots = cal.filter((c) => c.gap > BLIND && c.seen >= 2);
   const nemesis = findNemesis(logs);
-  const edges = prerequisiteEdges(logs);
-
-  const skyW = Math.max(200, width - spacing.gutter * 2);
-  const skyH = 320;
-  const positions = new Map(stats.map((s) => [s.tag, starPosition(s.tag, skyW, skyH)]));
   const nemesisQ = nemesis ? findQuestion(nemesis.questionId) : null;
 
-  // Depth without a 3D engine: two SVG layers (a far starfield, the near
-  // constellation) drift at different rates on a single looping shared
-  // value. The transform runs on the UI thread, so it stays smooth on
-  // entry-level Android — no OpenGL/WebGL, no per-frame JS. (See
-  // docs/STUDY_DNA_3D.md for why Three.js was rejected for these devices.)
-  const drift = useSharedValue(0);
-  useEffect(() => {
-    drift.value = withRepeat(
-      withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
-  }, [drift]);
-  const nearStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(drift.value, [0, 1], [-9, 9]) },
-      { translateY: interpolate(drift.value, [0, 1], [5, -5]) },
-    ],
-  }));
-  const farStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(drift.value, [0, 1], [3, -3]) },
-      { translateY: interpolate(drift.value, [0, 1], [-1.5, 1.5]) },
-    ],
-  }));
-
-  // Faint background starfield — deterministic, oversized so the drift
-  // never uncovers an empty corner. Pure decoration, no data.
-  const backdrop = useMemo(() => {
-    return Array.from({ length: 46 }, (_, i) => {
-      let h = ((i + 1) * 2654435761) >>> 0;
-      const x = (h % 1000) / 1000 * (skyW + 40);
-      const y = ((h >> 10) % 1000) / 1000 * (skyH + 40);
-      const r = 0.6 + ((h >> 20) % 100) / 100 * 1.1;
-      const o = 0.05 + ((h >> 5) % 100) / 100 * 0.13;
-      return { x, y, r, o };
-    });
-  }, [skyW, skyH]);
+  const enough = logs.length >= MIN_DATA && cal.length > 0;
 
   return (
     <View style={styles.root}>
@@ -106,199 +51,229 @@ export default function StudyDnaScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-        <Text style={styles.subtitle}>
-          Your course as a star map — bright stars are mastered, dim ones need work. It drifts
-          gently so the sky feels alive.
+        <Text style={styles.lede}>
+          Two strands: what you <Text style={styles.feelWord}>feel</Text> you know, and what you{' '}
+          <Text style={styles.knowWord}>actually</Text> know. Where they pull apart is where exams
+          catch you out.
         </Text>
 
-        {/* Constellation — two drifting layers for depth (see note above) */}
-        <View style={styles.sky}>
-          <View style={{ width: skyW, height: skyH }}>
-            {/* Far starfield — drifts slowly behind the constellation */}
-            <Animated.View style={[StyleSheet.absoluteFill, farStyle]} pointerEvents="none">
-              <Svg width={skyW + 40} height={skyH + 40} style={{ marginLeft: -20, marginTop: -20 }}>
-                {backdrop.map((d, i) => (
-                  <Circle key={i} cx={d.x} cy={d.y} r={d.r} fill={`rgba(255,255,255,${d.o.toFixed(2)})`} />
-                ))}
-              </Svg>
-            </Animated.View>
-
-            {/* Near constellation — stars + edges together so they always align */}
-            <Animated.View entering={FadeIn.duration(650)} style={[StyleSheet.absoluteFill, nearStyle]}>
-              <Svg width={skyW} height={skyH}>
-                {/* Prerequisite edges — faint lines between related stars */}
-                {edges.map((e) => {
-                  const a = positions.get(e.from);
-                  const b = positions.get(e.to);
-                  if (!a || !b) return null;
-                  return (
-                    <Line
-                      key={`${e.from}-${e.to}`}
-                      x1={a.x}
-                      y1={a.y}
-                      x2={b.x}
-                      y2={b.y}
-                      stroke="rgba(94,107,255,0.25)"
-                      strokeWidth={1}
-                      strokeDasharray="3 4"
-                    />
-                  );
-                })}
-                {stats.map((s) => {
-                  const p = positions.get(s.tag)!;
-                  const r = 5 + Math.min(6, s.seen * 1.2);
-                  const brightness = 1 - s.weakness; // mastered → bright
-                  const fill = `rgba(255,255,255,${(0.2 + brightness * 0.8).toFixed(2)})`;
-                  return (
-                    <React.Fragment key={s.tag}>
-                      {/* glow for mastered stars */}
-                      {brightness > 0.6 && <Circle cx={p.x} cy={p.y} r={r + 6} fill="rgba(255,255,255,0.08)" />}
-                      {/* accent ring = false confidence lives here */}
-                      {s.falseConfidence > 0 && (
-                        <Circle cx={p.x} cy={p.y} r={r + 4} stroke={colors.accent} strokeWidth={1.5} fill="none" />
-                      )}
-                      <Circle cx={p.x} cy={p.y} r={r} fill={fill} />
-                      <SvgText
-                        x={p.x}
-                        y={p.y + r + 15}
-                        fontSize={10}
-                        fill={s.weakness > 0.5 ? colors.textSecondary : colors.textTertiary}
-                        textAnchor="middle">
-                        {s.tag}
-                      </SvgText>
-                    </React.Fragment>
-                  );
-                })}
-              </Svg>
-            </Animated.View>
-          </View>
-          <View style={styles.legend}>
-            <LegendDot color="rgba(255,255,255,0.95)" label="mastered" />
-            <LegendDot color="rgba(255,255,255,0.3)" label="weak" />
-            <LegendDot color={colors.accent} label="false confidence" ring />
-          </View>
-        </View>
-
-        {/* False confidence — the highest-value pre-exam insight */}
-        {falseConf.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Topics you think you know</Text>
-            <Text style={styles.sectionSub}>
-              You said “Yes, I could answer this” — then tapped “Not yet”. Fix these first.
+        {!enough ? (
+          <View style={styles.empty}>
+            <View style={styles.emptyStrands}>
+              <View style={[styles.emptyDot, styles.emptyFeel]} />
+              <View style={styles.emptyLine} />
+              <View style={[styles.emptyDot, styles.emptyKnow]} />
+            </View>
+            <Text style={styles.emptyText}>
+              Attempt and reveal a few questions. As you say whether you could answer — then whether
+              you actually got it — your two strands take shape here.
             </Text>
-            {falseConf.map((s) => (
-              <View key={s.tag} style={styles.fcRow}>
-                <Ionicons name="alert-circle" size={17} color={colors.accent} />
-                <Text style={styles.fcTag}>{s.tag}</Text>
-                <Text style={styles.fcCount}>
-                  {s.falseConfidence}× overconfident
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Nemesis */}
-        {nemesis && nemesisQ && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your nemesis</Text>
-            <Pressable onPress={() => router.push(`/paper/${nemesisQ.paperId}`)} style={styles.nemesisCard}>
-              <View style={styles.nemesisHeader}>
-                <Ionicons name="skull-outline" size={18} color={colors.danger} />
-                <Text style={styles.nemesisTitle}>
-                  {nemesis.courseCode} · Q{nemesisQ.question.number}
-                </Text>
-                <Text style={styles.nemesisCount}>{nemesis.notYet}× not yet</Text>
-              </View>
-              <Text style={styles.nemesisExcerpt} numberOfLines={2}>
-                {nemesisQ.question.text.replace(/[$*`]/g, '')}
-              </Text>
-              <Text style={styles.nemesisCta}>
-                {nemesis.beaten ? 'Beaten — keep it down ✓' : 'It resurfaces until you beat it →'}
-              </Text>
+            <Pressable onPress={() => router.back()} style={styles.emptyBtn}>
+              <Text style={styles.emptyBtnText}>Start a session</Text>
             </Pressable>
           </View>
-        )}
-
-        {/* Prerequisite trace */}
-        {edges.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Where it traces back</Text>
-            {edges.slice(0, 4).map((e) => (
-              <View key={`${e.from}-${e.to}`} style={styles.edgeRow}>
-                <Text style={styles.edgeText}>
-                  Your <Text style={styles.edgeStrong}>{e.from}</Text> misses trace back to{' '}
-                  <Text style={styles.edgeStrong}>{e.to}</Text> — revise that first.
+        ) : (
+          <>
+            {/* The headline — the single most useful sentence on the page */}
+            <View style={styles.headline}>
+              {blindSpots.length > 0 ? (
+                <>
+                  <Text style={styles.headlineNum}>{blindSpots.length}</Text>
+                  <Text style={styles.headlineText}>
+                    blind {blindSpots.length === 1 ? 'spot' : 'spots'} — topics you feel ready for
+                    but keep missing. Biggest:{' '}
+                    <Text style={styles.headlineStrong}>{blindSpots[0].tag}</Text>.
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.headlineText}>
+                  Your instincts match your marks — you're well calibrated. Keep the weak topics
+                  warm.
                 </Text>
+              )}
+            </View>
+
+            {/* Legend for the two markers */}
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.mFeel, styles.legendMarker]} />
+                <Text style={styles.legendText}>feel ready</Text>
               </View>
-            ))}
-          </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.mKnow, styles.legendMarker]} />
+                <Text style={styles.legendText}>actually ready</Text>
+              </View>
+              <Text style={styles.legendHint}>sorted by biggest gap</Text>
+            </View>
+
+            {/* The strands — one calibration row per topic */}
+            <View style={styles.list}>
+              {cal.map((c) => (
+                <StrandRow key={c.tag} c={c} />
+              ))}
+            </View>
+
+            {/* One concrete thing to beat — the nemesis question */}
+            {nemesis && nemesisQ && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>The one to beat</Text>
+                <Pressable
+                  onPress={() => router.push(`/paper/${nemesisQ.paperId}?q=${nemesis.questionId}`)}
+                  style={({ pressed }) => [styles.nemesisCard, pressed && { opacity: 0.85 }]}>
+                  <View style={styles.nemesisHeader}>
+                    <Text style={styles.nemesisTitle}>
+                      {nemesis.courseCode} · Q{nemesisQ.question.number}
+                    </Text>
+                    <Text style={styles.nemesisCount}>{nemesis.notYet}× not yet</Text>
+                  </View>
+                  <Text style={styles.nemesisExcerpt} numberOfLines={2}>
+                    {nemesisQ.question.text.replace(/[$*`]/g, '')}
+                  </Text>
+                  <Text style={styles.nemesisCta}>
+                    {nemesis.beaten ? 'Beaten — keep it down ✓' : 'Re-attempt it →'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
   );
 }
 
-function LegendDot({ color, label, ring }: { color: string; label: string; ring?: boolean }) {
+/** One topic: a 0→100% track with a "feel" ring and a "know" dot, the gap
+ *  between them drawn as a coloured bar. Percentage lefts keep it exact at
+ *  any width, and it's all plain Views — no SVG, trivial on low-end. */
+function StrandRow({ c }: { c: Calibration }) {
+  const band = bandFor(c, colors);
+  const lo = Math.min(c.felt, c.actual);
+  const hi = Math.max(c.felt, c.actual);
   return (
-    <View style={styles.legendItem}>
-      <View
-        style={[
-          styles.legendDot,
-          ring ? { borderWidth: 1.5, borderColor: color, backgroundColor: 'transparent' } : { backgroundColor: color },
-        ]}
-      />
-      <Text style={styles.legendText}>{label}</Text>
+    <View style={styles.row}>
+      <View style={styles.rowHead}>
+        <Text style={styles.rowTag} numberOfLines={1}>
+          {c.tag}
+        </Text>
+        <View style={[styles.badge, { backgroundColor: withAlpha(band.color, 0.14) }]}>
+          <Text style={[styles.badgeText, { color: band.color }]}>{band.label}</Text>
+        </View>
+      </View>
+      <View style={styles.track}>
+        <View style={styles.trackInner}>
+          {/* baseline */}
+          <View style={styles.baseline} />
+          {/* gap bar between feel and know */}
+          <View
+            style={[
+              styles.gapBar,
+              { left: `${lo * 100}%`, width: `${Math.max(0, hi - lo) * 100}%`, backgroundColor: band.color },
+            ]}
+          />
+          {/* actually-ready (filled) */}
+          <View style={[styles.marker, styles.mKnow, { left: `${c.actual * 100}%` }]} />
+          {/* feel-ready (hollow ring) */}
+          <View style={[styles.marker, styles.mFeel, { left: `${c.felt * 100}%` }]} />
+        </View>
+      </View>
     </View>
   );
 }
 
-const makeStyles = () => StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  backBtn: { width: 40, alignItems: 'center' },
-  topTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
-  subtitle: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.gutter,
-    marginTop: 8,
-  },
-  sky: {
-    marginHorizontal: spacing.gutter,
-    marginTop: 18,
-    borderRadius: 22,
-    backgroundColor: colors.bgDeep,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  legend: { flexDirection: 'row', gap: 16, padding: 14, paddingTop: 4 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 9, height: 9, borderRadius: 5 },
-  legendText: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
-  section: { marginTop: 32, paddingHorizontal: spacing.gutter },
-  sectionTitle: { fontFamily: fonts.bold, fontSize: 21, color: colors.text },
-  sectionSub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.textSecondary, marginTop: 5, marginBottom: 8 },
-  fcRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
-  fcTag: { flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.text },
-  fcCount: { fontFamily: fonts.regular, fontSize: 13, color: colors.accent },
-  nemesisCard: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 12 },
-  nemesisHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nemesisTitle: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.text },
-  nemesisCount: { fontFamily: fonts.regular, fontSize: 12, color: colors.danger },
-  nemesisExcerpt: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginTop: 10 },
-  nemesisCta: { fontFamily: fonts.medium, fontSize: 13, color: colors.accent, marginTop: 12 },
-  edgeRow: { paddingVertical: 8 },
-  edgeText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-  edgeStrong: { fontFamily: fonts.medium, color: colors.text },
-});
+const makeStyles = () =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.bg },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      paddingBottom: 8,
+    },
+    backBtn: { width: 40, alignItems: 'center' },
+    topTitle: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
+    lede: {
+      fontFamily: fonts.regular,
+      fontSize: 14.5,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      paddingHorizontal: spacing.gutter,
+      marginTop: 8,
+    },
+    feelWord: { fontFamily: fonts.bold, color: colors.text },
+    knowWord: { fontFamily: fonts.bold, color: colors.accent },
+
+    // Headline
+    headline: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginHorizontal: spacing.gutter,
+      marginTop: 22,
+      padding: 18,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.borderStrong,
+      backgroundColor: colors.card,
+    },
+    headlineNum: { fontFamily: fonts.bold, fontSize: 44, color: colors.danger, lineHeight: 46 },
+    headlineText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.text },
+    headlineStrong: { fontFamily: fonts.bold, color: colors.danger },
+
+    // Legend
+    legend: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      paddingHorizontal: spacing.gutter,
+      marginTop: 22,
+    },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendMarker: { position: 'relative', left: 0 },
+    legendText: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary },
+    legendHint: { flex: 1, textAlign: 'right', fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary },
+
+    // Rows
+    list: { marginTop: 14, paddingHorizontal: spacing.gutter },
+    row: { paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+    rowHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+    rowTag: { flex: 1, fontFamily: fonts.medium, fontSize: 15.5, color: colors.text },
+    badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+    badgeText: { fontFamily: fonts.medium, fontSize: 11.5 },
+    track: { height: 16, justifyContent: 'center' },
+    // Inset by the marker radius so 0% and 100% markers never clip.
+    trackInner: { position: 'absolute', left: 8, right: 8, height: 16, justifyContent: 'center' },
+    baseline: { height: 3, borderRadius: 1.5, backgroundColor: withAlpha(colors.text, 0.08) },
+    gapBar: { position: 'absolute', height: 3, borderRadius: 1.5 },
+    marker: { position: 'absolute', width: 15, height: 15, borderRadius: 8, marginLeft: -7.5 },
+    mKnow: { backgroundColor: colors.accent, borderWidth: 2, borderColor: colors.bg },
+    mFeel: { backgroundColor: colors.bg, borderWidth: 2.5, borderColor: colors.textSecondary },
+
+    // Empty state
+    empty: { alignItems: 'center', paddingHorizontal: 36, marginTop: 48, gap: 18 },
+    emptyStrands: { flexDirection: 'row', alignItems: 'center', width: 160 },
+    emptyDot: { width: 15, height: 15, borderRadius: 8 },
+    emptyFeel: { backgroundColor: colors.bg, borderWidth: 2.5, borderColor: colors.textSecondary },
+    emptyKnow: { backgroundColor: colors.accent },
+    emptyLine: { flex: 1, height: 3, borderRadius: 1.5, backgroundColor: withAlpha(colors.text, 0.12), marginHorizontal: 4 },
+    emptyText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.textSecondary, textAlign: 'center' },
+    emptyBtn: { backgroundColor: colors.accent, borderRadius: 12, paddingHorizontal: 22, paddingVertical: 12 },
+    emptyBtnText: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.onAccent },
+
+    // Nemesis
+    section: { marginTop: 34, paddingHorizontal: spacing.gutter },
+    sectionTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.text, marginBottom: 12 },
+    nemesisCard: {
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.borderStrong,
+    },
+    nemesisHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    nemesisTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.text },
+    nemesisCount: { fontFamily: fonts.regular, fontSize: 12, color: colors.danger },
+    nemesisExcerpt: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.textSecondary, marginTop: 10 },
+    nemesisCta: { fontFamily: fonts.medium, fontSize: 13, color: colors.accent, marginTop: 12 },
+  });
 const styles = themedStyleSheet(makeStyles);

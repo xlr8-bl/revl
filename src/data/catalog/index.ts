@@ -3,9 +3,22 @@
  * Courses screen use. Data files are generated from official sources
  * (see headers in ub.ts / hnd.ts).
  */
+import { ndetekCecCourses } from '../ndetek';
 import { hndCourses, hndDepartments, hndFaculties, hndGeneralCourses } from './hnd';
 import type { CatalogCourse, Department, Faculty, School, SchoolId } from './types';
 import { ubCourses, ubDepartments, ubFaculties } from './ub';
+
+// Computer Engineering courses come from the real papers.ndetek.com archive
+// (52 courses, actual titles and paper counts) — they supersede the sparse,
+// partly-untitled timetable entries for that department. Every other UB
+// department keeps its timetable-sourced list.
+const ndetekCodes = new Set(ndetekCecCourses.map((c) => c.code));
+const ubPool: CatalogCourse[] = [
+  ...ubCourses.filter(
+    (c) => !(c.departmentId === 'computer-engineering' && ndetekCodes.has(c.code))
+  ),
+  ...ndetekCecCourses,
+];
 
 export const schools: School[] = [
   { id: 'ub', name: 'University of Buea', shortName: 'UB', levels: ['L200', 'L300', 'L400', 'L500', 'L600'] },
@@ -33,7 +46,7 @@ export function coursesFor(school: SchoolId, departmentId: string, level: string
     const professional = hndCourses.filter((c) => c.departmentId === departmentId);
     return [...hndGeneralCourses, ...professional];
   }
-  const dept = ubCourses.filter((c) => c.departmentId === departmentId);
+  const dept = ubPool.filter((c) => c.departmentId === departmentId);
   const atLevel = dept.filter((c) => c.level === level);
   // Some departments publish few courses at a given level; fall back to
   // the whole department so the list is never empty.
@@ -41,13 +54,13 @@ export function coursesFor(school: SchoolId, departmentId: string, level: string
 }
 
 export function courseByCode(code: string): CatalogCourse | undefined {
-  return [...ubCourses, ...hndGeneralCourses, ...hndCourses].find((c) => c.code === code);
+  return [...ubPool, ...hndGeneralCourses, ...hndCourses].find((c) => c.code === code);
 }
 
 export function searchCatalog(school: SchoolId, departmentId: string, query: string): CatalogCourse[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const pool = school === 'hnd' ? [...hndGeneralCourses, ...hndCourses] : ubCourses;
+  const pool = school === 'hnd' ? [...hndGeneralCourses, ...hndCourses] : ubPool;
   return pool
     .filter((c) => c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
     .slice(0, 30);
