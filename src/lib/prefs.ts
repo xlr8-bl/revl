@@ -15,6 +15,8 @@ export type Prefs = {
   offlineDownloads: boolean;
   privateProfile: boolean;
   preferredNetwork: 'mtn' | 'orange';
+  /** Display label for the Franc CFA amounts: 'FRS' colloquial, 'XAF' ISO. */
+  currency: 'XAF' | 'FRS';
 };
 
 const KEY = 'revl.prefs.v1';
@@ -26,6 +28,7 @@ let prefs: Prefs = {
   offlineDownloads: true,
   privateProfile: false,
   preferredNetwork: 'mtn',
+  currency: 'FRS',
 };
 const listeners = new Set<() => void>();
 const emit = () => {

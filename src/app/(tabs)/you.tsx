@@ -13,6 +13,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentUser } from '../../data/user';
 import { useFriends } from '../../lib/friendsStore';
+import { formatMoney, useWallet } from '../../lib/money';
+import { usePrefs } from '../../lib/prefs';
 import { useRevealLogs, weakTopics } from '../../lib/selectors';
 import { useSession } from '../../lib/session';
 import { isWrappedLive } from '../../lib/wrappedGate';
@@ -26,6 +28,8 @@ export default function YouScreen() {
   const weakest = weakTopics(logs)[0];
   const { profile } = useSession();
   const { friends, incoming } = useFriends();
+  const { balance } = useWallet();
+  const { currency } = usePrefs();
 
   const account: Row[] = [
     { icon: 'person-outline', label: 'Edit profile', detail: 'name, username, photo', route: '/account/edit' },
@@ -45,9 +49,9 @@ export default function YouScreen() {
   const study: Row[] = [
     { icon: 'planet-outline', label: 'Study DNA', detail: weakest ? `weakest: ${weakest.tag}` : undefined, route: '/dna' },
     { icon: 'arrow-down-circle-outline', label: 'Downloads', detail: 'papers on this phone', route: '/downloads' },
-    { icon: 'wallet-outline', label: 'Credits & wallet', detail: `${currentUser.credits} credits`, route: '/wallet' },
+    { icon: 'wallet-outline', label: 'Wallet', detail: formatMoney(balance, currency), route: '/wallet' },
     { icon: 'document-text-outline', label: 'My notes', detail: 'grounds your AI answers', route: '/notes' },
-    { icon: 'cloud-upload-outline', label: 'Upload a paper, earn credits', route: '/contribute' },
+    { icon: 'cloud-upload-outline', label: 'Upload a paper, earn money', route: '/contribute' },
   ];
 
   return (

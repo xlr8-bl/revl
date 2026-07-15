@@ -44,6 +44,10 @@ export type Question = {
     verified?: string;
     references?: Ref[];
   };
+  /** When present, the question is multiple-choice: the options render as
+   * tappable rows and "Check" marks the correct one (still logs one
+   * RevealLog row, resolution from correctness). */
+  options?: { label: string; correct: boolean }[];
 };
 
 export type Diagram = {

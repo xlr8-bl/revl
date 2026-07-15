@@ -38,9 +38,14 @@ import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../..
 
 type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'personalize' | 'done';
 
-const EXAM_DATES = [
+// Exam sittings are school-specific: a UB student never sits the HND
+// national exam and vice-versa, so the options are scoped by school.
+const EXAM_DATES_UB = [
   { label: 'First semester exams (February)', iso: '2027-02-15' },
   { label: 'Second semester exams (June)', iso: '2027-06-14' },
+  { label: 'Resits (September)', iso: '2026-09-07' },
+];
+const EXAM_DATES_HND = [
   { label: 'HND national exam (June)', iso: '2027-06-21' },
   { label: 'Resits (September)', iso: '2026-09-07' },
 ];
@@ -62,7 +67,10 @@ export default function OnboardingScreen() {
   const [deptFilter, setDeptFilter] = useState('');
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [examDate, setExamDate] = useState<string | null>(null);
-  const [studyTime, setStudyTime] = useState<'morning' | 'evening' | 'night' | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryPhone, setRecoveryPhone] = useState('');
+  // Mobile-money accounts have no email/phone-recovery by default — offer it.
+  const isMomo = method === 'momo' || method === 'orange';
 
   const usernameRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
@@ -101,6 +109,20 @@ export default function OnboardingScreen() {
     () => (school && departmentId && level ? coursesFor(school, departmentId, level) : []),
     [school, departmentId, level]
   );
+  // Split the course list by teaching semester. When no course carries
+  // semester info we fall back to a single unlabelled group, so the header
+  // only appears when it means something.
+  const courseGroups = useMemo(() => {
+    const s1 = derivedCourses.filter((c) => c.semester === 'S1');
+    const s2 = derivedCourses.filter((c) => c.semester === 'S2');
+    const other = derivedCourses.filter((c) => !c.semester);
+    const hasSplit = s1.length > 0 && s2.length > 0;
+    return [
+      { key: 's1', label: 'First semester', items: s1, showHeader: hasSplit },
+      { key: 's2', label: 'Second semester', items: s2, showHeader: hasSplit },
+      { key: 'other', label: hasSplit ? 'Other' : '', items: other, showHeader: hasSplit && other.length > 0 },
+    ].filter((g) => g.items.length > 0);
+  }, [derivedCourses]);
 
   const back = () => (stepIndex > 0 ? setStep(stepOrder[stepIndex - 1]) : router.back());
 
@@ -135,7 +157,8 @@ export default function OnboardingScreen() {
       level: level!,
       enrolledCourseCodes: [...selectedCodes],
       examDate: examDate!,
-      studyTime: studyTime!,
+      recoveryEmail: recoveryEmail.trim() || undefined,
+      recoveryPhone: recoveryPhone.trim() || undefined,
     });
     router.replace('/');
   };
@@ -342,37 +365,42 @@ export default function OnboardingScreen() {
             <Text style={styles.sub}>
               {school === 'hnd'
                 ? 'Your final-exam papers. General papers are written by everyone, so they stay on.'
-                : 'Taught in your department at your level. Untick what you are not taking.'}
+                : 'Taught in your department at your level, split by semester. Untick what you are not taking.'}
             </Text>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}>
-              {derivedCourses.map((c) => {
-                const locked = school === 'hnd' && c.general;
-                const on = selectedCodes.has(c.code);
-                return (
-                  <Pressable
-                    key={c.code}
-                    disabled={locked}
-                    onPress={() =>
-                      setSelectedCodes((prev) => {
-                        const next = new Set(prev);
-                        on ? next.delete(c.code) : next.add(c.code);
-                        return next;
-                      })
-                    }
-                    style={[styles.courseRow, !on && { opacity: 0.45 }]}>
-                    <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
-                    <View style={{ flex: 1 }}>
-                      {/* Code-first when the official title is unpublished — never show an invented title. */}
-                      <Text style={styles.courseTitle}>{c.title || c.code}</Text>
-                      <Text style={styles.courseMeta}>
-                        {c.title ? c.code : 'title pending confirmation'}
-                        {c.general ? ' · general paper' : ''}
-                        {locked ? ' · required' : ''}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {courseGroups.map((g) => (
+                <View key={g.key}>
+                  {g.showHeader && <Text style={styles.semesterHeader}>{g.label}</Text>}
+                  {g.items.map((c) => {
+                    const locked = school === 'hnd' && c.general;
+                    const on = selectedCodes.has(c.code);
+                    return (
+                      <Pressable
+                        key={c.code}
+                        disabled={locked}
+                        onPress={() =>
+                          setSelectedCodes((prev) => {
+                            const next = new Set(prev);
+                            on ? next.delete(c.code) : next.add(c.code);
+                            return next;
+                          })
+                        }
+                        style={[styles.courseRow, !on && { opacity: 0.45 }]}>
+                        <View style={[styles.checkbox, on && styles.checkboxOn]}>{on && <Text style={styles.checkMark}>✓</Text>}</View>
+                        <View style={{ flex: 1 }}>
+                          {/* Code-first when the official title is unpublished — never show an invented title. */}
+                          <Text style={styles.courseTitle}>{c.title || c.code}</Text>
+                          <Text style={styles.courseMeta}>
+                            {c.title ? c.code : 'title pending confirmation'}
+                            {c.general ? ' · general paper' : ''}
+                            {locked ? ' · required' : ''}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
             </ScrollView>
             <Cta label={`Continue with ${selectedCodes.size} courses`} enabled={selectedCodes.size > 0} onPress={() => setStep('personalize')} bottomInset={insets.bottom} />
           </Animated.View>
@@ -380,11 +408,11 @@ export default function OnboardingScreen() {
 
         {step === 'personalize' && (
           <Animated.View key="personalize" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
               <Text style={styles.title}>Make it yours</Text>
 
               <Text style={styles.fieldLabel}>When is your next exam sitting?</Text>
-              {EXAM_DATES.map((d) => (
+              {(school === 'hnd' ? EXAM_DATES_HND : EXAM_DATES_UB).map((d) => (
                 <Pressable
                   key={d.iso}
                   onPress={() => setExamDate(d.iso)}
@@ -393,23 +421,39 @@ export default function OnboardingScreen() {
                   {examDate === d.iso && <Text style={{ color: colors.accent }}>✓</Text>}
                 </Pressable>
               ))}
+              <Text style={styles.hintLine}>Drives your exam countdown and daily plan. Change anytime.</Text>
 
-              <Text style={styles.fieldLabel}>When do you actually study?</Text>
-              <View style={styles.timeRow}>
-                {(['morning', 'evening', 'night'] as const).map((t) => (
-                  <Pressable
-                    key={t}
-                    onPress={() => setStudyTime(t)}
-                    style={[styles.timeChip, studyTime === t && styles.timeChipActive]}>
-                    <Text style={[styles.rowTitle, studyTime === t && { color: colors.accent }]}>
-                      {t[0].toUpperCase() + t.slice(1)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={styles.hintLine}>Reminders and your daily plan follow this. Change anytime.</Text>
+              {/* Mobile-money sign-ups have no email/phone to recover the
+                  account with — offer to add one now (optional). */}
+              {isMomo && (
+                <>
+                  <Text style={styles.fieldLabel}>Recover your account (optional)</Text>
+                  <Text style={[styles.sub, { marginTop: 0, marginBottom: 12 }]}>
+                    You signed in with Mobile Money. Add an email or a backup number so you never lose your account
+                    if you change SIM.
+                  </Text>
+                  <TextInput
+                    value={recoveryEmail}
+                    onChangeText={setRecoveryEmail}
+                    placeholder="Email (optional)"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={recoveryPhone}
+                    onChangeText={setRecoveryPhone}
+                    placeholder="Backup phone (optional)"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="phone-pad"
+                    style={[styles.input, { marginTop: 10 }]}
+                  />
+                </>
+              )}
             </ScrollView>
-            <Cta label="Continue" enabled={!!(examDate && studyTime)} onPress={() => setStep('done')} bottomInset={insets.bottom} />
+            <Cta label="Continue" enabled={!!examDate} onPress={() => setStep('done')} bottomInset={insets.bottom} />
           </Animated.View>
         )}
 
@@ -525,6 +569,15 @@ const makeStyles = () => StyleSheet.create({
   checkMark: { fontFamily: fonts.bold, fontSize: 13, color: colors.onAccent },
   courseTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
   courseMeta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textSecondary, marginTop: 2 },
+  semesterHeader: {
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.textSecondary,
+    marginTop: 16,
+    marginBottom: 4,
+  },
   timeRow: { flexDirection: 'row', gap: 8 },
   timeChip: {
     flex: 1,

@@ -8,16 +8,20 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RevlLogo } from '../../components/RevlLogo';
-import { IntroSequence } from '../../components/IntroSequence';
 import { signIn } from '../../lib/session';
-import { markIntroSeen, useIntroState } from '../../lib/intro';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
+
+// Entrance beats (ms) for the hero, headline and three value lines — the
+// haptics fire on these same beats so the reveal is felt as well as seen
+// (the ChatGPT-style haptic text reveal).
+const REVEAL_BEATS = [80, 160, 240, 310, 380];
 
 const PAPER = '#F2ECDF';
 const INK = '#241E12';
@@ -33,12 +37,22 @@ export default function WelcomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const intro = useIntroState();
 
-  // Wait for the intro flag to hydrate so we never flash welcome first.
-  if (intro === 'loading') return <View style={styles.root} />;
-  // First launch: play the animated opening, then fall through to welcome.
-  if (intro === 'unseen') return <IntroSequence onDone={markIntroSeen} />;
+  // Fire a soft haptic tick on each entrance beat — the content reveals and
+  // you feel it land, like the ChatGPT opening. Skipped on web.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const timers = REVEAL_BEATS.map((t, i) =>
+      setTimeout(
+        () =>
+          Haptics.impactAsync(
+            i === 0 ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
+          ).catch(() => {}),
+        t + 60
+      )
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
 
   return (
     <View style={styles.root}>

@@ -1,13 +1,14 @@
 /**
- * ConnectivityBanner — the quiet Spotify-style status pill. Going offline
- * shows a persistent "You're offline" pill under the status bar; coming
- * back shows "You're online" in green for a moment, then it slips away.
- * Nothing renders while the state is undetermined or steadily online.
+ * ConnectivityBanner — the quiet Spotify-style status pill. It floats near
+ * the BOTTOM (above where the tab bar sits) so it never covers a screen's
+ * title or controls. Going offline shows a persistent "You're offline"
+ * pill; coming back shows "You're online" in green for a moment, then it
+ * slips away. Nothing renders while undetermined or steadily online.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBannerSuppressed, useOnline } from '../lib/connectivity';
 import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
@@ -37,11 +38,11 @@ export function ConnectivityBanner() {
   if (suppressed || (!offline && !showBack)) return null;
 
   return (
-    <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>
+    <View pointerEvents="none" style={[styles.wrap, { bottom: insets.bottom + 82 }]}>
       <Animated.View
         key={offline ? 'off' : 'on'}
-        entering={FadeInUp.duration(220)}
-        exiting={FadeOutUp.duration(220)}
+        entering={FadeInDown.duration(220)}
+        exiting={FadeOutDown.duration(220)}
         style={[styles.pill, !offline && styles.pillOnline]}>
         <Ionicons
           name={offline ? 'cloud-offline-outline' : 'cloud-done-outline'}
