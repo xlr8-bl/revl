@@ -84,6 +84,7 @@ export default function OnboardingScreen() {
   const isMomo = method === 'momo' || method === 'orange';
   const providerLabel =
     method === 'google' ? 'Google' : method === 'apple' ? 'Apple' : method ? 'Mobile Money' : 'your account';
+  const firstName = name.trim().split(' ')[0];
 
   const usernameRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
@@ -250,10 +251,11 @@ export default function OnboardingScreen() {
         {step === 'identity' && (
           <Animated.View key="identity" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-              <Text style={styles.title}>{identity?.fullName ? 'Confirm your details' : 'First, who are you?'}</Text>
+              <Text style={styles.title}>{identity?.fullName ? `Hey, ${firstName || 'there'}` : "Let's start with you"}</Text>
               <Text style={styles.sub}>
-                Signed in with {providerLabel}.
-                {identity?.fullName ? ' We filled in what we could — check it over.' : ' This is how classmates see you.'}
+                {identity?.fullName
+                  ? `${providerLabel} gave us most of this — just check it's really you.`
+                  : 'The name and face your classmates will see. Make it yours.'}
               </Text>
 
               {/* Photo — provider photo / default Ronaldo / uploaded */}
@@ -320,7 +322,7 @@ export default function OnboardingScreen() {
         {step === 'school' && (
           <Animated.View key="school" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Where do you study?</Text>
-            <Text style={styles.sub}>Revl launches with these two. Tap one to continue.</Text>
+            <Text style={styles.sub}>So we bring your real past papers — the ones your lecturers actually set.</Text>
             <View style={{ marginTop: 16 }}>
               {schools.map((sc) => (
                 <Pressable
@@ -401,8 +403,8 @@ export default function OnboardingScreen() {
 
         {step === 'level' && (
           <Animated.View key="level" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
-            <Text style={styles.title}>Your level</Text>
-            <Text style={styles.sub}>We'll move you up automatically each academic year — you confirm it.</Text>
+            <Text style={styles.title}>What level are you this year?</Text>
+            <Text style={styles.sub}>Every September we move you up — you just tap to confirm. No redoing all this.</Text>
             <View style={{ marginTop: 16 }}>
               {levels.map((l) => (
                 <Pressable
@@ -533,17 +535,16 @@ export default function OnboardingScreen() {
           <Animated.View key="done" entering={FadeIn.duration(300)} style={{ flex: 1 }}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 12 }}>
               <View style={{ alignItems: 'center' }}>
-                <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={72} />
-                <Text style={[styles.title, { textAlign: 'center', marginTop: 16 }]}>Your library is ready</Text>
+                <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={80} ring />
+                <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>You're in{firstName ? `, ${firstName}` : ''}.</Text>
                 <Text style={[styles.sub, { textAlign: 'center' }]}>
-                  @{cleanUsername} · {departments.find((d) => d.id === departmentId)?.name} · {level}
-                  {'\n'}
-                  {totalSelected} courses set up{carryover.size ? ` (${carryover.size} carry-over)` : ''}.
+                  {totalSelected} course{totalSelected === 1 ? '' : 's'} lined up{carryover.size ? `, ${carryover.size} carry-over` : ''} —
+                  every one with real past papers waiting. Let's get you ready.
                 </Text>
                 <View style={styles.examChip}>
                   <Ionicons name="alarm-outline" size={15} color={colors.accent} />
                   <Text style={styles.examChipText}>
-                    {derivedExam.label} — in {examDays} days
+                    {derivedExam.label} · {examDays} days to go
                   </Text>
                 </View>
               </View>
@@ -577,7 +578,7 @@ export default function OnboardingScreen() {
                 </View>
               )}
             </ScrollView>
-            <Cta label="Start revising" enabled onPress={finish} bottomInset={insets.bottom} />
+            <Cta label="Take me in" enabled onPress={finish} bottomInset={insets.bottom} />
           </Animated.View>
         )}
       </KeyboardAvoidingView>
