@@ -1,31 +1,21 @@
 /**
- * Welcome — the first screen. Shows the product, not just words: a small
- * stack of exam-paper cards (the app's core artifact) sits above a bold
- * serif promise and three concrete value lines, then the sign-in
- * options. Everything eases in on a short stagger so it feels alive.
- * Mobile Money is elevated — it's how Cameroonian students actually pay
- * and the same number unlocks papers.
+ * Welcome — the first screen. An ink dot writes the invitation a letter at a
+ * time (LetsReveal), each one landing as a haptic, then the promise, three
+ * concrete value lines and the sign-in options. Mobile Money is elevated —
+ * it's how Cameroonian students actually pay, and the same number unlocks
+ * papers.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { signIn } from '../../lib/session';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
-
-// Entrance beats (ms) for the hero, headline and three value lines — the
-// haptics fire on these same beats so the reveal is felt as well as seen
-// (the ChatGPT-style haptic text reveal).
-const REVEAL_BEATS = [80, 160, 240, 310, 380];
-
-const PAPER = '#F2ECDF';
-const INK = '#241E12';
-const INK_SOFT = 'rgba(36,30,18,0.6)';
 
 const VALUE = [
   { icon: 'documents-outline', text: 'Real past papers from your own faculty' },
@@ -37,22 +27,6 @@ export default function WelcomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-
-  // Fire a soft haptic tick on each entrance beat — the content reveals and
-  // you feel it land, like the ChatGPT opening. Skipped on web.
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    const timers = REVEAL_BEATS.map((t, i) =>
-      setTimeout(
-        () =>
-          Haptics.impactAsync(
-            i === 0 ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
-          ).catch(() => {}),
-        t + 60
-      )
-    );
-    return () => timers.forEach(clearTimeout);
-  }, []);
 
   return (
     <View style={styles.root}>
@@ -68,25 +42,10 @@ export default function WelcomeScreen() {
           <Text style={styles.wordmark}>revl</Text>
         </Animated.View>
 
-        {/* Product hero — a little stack of exam papers */}
-        <Animated.View entering={FadeInDown.delay(80).duration(520)} style={styles.hero}>
-          <View style={[styles.paper, styles.paperBack]} />
-          <View style={[styles.paper, styles.paperMid]} />
-          <View style={[styles.paper, styles.paperFront]}>
-            <View style={styles.paperHead}>
-              <Text style={styles.paperCode}>PHY401 · 2023</Text>
-              <Text style={styles.paperMarks}>12 marks</Text>
-            </View>
-            <View style={styles.paperRule} />
-            <Text style={styles.paperQ}>
-              Derive the moment of inertia of a uniform disc about its central axis.
-            </Text>
-            <View style={styles.verifiedRow}>
-              <Ionicons name="checkmark-circle" size={14} color="#1B8A47" />
-              <Text style={styles.verifiedText}>Worked answer verified by a top student</Text>
-            </View>
-          </View>
-        </Animated.View>
+        {/* The invitation, written by the dot one letter at a time */}
+        <View style={styles.hero}>
+          <LetsReveal />
+        </View>
 
         {/* Promise */}
         <Animated.Text entering={FadeInDown.delay(160).duration(520)} style={styles.headline}>
@@ -153,31 +112,9 @@ const makeStyles = () => StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   wordmark: { fontFamily: fonts.bold, fontSize: 26, color: colors.text, letterSpacing: -0.5 },
 
-  hero: { height: 210, marginTop: 26, alignItems: 'center', justifyContent: 'center' },
-  paper: {
-    position: 'absolute',
-    width: 260,
-    borderRadius: 12,
-    backgroundColor: PAPER,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-  },
-  paperBack: { height: 150, transform: [{ rotate: '-7deg' }], opacity: 0.55, top: 26 },
-  paperMid: { height: 160, transform: [{ rotate: '4deg' }], opacity: 0.8, top: 22 },
-  paperFront: { height: 178, padding: 18, transform: [{ rotate: '-1.5deg' }] },
-  paperHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  paperCode: { fontFamily: fonts.bold, fontSize: 12.5, color: INK_SOFT, letterSpacing: 0.5 },
-  paperMarks: { fontFamily: fonts.medium, fontSize: 12.5, color: INK_SOFT },
-  paperRule: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(36,30,18,0.2)', marginTop: 11, marginBottom: 12 },
-  paperQ: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 27, color: INK },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
-  verifiedText: { fontFamily: fonts.medium, fontSize: 12, color: '#1B8A47' },
-
-  headline: { fontFamily: fonts.bold, fontSize: 26, lineHeight: 34, color: colors.text, marginTop: 30 },
-  values: { marginTop: 22, gap: 13 },
+  hero: { marginTop: 44 },
+  headline: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, color: colors.textSecondary, marginTop: 4 },
+  values: { marginTop: 30, gap: 13 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   valueChip: {
     width: 30,

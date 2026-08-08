@@ -45,7 +45,9 @@ import {
 import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
-type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'done';
+type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'recovery' | 'done';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const toUsername = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
@@ -101,13 +103,16 @@ export default function OnboardingScreen() {
   const usernameHint =
     cleanUsername.length >= 3 ? (usernameOk ? `@${cleanUsername} is available` : `@${cleanUsername} is taken`) : ' ';
 
-  const stepOrder: Step[] = useMemo(
-    () =>
+  // Mobile-money sign-ins have nothing but a SIM behind the account, so they
+  // get a step of their own to attach something that outlives it. Google and
+  // Apple already carry a verified email, so they never see it.
+  const stepOrder: Step[] = useMemo(() => {
+    const core: Step[] =
       school === 'hnd'
-        ? ['identity', 'school', 'faculty', 'department', 'courses', 'done']
-        : ['identity', 'school', 'faculty', 'department', 'level', 'courses', 'done'],
-    [school]
-  );
+        ? ['identity', 'school', 'faculty', 'department', 'courses']
+        : ['identity', 'school', 'faculty', 'department', 'level', 'courses'];
+    return isMomo ? [...core, 'recovery', 'done'] : [...core, 'done'];
+  }, [school, isMomo]);
   const stepIndex = stepOrder.indexOf(step);
 
   const faculties = school ? facultiesFor(school) : [];
@@ -155,6 +160,10 @@ export default function OnboardingScreen() {
   }, [carryQuery, deptAllCourses, activeCourses, carryover, activeSemester]);
 
   const totalSelected = selectedCodes.size + carryover.size;
+
+  const emailOk = EMAIL_RE.test(recoveryEmail.trim());
+  const phoneOk = recoveryPhone.replace(/\D/g, '').length >= 9;
+  const recoverySet = emailOk || phoneOk;
 
   const pickPhoto = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -205,8 +214,8 @@ export default function OnboardingScreen() {
       authProvider: method ?? undefined,
       email: identity?.email,
       emailIsPrivateRelay: identity?.emailIsPrivateRelay,
-      recoveryEmail: recoveryEmail.trim() || undefined,
-      recoveryPhone: recoveryPhone.trim() || undefined,
+      recoveryEmail: emailOk ? recoveryEmail.trim().toLowerCase() : undefined,
+      recoveryPhone: phoneOk ? recoveryPhone.trim() : undefined,
     });
     router.replace('/');
   };
@@ -527,7 +536,73 @@ export default function OnboardingScreen() {
                 </View>
               )}
             </ScrollView>
-            <Cta label={`Continue with ${totalSelected} course${totalSelected === 1 ? '' : 's'}`} enabled={totalSelected > 0} onPress={() => setStep('done')} bottomInset={insets.bottom} />
+            <Cta
+              label={`Continue with ${totalSelected} course${totalSelected === 1 ? '' : 's'}`}
+              enabled={totalSelected > 0}
+              onPress={() => setStep(isMomo ? 'recovery' : 'done')}
+              bottomInset={insets.bottom}
+            />
+          </Animated.View>
+        )}
+
+        {step === 'recovery' && (
+          <Animated.View key="recovery" entering={FadeIn.duration(300)} exiting={FadeOut.duration(150)} style={{ flex: 1 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+              <View style={styles.recoveryShield}>
+                <Ionicons name="key-outline" size={22} color={colors.accent} />
+              </View>
+              <Text style={[styles.title, { marginTop: 16 }]}>If you lose that SIM,{'\n'}this gets you back in.</Text>
+              <Text style={styles.sub}>
+                Your account lives on {recoveryPhone.trim() ? 'your Mobile Money number' : 'the number you signed in with'}. Numbers get
+                lost, stolen and recycled — and everything you unlock is tied to this account. One second here saves it.
+              </Text>
+
+              <Text style={styles.fieldLabel}>Email address</Text>
+              <TextInput
+                value={recoveryEmail}
+                onChangeText={setRecoveryEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                style={[styles.input, recoveryEmail.trim().length > 3 && !emailOk && styles.inputError]}
+              />
+              <Text style={styles.recoveryHint}>
+                {recoveryEmail.trim().length > 3 && !emailOk
+                  ? "That doesn't look like a complete email address."
+                  : emailOk
+                    ? "We'll send a confirmation link there so we know it reaches you."
+                    : 'Used only to confirm it is you and to send a recovery link. No mail from us otherwise.'}
+              </Text>
+
+              <Text style={styles.fieldLabel}>Backup number</Text>
+              <View style={styles.phoneRow}>
+                <View style={styles.prefixChip}>
+                  <Text style={styles.prefixText}>+237</Text>
+                </View>
+                <TextInput
+                  value={recoveryPhone}
+                  onChangeText={setRecoveryPhone}
+                  placeholder="6 XX XX XX XX"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="phone-pad"
+                  style={[styles.input, { flex: 1, marginTop: 0 }]}
+                />
+              </View>
+              <Text style={styles.recoveryHint}>
+                A second number that is not this SIM — a parent's, a roommate's, your other line.
+              </Text>
+            </ScrollView>
+
+            <View style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+              <Cta label="Secure my account" enabled={recoverySet} onPress={() => setStep('done')} bottomInset={0} />
+              <Pressable onPress={() => setStep('done')} hitSlop={8} style={{ alignItems: 'center', paddingTop: 10 }}>
+                <Text style={styles.skipText}>Skip for now</Text>
+                <Text style={styles.skipHint}>Lose the SIM and the account goes with it.</Text>
+              </Pressable>
+            </View>
           </Animated.View>
         )}
 
@@ -547,36 +622,13 @@ export default function OnboardingScreen() {
                     {derivedExam.label} · {examDays} days to go
                   </Text>
                 </View>
+                {isMomo && recoverySet && (
+                  <View style={styles.securedRow}>
+                    <Ionicons name="shield-checkmark" size={15} color="#1B8A47" />
+                    <Text style={styles.securedText}>Account recovery is set up</Text>
+                  </View>
+                )}
               </View>
-
-              {/* Mobile-money accounts have no email/phone to recover with */}
-              {isMomo && (
-                <View style={{ marginTop: 28 }}>
-                  <Text style={styles.fieldLabel}>Recover your account (optional)</Text>
-                  <Text style={[styles.sub, { marginTop: 0, marginBottom: 12 }]}>
-                    You signed in with Mobile Money. Add an email or backup number so a lost SIM never loses your
-                    account.
-                  </Text>
-                  <TextInput
-                    value={recoveryEmail}
-                    onChangeText={setRecoveryEmail}
-                    placeholder="Email (optional)"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.input}
-                  />
-                  <TextInput
-                    value={recoveryPhone}
-                    onChangeText={setRecoveryPhone}
-                    placeholder="Backup phone (optional)"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="phone-pad"
-                    style={[styles.input, { marginTop: 10 }]}
-                  />
-                </View>
-              )}
             </ScrollView>
             <Cta label="Take me in" enabled onPress={finish} bottomInset={insets.bottom} />
           </Animated.View>
@@ -612,6 +664,30 @@ const makeStyles = () => StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 26, color: colors.text },
   sub: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, marginTop: 8 },
   fieldLabel: { fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 22, marginBottom: 10 },
+
+  recoveryShield: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  recoveryHint: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, color: colors.textTertiary, marginTop: 8 },
+  inputError: { borderColor: '#C4402B', borderWidth: 1 },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  prefixChip: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  prefixText: { fontFamily: fonts.medium, fontSize: 15, color: colors.textSecondary },
+  skipText: { fontFamily: fonts.medium, fontSize: 14.5, color: colors.textSecondary },
+  skipHint: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textTertiary, marginTop: 3 },
+  securedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18 },
+  securedText: { fontFamily: fonts.medium, fontSize: 13, color: '#1B8A47' },
   input: {
     backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,

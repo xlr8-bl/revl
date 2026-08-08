@@ -38,7 +38,9 @@ export function ConnectivityBanner() {
   if (suppressed || (!offline && !showBack)) return null;
 
   return (
-    <View pointerEvents="none" style={[styles.wrap, { bottom: insets.bottom + 82 }]}>
+    // Floors the inset so the pill still clears a bottom-pinned CTA on the
+    // devices that report no bottom inset at all (most Android, web).
+    <View pointerEvents="none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 28) + 82 }]}>
       <Animated.View
         key={offline ? 'off' : 'on'}
         entering={FadeInDown.duration(220)}

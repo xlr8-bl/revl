@@ -1,24 +1,32 @@
 /**
  * Academic calendar — the single source of truth for "where is the student
  * in the year". University of Buea runs two semesters: First ≈ September to
- * January (exams February), Second ≈ February to July (exams June), with a
- * resit window around September. All of onboarding, the exam countdown and
+ * January (exams February), Second ≈ February to June (exams June), with the
+ * July–August break read as the run-up to First. All of onboarding, the exam
+ * countdown and
  * level progression derive from these helpers instead of asking the student
  * to hand-enter dates that then contradict each other.
  */
 
 export type Semester = 'S1' | 'S2';
 
-/** The active semester for a date. Sep–Jan → First; Feb–Aug → Second. */
+/**
+ * The active semester for a date. Aug–Jan → First; Feb–Jul → Second.
+ *
+ * August is the seam: second-semester exams are finished, results are out and
+ * nobody is revising for a June paper ten months away — they are registering
+ * for September. So August counts as the run-up to First, which is what makes
+ * an August sign-up land on February's papers instead of next June's.
+ */
 export function currentSemester(d: Date = new Date()): Semester {
   const m = d.getMonth(); // 0 = January
-  return m >= 8 || m === 0 ? 'S1' : 'S2';
+  return m >= 7 || m === 0 ? 'S1' : 'S2';
 }
 
-/** Academic-year label, rolling over in September: e.g. "2026/2027". */
+/** Academic-year label, rolling over in August with the semester: "2026/2027". */
 export function academicYear(d: Date = new Date()): string {
   const y = d.getFullYear();
-  return d.getMonth() >= 8 ? `${y}/${y + 1}` : `${y - 1}/${y}`;
+  return d.getMonth() >= 7 ? `${y}/${y + 1}` : `${y - 1}/${y}`;
 }
 
 /** True when a stored academic year is older than today's — time to advance. */
