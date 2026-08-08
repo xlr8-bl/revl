@@ -46,6 +46,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "supabase": "^2.113.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -53,7 +54,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "db:link": "supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff -f",
+    "db:types": "supabase gen types typescript --linked > src/lib/db/schema.ts"
   },
   "private": true
 }
