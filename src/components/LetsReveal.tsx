@@ -40,9 +40,12 @@ const EASE_WRITE = Easing.bezier(0.4, 0.05, 0.45, 0.95);
 // Coming back is a retreat, not a performance — quicker, and out of the way.
 const EASE_ERASE = Easing.bezier(0.5, 0, 0.2, 1);
 
-const HOLD_MS = 980; // the line sits finished and readable
-const ERASE_MS = 520;
-const GAP_MS = 220;
+const HOLD_MS = 900; // the line sits finished and readable
+// The tail of the return trip is the dot crossing ground it has already
+// cleared, so it is kept short — any longer and the hero is just a drifting
+// dot for half a second between lines.
+const ERASE_MS = 440;
+const GAP_MS = 120;
 const writeMs = (n: number) => 300 + n * 58;
 
 // Haptics run for the opening lines and then go quiet — the welcome screen can
