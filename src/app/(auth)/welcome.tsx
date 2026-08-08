@@ -7,10 +7,11 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BookletPaper } from '../../components/BookletPaper';
 import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { signIn } from '../../lib/session';
@@ -23,10 +24,14 @@ const VALUE = [
   { icon: 'school-outline', text: 'Built around the exact courses you take' },
 ] as const;
 
+/** The hero's top padding — also where the first ruled line falls. */
+const HERO_PAD = 30;
+
 export default function WelcomeScreen() {
   useThemeVersion();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [heroHeight, setHeroHeight] = useState(0);
 
   return (
     <View style={styles.root}>
@@ -42,15 +47,17 @@ export default function WelcomeScreen() {
           <Text style={styles.wordmark}>revl</Text>
         </Animated.View>
 
-        {/* The invitation, written by the dot one letter at a time */}
-        <View style={styles.hero}>
+        {/* The invitation, written by the nib one letter at a time, on a page
+            that arrives already ruled. The block flexes so the screen's
+            leftover height lands HERE and becomes paper, rather than pooling
+            as dead space under the buttons. */}
+        <View style={styles.hero} onLayout={(e) => setHeroHeight(e.nativeEvent.layout.height)}>
+          <BookletPaper height={heroHeight} offset={HERO_PAD} />
           <LetsReveal />
+          <Animated.Text entering={FadeInDown.delay(160).duration(520)} style={styles.headline}>
+            Walk into the exam having already seen the paper.
+          </Animated.Text>
         </View>
-
-        {/* Promise */}
-        <Animated.Text entering={FadeInDown.delay(160).duration(520)} style={styles.headline}>
-          Walk into the exam having already seen the paper.
-        </Animated.Text>
 
         {/* Value lines */}
         <View style={styles.values}>
@@ -112,21 +119,30 @@ const makeStyles = () => StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   wordmark: { fontFamily: fonts.bold, fontSize: 26, color: colors.text, letterSpacing: -0.5 },
 
-  hero: { marginTop: 44 },
-  headline: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, color: colors.textSecondary, marginTop: 4 },
-  values: { marginTop: 30, gap: 13 },
+  // Full-bleed so the ruling reaches both edges; the text column's gutter is
+  // re-applied as padding inside it.
+  hero: {
+    flex: 1,
+    minHeight: 210,
+    paddingTop: HERO_PAD,
+    overflow: 'hidden',
+    marginHorizontal: -(spacing.gutter + 6),
+    paddingHorizontal: spacing.gutter + 6,
+  },
+  headline: { fontFamily: fonts.regular, fontSize: 17.5, lineHeight: 26, color: colors.textSecondary, marginTop: 6 },
+  values: { marginTop: 26, gap: 16 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   valueChip: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  valueText: { flex: 1, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 20, color: colors.textSecondary },
+  valueText: { flex: 1, fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.textSecondary },
 
-  buttons: { gap: 10, marginTop: 34 },
+  buttons: { gap: 10, marginTop: 28 },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',

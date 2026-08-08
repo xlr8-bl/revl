@@ -7,14 +7,29 @@
  * much as it is read. The dot then eases back to the left, un-writing the line
  * behind it, and the next one starts.
  *
- * Letter positions are MEASURED rather than assumed. In a proportional serif
- * an evenly-spaced approximation drifts by the second word, and the whole
- * effect depends on the dot and the letter it uncovers being the same pixel.
+ * The dot drags a RULE behind it — the ruled line of an answer booklet, laid
+ * down in Revl's orange as the nib passes and pulled back up as it retreats.
+ * A bare dot travelling a line is somebody else's signature; this is the one
+ * thing on the screen that could only belong to an exam app.
+ *
+ * Two things this file is built around:
+ *
+ *  - Letter positions are MEASURED, not assumed. In a proportional serif an
+ *    evenly-spaced approximation drifts by the second word, and the effect
+ *    depends entirely on the dot and the letter it uncovers being the same
+ *    pixel.
+ *
+ *  - EVERY line is measured once, up front, and nothing remounts afterwards.
+ *    Swapping the text per cycle meant a remount and a fresh layout pass
+ *    between lines, which stranded the dot at the margin for about half a
+ *    second — right where the eye was already resting on it. After the first
+ *    layout this is pure animation on one shared value.
  */
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   Easing,
   runOnJS,
   useAnimatedReaction,
@@ -29,9 +44,25 @@ import { colors, fonts } from '../theme';
 
 const LINES = ["Let's begin.", "Let's revise.", "Let's ace it.", "Let's pass."];
 
-const FONT = 34;
-const LINE_H = 46;
-const DOT = 26;
+const FONT = 40;
+const LINE_H = 54;
+const DOT = 30;
+const PAD = 22; // breathing room above and below the line
+
+/**
+ * Where the nib lays its rule, measured from the top of this component, and
+ * how far apart consecutive rules sit. Exported so the ruled paper behind the
+ * hero can line up with the ink exactly — the illusion only works if the
+ * orange rule falls precisely on a printed one.
+ */
+export const RULE_OFFSET = PAD / 2 + LINE_H - 7;
+export const RULE_STEP = LINE_H;
+
+/**
+ * Rest position: fully past the left edge, so the wrap's clip hides the dot
+ * between lines instead of parking a half-circle against the margin.
+ */
+const HOME = -DOT;
 
 // Near-linear with soft ends: an even haptic cadence through the middle of the
 // word, easing in off the margin and settling on the full stop. Anything more
@@ -41,145 +72,187 @@ const EASE_WRITE = Easing.bezier(0.4, 0.05, 0.45, 0.95);
 const EASE_ERASE = Easing.bezier(0.5, 0, 0.2, 1);
 
 const HOLD_MS = 900; // the line sits finished and readable
-// The tail of the return trip is the dot crossing ground it has already
-// cleared, so it is kept short — any longer and the hero is just a drifting
-// dot for half a second between lines.
 const ERASE_MS = 440;
-const GAP_MS = 120;
+const GAP_MS = 60; // one beat of blank paper before the next line
 const writeMs = (n: number) => 300 + n * 58;
 
-// Haptics run for the opening lines and then go quiet — the welcome screen can
-// sit on-screen for a while and a buzz every second stops being a delight.
-const HAPTIC_LINES = 2;
+type Measured = { x: number; w: number };
 
 export function LetsReveal() {
-  const [cycle, setCycle] = useState(0);
-  const next = useCallback(() => setCycle((c) => c + 1), []);
-  return (
-    <View style={styles.wrap}>
-      <Line key={cycle} text={LINES[cycle % LINES.length]} haptics={cycle < HAPTIC_LINES} onDone={next} />
-    </View>
-  );
-}
+  const lines = useMemo(() => LINES.map((t) => [...t]), []);
 
-function Line({ text, haptics, onDone }: { text: string; haptics: boolean; onDone: () => void }) {
-  const chars = useMemo(() => [...text], [text]);
+  // marks[line][char] = the x at which that character is uncovered.
+  const marks = useSharedValue<number[][]>([]);
+  const active = useSharedValue(-1);
+  const dotX = useSharedValue(HOME);
 
-  // x of the dot's centre, in row coordinates.
-  const dotX = useSharedValue(-DOT);
-  // The x each character is considered "uncovered" at.
-  const marks = useSharedValue<number[]>([]);
+  const [index, setIndex] = useState(-1); // -1 until every line is measured
+  const measured = useRef<Measured[][]>(lines.map((l) => new Array(l.length)));
+  const ends = useRef<number[]>([]);
+  const ready = useRef(false);
 
-  const measured = useRef<{ x: number; w: number }[]>([]);
-  const started = useRef(false);
-
-  const buzz = useCallback(
-    (i: number) => {
-      if (!haptics || Platform.OS === 'web') return;
-      if (chars[i] === ' ') return; // spaces are passed through, not written
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-    },
-    [chars, haptics]
-  );
-
-  const start = useCallback(() => {
-    const m = measured.current;
-    const end = m[m.length - 1].x + m[m.length - 1].w;
-    // Uncover a letter a third of the way into it, so the dot is still sitting
-    // on the character as it appears rather than having already left it.
-    marks.value = m.map((c) => c.x + c.w * 0.34);
-    dotX.value = -DOT / 2;
-    dotX.value = withSequence(
-      withTiming(end + DOT / 2, { duration: writeMs(chars.length), easing: EASE_WRITE }),
-      withDelay(
-        HOLD_MS,
-        withTiming(-DOT / 2, { duration: ERASE_MS, easing: EASE_ERASE }, (done) => {
-          if (done) runOnJS(onDone)();
-        })
-      )
-    );
-  }, [chars.length, dotX, marks, onDone]);
+  const advance = useCallback(() => setIndex((i) => (i + 1) % LINES.length), []);
 
   const onCharLayout = useCallback(
-    (i: number, e: LayoutChangeEvent) => {
+    (line: number, i: number, e: LayoutChangeEvent) => {
       const { x, width } = e.nativeEvent.layout;
-      measured.current[i] = { x, w: width };
-      if (started.current) return;
-      for (let k = 0; k < chars.length; k++) if (!measured.current[k]) return;
-      started.current = true;
-      // One frame of settle so the row's final layout is what we animate over.
-      requestAnimationFrame(() => setTimeout(start, GAP_MS));
+      measured.current[line][i] = { x, w: width };
+      if (ready.current) return;
+      for (const row of measured.current) for (let k = 0; k < row.length; k++) if (!row[k]) return;
+      ready.current = true;
+      // Uncover a letter a third of the way into it, so the dot is still
+      // sitting on the character as it appears rather than having left it.
+      marks.value = measured.current.map((row) => row.map((c) => c.x + c.w * 0.34));
+      ends.current = measured.current.map((row) => row[row.length - 1].x + row[row.length - 1].w);
+      setIndex(0);
     },
-    [chars.length, start]
+    [marks]
   );
 
-  // Count of uncovered characters. It only ever rises on the write pass, so
-  // comparing against the previous count gives us exactly one haptic per
-  // letter and silence on the way back.
+  // Drives one line, then hands off to the next. Nothing unmounts.
+  useEffect(() => {
+    if (index < 0) return;
+    active.value = index;
+    dotX.value = HOME;
+    dotX.value = withDelay(
+      GAP_MS,
+      withSequence(
+        withTiming(ends.current[index] + DOT / 2, {
+          duration: writeMs(lines[index].length),
+          easing: EASE_WRITE,
+        }),
+        withDelay(
+          HOLD_MS,
+          withTiming(HOME, { duration: ERASE_MS, easing: EASE_ERASE }, (done) => {
+            if (done) runOnJS(advance)();
+          })
+        )
+      )
+    );
+    return () => cancelAnimation(dotX);
+  }, [index, active, dotX, lines, advance]);
+
+  const buzz = useCallback(
+    (line: number, i: number) => {
+      if (Platform.OS === 'web') return;
+      if (lines[line]?.[i] === ' ') return; // spaces are passed through, not written
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    },
+    [lines]
+  );
+
+  // Count of uncovered characters on the active line. It only ever rises on
+  // the write pass, so comparing against the previous count gives exactly one
+  // haptic per letter and silence on the way back — every cycle, for as long
+  // as the screen is up.
   useAnimatedReaction(
     () => {
-      const m = marks.value;
+      const row = marks.value[active.value];
+      if (!row) return 0;
       let n = 0;
-      for (let i = 0; i < m.length; i++) if (dotX.value >= m[i]) n++;
+      for (let i = 0; i < row.length; i++) if (dotX.value >= row[i]) n++;
       return n;
     },
     (now, before) => {
       if (before === null || now <= before) return;
-      for (let i = before; i < now; i++) runOnJS(buzz)(i);
+      for (let i = before; i < now; i++) runOnJS(buzz)(active.value, i);
     }
   );
 
   const dotStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dotX.value - DOT / 2 }] }));
+  // The rule is simply everything the nib has already crossed.
+  const ruleStyle = useAnimatedStyle(() => ({ width: Math.max(0, dotX.value) }));
 
   return (
-    <View style={styles.row}>
-      {chars.map((ch, i) => (
-        <Char key={`${i}-${ch}`} ch={ch} i={i} dotX={dotX} marks={marks} onLayout={onCharLayout} />
+    <View style={styles.wrap}>
+      {lines.map((chars, line) => (
+        <View key={line} style={styles.row} pointerEvents="none">
+          {chars.map((ch, i) => (
+            <Char
+              key={`${i}-${ch}`}
+              ch={ch}
+              line={line}
+              i={i}
+              dotX={dotX}
+              marks={marks}
+              active={active}
+              onLayout={onCharLayout}
+            />
+          ))}
+        </View>
       ))}
-      <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />
+      {/* Hidden until the first line is ready, so neither the nib nor its rule
+          sits at the margin waiting on a layout pass. */}
+      {index >= 0 && (
+        <>
+          <Animated.View pointerEvents="none" style={[styles.rule, ruleStyle]} />
+          <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />
+        </>
+      )}
     </View>
   );
 }
 
 function Char({
   ch,
+  line,
   i,
   dotX,
   marks,
+  active,
   onLayout,
 }: {
   ch: string;
+  line: number;
   i: number;
   dotX: SharedValue<number>;
-  marks: SharedValue<number[]>;
-  onLayout: (i: number, e: LayoutChangeEvent) => void;
+  marks: SharedValue<number[][]>;
+  active: SharedValue<number>;
+  onLayout: (line: number, i: number, e: LayoutChangeEvent) => void;
 }) {
   // A hard cut, not a fade — the dot is a mask, and a mask does not blur its
   // edge. The letter is simply already there once the ink has gone past.
   const style = useAnimatedStyle(() => {
-    const mark = marks.value[i];
+    if (active.value !== line) return { opacity: 0 };
+    const mark = marks.value[line]?.[i];
     return { opacity: mark !== undefined && dotX.value >= mark ? 1 : 0 };
   });
   return (
-    <Animated.Text onLayout={(e) => onLayout(i, e)} style={[styles.char, style]}>
-      {ch === ' ' ? ' ' : ch}
+    <Animated.Text onLayout={(e) => onLayout(line, i, e)} style={[styles.char, style]}>
+      {ch === ' ' ? ' ' : ch}
     </Animated.Text>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { height: LINE_H + 22, justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', height: LINE_H },
+  wrap: { height: LINE_H + PAD, justifyContent: 'center', overflow: 'hidden' },
+  row: {
+    position: 'absolute',
+    left: 0,
+    top: PAD / 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: LINE_H,
+  },
   char: {
     fontFamily: fonts.serif,
     fontSize: FONT,
     lineHeight: LINE_H,
     color: colors.text,
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
+  },
+  rule: {
+    position: 'absolute',
+    left: 0,
+    top: RULE_OFFSET,
+    height: 2.5,
+    borderRadius: 2,
+    backgroundColor: colors.accent,
   },
   dot: {
     position: 'absolute',
     left: 0,
+    top: (LINE_H + PAD - DOT) / 2,
     width: DOT,
     height: DOT,
     borderRadius: DOT / 2,
