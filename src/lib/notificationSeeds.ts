@@ -30,7 +30,7 @@ export function seedDemoNotifications(opts: {
       {
         kind: 'friend',
         lead: 'Melissa',
-        body: 'verified an answer on CEC412 Q1 — gradient descent derivation.',
+        body: 'verified an answer on CEC412 Q1. Gradient descent derivation.',
         avatar: { initial: melissa.initial, color: melissa.color },
         createdAt: now - 4 * HOUR,
       },
@@ -43,7 +43,7 @@ export function seedDemoNotifications(opts: {
       {
         kind: 'friend',
         lead: 'Grace',
-        body: 'asked the room about CEC420 Q2b — you attempted that one.',
+        body: 'asked the room about CEC420 Q2b. You attempted that one.',
         avatar: { initial: grace.initial, color: grace.color },
         createdAt: now - 9 * HOUR,
         unread: false,
@@ -59,7 +59,7 @@ export function seedDemoNotifications(opts: {
       {
         kind: 'paper',
         lead: 'CEC420 · 2024',
-        body: 'just landed — First Semester Examination, Data Mining.',
+        body: 'just landed. First Semester Examination, Data Mining.',
         createdAt: now - 2 * HOUR,
       },
       'paper:seed:cec420-2024'

@@ -126,7 +126,7 @@ export default function CoursesScreen() {
     setSheetOpen(true);
   };
   /** Press-and-hold fallback menu (Android/web JS overlay). iOS relies on
-      the system menu alone — its own dimming plus the branded preview; an
+      the system menu alone. Its own dimming plus the branded preview; an
       extra JS blur has no dismiss signal and gets stuck. */
   const [cardMenu, setCardMenu] = useState<{ code: string; title: string; meta: string } | null>(null);
   const onCardHold = (code: string, title: string, meta: string) => {
@@ -357,7 +357,7 @@ export default function CoursesScreen() {
         </View>
 
         {/* Section title floats just under the header base and sticks there as
-            you scroll into a section — absolute so it never reserves an empty
+            you scroll into a section. Absolute so it never reserves an empty
             gap under "Courses" when hidden. */}
         <Animated.Text numberOfLines={1} style={[styles.stickyTitle, { top: baseH - 2 }, stickyStyle]}>
           {stickyTitle}
@@ -401,7 +401,7 @@ export default function CoursesScreen() {
         <>
           <FilterChips options={filterOptions} selected={scope} onSelect={setFilter} />
 
-          {/* Featured carousel — paper sets that are live today */}
+          {/* Featured carousel. Paper sets that are live today */}
           <Animated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -419,7 +419,7 @@ export default function CoursesScreen() {
                 f.firstYear && f.lastYear
                   ? f.firstYear === f.lastYear
                     ? `${f.firstYear}`
-                    : `${f.firstYear}–${f.lastYear}`
+                    : `${f.firstYear}${f.lastYear}`
                   : '';
               const papersLabel = count > 0 ? `${count} paper${count > 1 ? 's' : ''}${yearLabel ? ` · ${yearLabel}` : ''}` : 'Papers coming soon';
               const mostUsed = i === 0 && (accessCounts[f.code] ?? 0) > 0;
@@ -429,7 +429,7 @@ export default function CoursesScreen() {
               // the context-menu lift preview (pixel-identical duplicate).
               const cardBody = (
                 <>
-                  {/* Oversized ghost — the course code, background typography */}
+                  {/* Oversized ghost. The course code, background typography */}
                   <Text style={styles.featureGhost} numberOfLines={1}>{f.code}</Text>
 
                   <View style={styles.featureTop}>
@@ -496,7 +496,7 @@ export default function CoursesScreen() {
             })}
           </Animated.ScrollView>
 
-          {/* Position dots — a wave: as you swipe, the "energy" travels
+          {/* Position dots. A wave: as you swipe, the "energy" travels
               through the row (dots lift and tint as the scroll passes),
               and the resting card's dot stretches into a pill. */}
           {featured.length > 1 && (
@@ -530,7 +530,7 @@ export default function CoursesScreen() {
           key={section.title}
           style={{ marginTop: 30 }}
           onLayout={si === 0 ? (e) => (sectionY.value = e.nativeEvent.layout.y) : undefined}>
-          {/* Sections list every course already — a "See All" would have
+          {/* Sections list every course already. A "See All" would have
               nothing more to show, so the row is just the title. */}
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -539,7 +539,7 @@ export default function CoursesScreen() {
             {section.data.length === 0 ? (
               <Text style={styles.empty}>
                 {query.trim() && searchingOffline
-                  ? "You're offline — only downloaded courses can be searched. Connect to search everything."
+                  ? "You're offline. Only downloaded courses can be searched. Connect to search everything."
                   : scope === 'Studied'
                     ? 'No study history yet. Reveal answers in a paper and those courses collect here.'
                     : subFilter

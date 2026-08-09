@@ -64,7 +64,7 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingHorizontal: spacing.gutter }}>
-        {/* Avatar — tap to change photo */}
+        {/* Avatar. Tap to change photo */}
         <View style={styles.avatarWrap}>
           <Pressable onPress={pickPhoto}>
             <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name[0]} size={88} />

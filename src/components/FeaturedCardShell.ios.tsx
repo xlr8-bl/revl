@@ -51,7 +51,7 @@ export function FeaturedCardShell({
   return (
     <View style={{ width, height }}>
       {/* The real card: pure RN, never touched by SwiftUI layout. Inert on
-          iOS — the interaction layer above owns tap and hold. */}
+          iOS. The interaction layer above owns tap and hold. */}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {children}
       </View>
@@ -71,7 +71,7 @@ export function FeaturedCardShell({
             <ContextMenu.Preview>
               {/* Exactly card-sized: iOS keeps the ORIGINAL visible under a
                   custom preview, so the duplicate must land precisely on it
-                  to cover it completely — an oversized plate gets nudged by
+                  to cover it completely. An oversized plate gets nudged by
                   the system to fit the menu and exposes the original's edge.
                   UIKit adds its own scale-up during the lift animation. */}
               <Group modifiers={[frame({ width, height })]}>{preview}</Group>

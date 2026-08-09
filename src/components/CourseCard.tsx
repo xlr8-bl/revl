@@ -61,7 +61,7 @@ export function CourseCard({
         </View>
 
         <View style={styles.body}>
-          {/* Serif title — the catalogue voice. Code-first when unpublished. */}
+          {/* Serif title. The catalogue voice. Code-first when unpublished. */}
           {course.title ? (
             <Text style={styles.title} numberOfLines={2}>
               {sentenceCase(course.title)}
@@ -75,7 +75,7 @@ export function CourseCard({
 
           <View style={styles.rule} />
 
-          {/* Papers inline — Courses and Papers are one page. */}
+          {/* Papers inline. Courses and Papers are one page. */}
           {coursePapers.length > 0 ? (
             coursePapers.map((p, i) => {
               const unlocked = unlockedPaperIds.has(p.id);

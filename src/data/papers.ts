@@ -43,7 +43,7 @@ export const papers: Paper[] = [
         ],
         answers: {
           verified:
-            'ID3 picks the attribute with the **highest information gain** — the largest expected reduction in entropy. (Gini impurity is what CART uses; the others are unrelated.)',
+            'ID3 picks the attribute with the **highest information gain**. The largest expected reduction in entropy. (Gini impurity is what CART uses; the others are unrelated.)',
         },
       },
       {
@@ -63,7 +63,7 @@ export const papers: Paper[] = [
         ],
         answers: {
           verified:
-            'This is the **Apriori property** (downward closure / anti-monotonicity): if an itemset is frequent, all its subsets are too — so if any subset is infrequent, the itemset can be pruned without counting it.',
+            'This is the **Apriori property** (downward closure / anti-monotonicity): if an itemset is frequent, all its subsets are too. So if any subset is infrequent, the itemset can be pruned without counting it.',
         },
       },
       {
@@ -83,7 +83,7 @@ export const papers: Paper[] = [
         ],
         answers: {
           verified:
-            'k-means minimises the **within-cluster sum of squares (WCSS)** — the total squared distance of points to their assigned centroid — alternating the assignment and centroid-update steps until it converges.',
+            'k-means minimises the **within-cluster sum of squares (WCSS)**. The total squared distance of points to their assigned centroid. Alternating the assignment and centroid-update steps until it converges.',
         },
       },
       {
@@ -97,10 +97,10 @@ export const papers: Paper[] = [
         subQuestions: [],
         answers: {
           verified:
-            'Entropy measures the **impurity** (uncertainty) of a set of labelled examples. For a set $S$ with classes appearing in proportions $p_i$: $H(S) = -\\sum_i p_i \\log_2 p_i$. If $H(S) = 0$, one $p_i = 1$ and the rest are 0 — the set is **pure**: every example in $S$ belongs to the same class, so no further splitting is needed at that node.',
+            'Entropy measures the **impurity** (uncertainty) of a set of labelled examples. For a set $S$ with classes appearing in proportions $p_i$: $H(S) = -\\sum_i p_i \\log_2 p_i$. If $H(S) = 0$, one $p_i = 1$ and the rest are 0. The set is **pure**: every example in $S$ belongs to the same class, so no further splitting is needed at that node.',
           aiGeneral:
             'Entropy quantifies how mixed the class labels in $S$ are. It is maximal when classes are evenly split and zero when the set is pure (all one class), meaning a leaf can be created.',
-          references: [{ source: 'notes', label: 'Your notes, p.12 — "Entropy & impurity"', location: 'notes://cec420/p12' }],
+          references: [{ source: 'notes', label: 'Your notes, p.12. "Entropy & impurity"', location: 'notes://cec420/p12' }],
         },
       },
       {
@@ -124,7 +124,7 @@ export const papers: Paper[] = [
             answers: {
               verified:
                 '$H(S) = -\\frac{9}{14}\\log_2\\frac{9}{14} - \\frac{5}{14}\\log_2\\frac{5}{14}$\n\n$= -(0.643)(-0.637) - (0.357)(-1.485)$\n\n$= 0.410 + 0.530 = 0.940$ bits.',
-              references: [{ source: 'notes', label: 'Your notes, p.14 — worked entropy example', location: 'notes://cec420/p14' }],
+              references: [{ source: 'notes', label: 'Your notes, p.14. Worked entropy example', location: 'notes://cec420/p14' }],
             },
           },
           {
@@ -161,7 +161,7 @@ export const papers: Paper[] = [
                 subQuestions: [],
                 answers: {
                   verified:
-                    '*Humidity* — ID3 greedily chooses the attribute with the **highest information gain**, and $0.151 > 0.048$.',
+                    '*Humidity*. ID3 greedily chooses the attribute with the **highest information gain**, and $0.151 > 0.048$.',
                 },
               },
             ],
@@ -181,7 +181,7 @@ export const papers: Paper[] = [
           {
             id: 'd1',
             imageUrl: localDiagramImage,
-            caption: 'Fig. 1 — Dendrogram for points A–F (single linkage).',
+            caption: 'Fig. 1. Dendrogram for points AF (single linkage).',
             bbox: [42, 118, 560, 402],
           },
         ],
@@ -211,7 +211,7 @@ export const papers: Paper[] = [
             subQuestions: [],
             answers: {
               verified:
-                '**Single linkage** merges on the *minimum* pairwise distance between clusters; **complete linkage** on the *maximum*. Single linkage can produce long "chained" clusters; complete linkage favours compact ones. Weakness of single linkage: **chaining** — outliers can bridge otherwise distant clusters.',
+                '**Single linkage** merges on the *minimum* pairwise distance between clusters; **complete linkage** on the *maximum*. Single linkage can produce long "chained" clusters; complete linkage favours compact ones. Weakness of single linkage: **chaining**. Outliers can bridge otherwise distant clusters.',
             },
           },
         ],
@@ -228,7 +228,7 @@ export const papers: Paper[] = [
         subQuestions: [],
         answers: {
           aiGeneral:
-            'Min support 40% = 2 of 5 transactions. Frequent 2-itemsets: {bread, milk} (3), {bread, diapers} (3), {milk, diapers} (3), {diapers, beer} (3), {milk, beer} (2), {bread, beer} (2), {milk, cola} (2), {diapers, cola} (2). Confidence of $\\{diapers\\} \\Rightarrow \\{beer\\}$: $\\frac{supp(diapers \\cup beer)}{supp(diapers)} = \\frac{3}{4} = 75\\%$ — above the 70% threshold, so the rule is accepted.',
+            'Min support 40% = 2 of 5 transactions. Frequent 2-itemsets: {bread, milk} (3), {bread, diapers} (3), {milk, diapers} (3), {diapers, beer} (3), {milk, beer} (2), {bread, beer} (2), {milk, cola} (2), {diapers, cola} (2). Confidence of $\\{diapers\\} \\Rightarrow \\{beer\\}$: $\\frac{supp(diapers \\cup beer)}{supp(diapers)} = \\frac{3}{4} = 75\\%$. Above the 70% threshold, so the rule is accepted.',
         },
       },
       {
@@ -242,7 +242,7 @@ export const papers: Paper[] = [
           {
             id: 'd2',
             imageUrl: localDiagramImage,
-            caption: 'Fig. 2 — Confusion matrix: TP=40, FP=10, FN=20, TN=30.',
+            caption: 'Fig. 2. Confusion matrix: TP=40, FP=10, FN=20, TN=30.',
           },
         ],
         subQuestions: [],
@@ -283,7 +283,7 @@ export const papers: Paper[] = [
         subQuestions: [],
         answers: {
           aiGeneral:
-            'Classification is *supervised* — it learns from labelled examples (e.g. decision trees). Clustering is *unsupervised* — it groups unlabelled data by similarity (e.g. k-means).',
+            'Classification is *supervised*. It learns from labelled examples (e.g. Decision trees). Clustering is *unsupervised*. It groups unlabelled data by similarity (e.g. K-means).',
         },
       },
       {

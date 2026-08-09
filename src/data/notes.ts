@@ -8,7 +8,7 @@ export const noteUploads: NoteUpload[] = [
   {
     id: 'n1',
     courseCode: 'CEC420',
-    fileName: 'Data Mining — lecture notes.pdf',
+    fileName: 'Data Mining. Lecture notes.pdf',
     kind: 'pdf',
     pages: 42,
     uploadedAt: Date.parse('2026-05-30'),

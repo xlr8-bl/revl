@@ -132,6 +132,17 @@ export function signIn(method: AuthMethod, phone?: string) {
   emit();
 }
 
+/**
+ * Sign in with an identity a real provider actually returned, rather than the
+ * mock. Apple only sends the name on the very first authorisation, so whatever
+ * arrives here is written immediately: there is no second chance to read it.
+ */
+export function signInWithIdentity(identity: ProviderIdentity, phone?: string) {
+  session = { ...session, signedIn: true, method: identity.provider, phone, identity };
+  persist();
+  emit();
+}
+
 export function setProfile(profile: StudentProfile) {
   session = { ...session, profile };
   persist();

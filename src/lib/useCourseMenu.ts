@@ -59,7 +59,7 @@ export function useCourseMenuItems(
     onPress: async () => {
       try {
         await Share.share({
-          message: `${code} · ${sentenceCase(title)} — past papers with verified answers on Revl. ${meta}.`,
+          message: `${code} · ${sentenceCase(title)}. Past papers with verified answers on Revl. ${meta}.`,
         });
       } catch {}
     },

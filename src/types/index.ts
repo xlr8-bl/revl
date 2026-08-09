@@ -75,7 +75,7 @@ export type Course = {
   department: string;
   level: string;
   paperIds: string[];
-  rating: number; // 0–5
+  rating: number; // 05
   /** Tile / thumbnail gradient (we use gradients instead of remote art). */
   gradient: [string, string];
 };

@@ -109,7 +109,7 @@ export default function FriendsScreen() {
         </Text>
         {friendPeople.length === 0 ? (
           <Text style={styles.noResults}>
-            No friends yet — search a username above to send your first request.
+            No friends yet. Search a username above to send your first request.
           </Text>
         ) : (
           <View style={styles.list}>
@@ -123,7 +123,7 @@ export default function FriendsScreen() {
           </View>
         )}
 
-        {/* Privacy contract — revision effort is nobody's business */}
+        {/* Privacy contract. Revision effort is nobody's business */}
         <View style={styles.privacyCard}>
           <View style={styles.contactsHead}>
             <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
@@ -131,13 +131,13 @@ export default function FriendsScreen() {
           </View>
           <Text style={styles.contactsBody}>
             Only what you choose to publish: papers you upload, answers you verify, and posts you
-            make in the room. Friends never see your study activity — no sessions, streaks, reveal
-            counts or "last studied" — so nobody can measure how hard you are (or aren't)
+            make in the room. Friends never see your study activity. No sessions, streaks, reveal
+            counts or "last studied". So nobody can measure how hard you are (or aren't)
             revising.
           </Text>
         </View>
 
-        {/* Contact matching — designed, visibly stubbed */}
+        {/* Contact matching. Designed, visibly stubbed */}
         <View style={styles.contactsCard}>
           <View style={styles.contactsHead}>
             <Ionicons name="people-circle-outline" size={22} color={colors.accent} />
@@ -148,7 +148,7 @@ export default function FriendsScreen() {
           </View>
           <Text style={styles.contactsBody}>
             Match people already on Revl from your phone book. Numbers are hashed on your phone
-            before matching — they are never uploaded raw, and we never message anyone for you.
+            before matching. They are never uploaded raw, and we never message anyone for you.
           </Text>
         </View>
       </ScrollView>

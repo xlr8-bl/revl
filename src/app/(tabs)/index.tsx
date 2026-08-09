@@ -128,7 +128,7 @@ export default function HomeScreen() {
       <View
         style={[styles.header, { paddingTop: insets.top + 8 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        {/* One quiet kicker line — date and countdown as a single sentence,
+        {/* One quiet kicker line. Date and countdown as a single sentence,
             no icon (the tab bar already carries the daypart). */}
         <Text style={styles.dateLine}>
           {dateLine}
@@ -159,7 +159,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: TAB_BAR_CLEARANCE }}>
         <HeroCard />
 
-        {/* Tonight's plan — AI briefing + numbered study queue */}
+        {/* Tonight's plan. AI briefing + numbered study queue */}
         <SectionTitle title={`Your plan ${planWord(today)}`} />
         <DailyBriefing />
         <View style={styles.queueCard}>
@@ -176,7 +176,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Wrapped entry — ONLY inside the end-of-semester window. */}
+        {/* Wrapped entry. ONLY inside the end-of-semester window. */}
         {isWrappedLive() && (
           <Pressable onPress={() => router.push('/wrapped')} style={styles.wrappedBanner}>
             <View style={{ flex: 1 }}>
@@ -187,7 +187,7 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {/* The department room lives in the Class tab — Today just carries a
+        {/* The department room lives in the Class tab. Today just carries a
             slim doorway to it, not a second copy of the feed. */}
         <Pressable
           onPress={() => router.push('/community' as never)}

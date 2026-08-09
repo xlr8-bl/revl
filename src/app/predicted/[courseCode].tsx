@@ -32,7 +32,7 @@ export default function PredictedPaperScreen() {
           <Ionicons name="telescope-outline" size={13} color={colors.accent} />
           <Text style={styles.badgeText}>EXPERIMENTAL · COMING SOON</Text>
         </View>
-        <Text style={styles.title}>{courseCode} — most likely this session</Text>
+        <Text style={styles.title}>{courseCode}. Most likely this session</Text>
         <Text style={styles.body}>
           Built from {new Date(appConfig.semesterEndDate).getFullYear() - 2018}+ years of past papers: topic cycles,
           examiner patterns, and what hasn’t appeared recently. Each line carries its own confidence.
@@ -52,7 +52,7 @@ export default function PredictedPaperScreen() {
         ))}
 
         <Text style={styles.disclaimer}>
-          Predictions resolve after the exam — correct calls earn contributors credits.
+          Predictions resolve after the exam. Correct calls earn contributors credits.
         </Text>
       </ScrollView>
     </View>

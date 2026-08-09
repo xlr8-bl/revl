@@ -96,7 +96,7 @@ export default function UnlockScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.creditTitle}>Pay {formatMoney(PRICE, currency)} from wallet</Text>
                 <Text style={styles.creditMeta}>
-                  {balance >= PRICE ? `Balance: ${formatMoney(balance, currency)}` : `Low balance: ${formatMoney(balance, currency)} — top up below`}
+                  {balance >= PRICE ? `Balance: ${formatMoney(balance, currency)}` : `Low balance: ${formatMoney(balance, currency)}. Top up below`}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />

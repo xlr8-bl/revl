@@ -49,7 +49,7 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
           experimentalBlurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}
         />
-        {/* Glass wash — light enough that content clearly passes beneath. */}
+        {/* Glass wash. Light enough that content clearly passes beneath. */}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(colors.card, scheme === 'light' ? 0.4 : 0.35) }]} />
 
         <View style={styles.row}>

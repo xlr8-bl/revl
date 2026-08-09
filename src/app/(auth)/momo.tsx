@@ -74,10 +74,10 @@ export default function MomoSignInScreen() {
         <>
           <Text style={styles.title}>Sign in with{'\n'}Mobile Money</Text>
           <Text style={styles.sub}>
-            Your wallet number becomes your Revl account — registered name and payments already attached.
+            Your wallet number becomes your Revl account. Registered name and payments already attached.
           </Text>
 
-          {/* Provider tiles — big, logo-led, one glance to tell them apart */}
+          {/* Provider tiles. Big, logo-led, one glance to tell them apart */}
           <View style={styles.providerRow}>
             <ProviderTile
               logo={<MtnLogo size={38} />}
@@ -119,19 +119,19 @@ export default function MomoSignInScreen() {
           <View style={styles.trustRow}>
             <Ionicons name="lock-closed" size={13} color={colors.textTertiary} style={{ marginTop: 2 }} />
             <Text style={styles.hint}>
-              {providerName} asks for your PIN on your phone — that proves the wallet is yours. Revl never sees your
+              {providerName} asks for your PIN on your phone. That proves the wallet is yours. Revl never sees your
               PIN.
             </Text>
           </View>
 
-          {/* Verification-cost disclaimer — full transparency, per provider:
+          {/* Verification-cost disclaimer. Full transparency, per provider:
               MTN exposes a free active-wallet check; Orange has no identity
               API, so a 1 FCFA charge is the proof the wallet is live. */}
           <View style={styles.feeCard}>
             <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} style={{ marginTop: 1 }} />
             <Text style={styles.feeText}>
               {provider === 'momo'
-                ? 'No charge — MTN confirms your wallet is active for free.'
+                ? 'No charge. MTN confirms your wallet is active for free.'
                 : 'Orange deducts 1 FCFA once to confirm your wallet is active. Nothing else is charged.'}
             </Text>
           </View>
@@ -151,7 +151,7 @@ export default function MomoSignInScreen() {
           </Text>
           <Text style={styles.promptFee}>
             {provider === 'momo'
-              ? 'No money is deducted — this only confirms your wallet.'
+              ? 'No money is deducted. This only confirms your wallet.'
               : 'Only 1 FCFA is deducted to confirm your wallet is active.'}
           </Text>
           <Pressable onPress={() => setStep('number')} hitSlop={8}>

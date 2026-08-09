@@ -15,7 +15,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +23,9 @@ import { GlowHorizon } from '../../components/GlowHorizon';
 import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
+import { appleAvailable, signInWithApple, useGoogleSignIn } from '../../lib/auth';
 import { useBannerLift } from '../../lib/connectivity';
-import { signIn } from '../../lib/session';
+import { signIn, signInWithIdentity } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 const GUTTER = spacing.gutter + 6;
@@ -35,6 +36,37 @@ export default function WelcomeScreen() {
   const router = useRouter();
 
   const [page, setPage] = useState({ w: 0, h: 0 });
+  const [busy, setBusy] = useState<'google' | 'apple' | null>(null);
+
+  // Real provider sign in when a Supabase project is attached, the mock
+  // identity when it is not, so the app is usable before credentials exist.
+  const google = useGoogleSignIn();
+  const [appleReady, setAppleReady] = useState(false);
+  useEffect(() => {
+    appleAvailable().then(setAppleReady);
+  }, []);
+
+  const withProvider = async (which: 'google' | 'apple') => {
+    if (busy) return;
+    setBusy(which);
+    try {
+      const identity =
+        which === 'apple'
+          ? appleReady
+            ? await signInWithApple()
+            : null
+          : google.ready
+            ? await google.exchange()
+            : null;
+      if (identity) signInWithIdentity(identity);
+      else signIn(which);
+    } catch {
+      // A cancelled sheet is the common case and is not an error worth a dialog.
+      setBusy(null);
+      return;
+    }
+    setBusy(null);
+  };
   const [footY, setFootY] = useState(0);
 
   const onFoot = (e: LayoutChangeEvent) => setFootY(e.nativeEvent.layout.y);
@@ -74,7 +106,7 @@ export default function WelcomeScreen() {
         <Animated.View entering={FadeInDown.delay(420).duration(520)} onLayout={onFoot} style={styles.foot}>
           {Platform.OS !== 'android' && (
             <Pressable
-              onPress={() => signIn('apple')}
+              onPress={() => withProvider('apple')}
               style={({ pressed }) => [styles.btn, styles.btnApple, pressed && styles.pressed]}>
               <Ionicons name="logo-apple" size={18} color={colors.bg} />
               <Text style={[styles.btnText, { color: colors.bg }]}>Continue with Apple</Text>
@@ -82,7 +114,7 @@ export default function WelcomeScreen() {
           )}
 
           <Pressable
-            onPress={() => signIn('google')}
+            onPress={() => withProvider('google')}
             style={({ pressed }) => [styles.btn, styles.btnOutline, pressed && styles.pressed]}>
             <Ionicons name="logo-google" size={16} color={colors.text} />
             <Text style={styles.btnText}>Continue with Google</Text>
@@ -100,7 +132,7 @@ export default function WelcomeScreen() {
             <Text style={styles.btnText}>Continue with Mobile Money</Text>
           </Pressable>
 
-          <Text style={styles.fine}>MTN MoMo or Orange Money — the same number unlocks papers.</Text>
+          <Text style={styles.fine}>MTN MoMo or Orange Money. The same number unlocks papers.</Text>
           {/* Both stores require these to be reachable at sign-up, and it is a
               poor look to claim agreement to documents nobody can open. */}
           <Text style={styles.terms}>

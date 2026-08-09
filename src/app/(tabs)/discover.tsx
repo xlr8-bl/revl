@@ -46,7 +46,7 @@ export default function DiscoverScreen() {
 
       <Pressable onPress={() => router.push('/predicted/CEC420' as never)} style={styles.predictCard}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.predictTitle}>Predicted paper — CEC420</Text>
+          <Text style={styles.predictTitle}>Predicted paper. CEC420</Text>
           <Text style={styles.predictMeta}>The most likely exam this session, question by question</Text>
         </View>
         <Text style={styles.predictChevron}>›</Text>

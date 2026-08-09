@@ -283,11 +283,11 @@ export default function OnboardingScreen() {
               <Text style={styles.title}>{identity?.fullName ? `Hey, ${firstName || 'there'}` : "Let's start with you"}</Text>
               <Text style={styles.sub}>
                 {identity?.fullName
-                  ? `${providerLabel} gave us most of this — just check it's really you.`
+                  ? `${providerLabel} gave us most of this. Just check it's really you.`
                   : 'The name and face your classmates will see. Make it yours.'}
               </Text>
 
-              {/* Photo — provider photo / default Ronaldo / uploaded */}
+              {/* Photo. Provider photo / default Ronaldo / uploaded */}
               <View style={styles.photoWrap}>
                 <Pressable onPress={pickPhoto}>
                   <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={92} />
@@ -351,7 +351,7 @@ export default function OnboardingScreen() {
         {step === 'school' && (
           <Animated.View key="school" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>Where do you study?</Text>
-            <Text style={styles.sub}>So we bring your real past papers — the ones your lecturers actually set.</Text>
+            <Text style={styles.sub}>So we bring your real past papers. The ones your lecturers actually set.</Text>
             <View style={{ marginTop: 16 }}>
               {schools.map((sc) => (
                 <Pressable
@@ -433,7 +433,7 @@ export default function OnboardingScreen() {
         {step === 'level' && (
           <Animated.View key="level" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             <Text style={styles.title}>What level are you this year?</Text>
-            <Text style={styles.sub}>Every September we move you up — you just tap to confirm. No redoing all this.</Text>
+            <Text style={styles.sub}>Every September we move you up. You just tap to confirm. No redoing all this.</Text>
             <View style={{ marginTop: 16 }}>
               {levels.map((l) => (
                 <Pressable
@@ -502,7 +502,7 @@ export default function OnboardingScreen() {
                 );
               })}
 
-              {/* Carry-over — retakes reach across levels/semesters */}
+              {/* Carry-over. Retakes reach across levels/semesters */}
               {school !== 'hnd' && (
                 <View style={styles.carrySection}>
                   <Text style={styles.carryLabel}>
@@ -574,7 +574,8 @@ export default function OnboardingScreen() {
               <Text style={[styles.title, { marginTop: 16 }]}>If you lose that SIM,{'\n'}this gets you back in.</Text>
               <Text style={styles.sub}>
                 Your account lives on {recoveryPhone.trim() ? 'your Mobile Money number' : 'the number you signed in with'}. Numbers get
-                lost, stolen and recycled — and everything you unlock is tied to this account. One second here saves it.
+                lost, stolen and recycled, and everything you unlock is tied to this account. One second here
+                saves it.
               </Text>
 
               <Text style={styles.fieldLabel}>Email address</Text>
@@ -620,7 +621,7 @@ export default function OnboardingScreen() {
               <Text style={styles.recoveryHint}>
                 {phoneTouched && recoveryPhone.trim() !== '' && !phoneOk
                   ? 'A Cameroonian number is 9 digits after +237.'
-                  : "A second number that is not this SIM — a parent's, a roommate's, your other line."}
+                  : "A second number that is not this SIM. A parent's, a roommate's, your other line."}
               </Text>
             </ScrollView>
 
@@ -641,8 +642,9 @@ export default function OnboardingScreen() {
                 <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={80} ring />
                 <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>You're in{firstName ? `, ${firstName}` : ''}.</Text>
                 <Text style={[styles.sub, { textAlign: 'center' }]}>
-                  {totalSelected} course{totalSelected === 1 ? '' : 's'} lined up{carryover.size ? `, ${carryover.size} carry-over` : ''} —
-                  every one with real past papers waiting. Let's get you ready.
+                  {totalSelected} course{totalSelected === 1 ? '' : 's'} lined up
+                  {carryover.size ? `, ${carryover.size} carry-over` : ''}. Every one has real past
+                  papers waiting. Let's get you ready.
                 </Text>
                 <View style={styles.examChip}>
                   <Ionicons name="alarm-outline" size={15} color={colors.accent} />
@@ -664,7 +666,7 @@ export default function OnboardingScreen() {
       </KeyboardAvoidingView>
 
       {/* Backing out of the first step is not navigation, it is abandoning an
-          account that already exists — say so plainly and name the number, so
+          account that already exists. Say so plainly and name the number, so
           the choice is obvious rather than alarming. */}
       <Modal visible={leaving} transparent animationType="fade" onRequestClose={() => setLeaving(false)}>
         <View style={styles.leaveBackdrop}>
@@ -672,8 +674,8 @@ export default function OnboardingScreen() {
             <Text style={styles.leaveTitle}>Leave setup?</Text>
             <Text style={styles.leaveBody}>
               {isMomo
-                ? 'Your Mobile Money number is already signed in. Leaving now discards the account and nothing is saved — you can sign in again any time.'
-                : `You are signed in with ${providerLabel}. Leaving now discards the account and nothing is saved — you can sign in again any time.`}
+                ? 'Your Mobile Money number is already signed in. Leaving now discards the account and nothing is saved. You can sign in again any time.'
+                : `You are signed in with ${providerLabel}. Leaving now discards the account and nothing is saved. You can sign in again any time.`}
             </Text>
             <Pressable onPress={abandon} style={({ pressed }) => [styles.leaveDanger, pressed && { opacity: 0.85 }]}>
               <Text style={styles.leaveDangerText}>Discard and sign out</Text>

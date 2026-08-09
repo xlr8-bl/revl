@@ -65,8 +65,8 @@ export default function StudyDnaScreen() {
               <View style={[styles.emptyDot, styles.emptyKnow]} />
             </View>
             <Text style={styles.emptyText}>
-              Attempt and reveal a few questions. As you say whether you could answer — then whether
-              you actually got it — your two strands take shape here.
+              Attempt and reveal a few questions. As you say whether you could answer. Then whether
+              you actually got it. Your two strands take shape here.
             </Text>
             <Pressable onPress={() => router.back()} style={styles.emptyBtn}>
               <Text style={styles.emptyBtnText}>Start a session</Text>
@@ -74,20 +74,20 @@ export default function StudyDnaScreen() {
           </View>
         ) : (
           <>
-            {/* The headline — the single most useful sentence on the page */}
+            {/* The headline. The single most useful sentence on the page */}
             <View style={styles.headline}>
               {blindSpots.length > 0 ? (
                 <>
                   <Text style={styles.headlineNum}>{blindSpots.length}</Text>
                   <Text style={styles.headlineText}>
-                    blind {blindSpots.length === 1 ? 'spot' : 'spots'} — topics you feel ready for
+                    blind {blindSpots.length === 1 ? 'spot' : 'spots'}. Topics you feel ready for
                     but keep missing. Biggest:{' '}
                     <Text style={styles.headlineStrong}>{blindSpots[0].tag}</Text>.
                   </Text>
                 </>
               ) : (
                 <Text style={styles.headlineText}>
-                  Your instincts match your marks — you're well calibrated. Keep the weak topics
+                  Your instincts match your marks. You're well calibrated. Keep the weak topics
                   warm.
                 </Text>
               )}
@@ -106,14 +106,14 @@ export default function StudyDnaScreen() {
               <Text style={styles.legendHint}>sorted by biggest gap</Text>
             </View>
 
-            {/* The strands — one calibration row per topic */}
+            {/* The strands. One calibration row per topic */}
             <View style={styles.list}>
               {cal.map((c) => (
                 <StrandRow key={c.tag} c={c} />
               ))}
             </View>
 
-            {/* One concrete thing to beat — the nemesis question */}
+            {/* One concrete thing to beat. The nemesis question */}
             {nemesis && nemesisQ && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>The one to beat</Text>
@@ -130,7 +130,7 @@ export default function StudyDnaScreen() {
                     {nemesisQ.question.text.replace(/[$*`]/g, '')}
                   </Text>
                   <Text style={styles.nemesisCta}>
-                    {nemesis.beaten ? 'Beaten — keep it down ✓' : 'Re-attempt it →'}
+                    {nemesis.beaten ? 'Beaten. Keep it down ✓' : 'Re-attempt it →'}
                   </Text>
                 </Pressable>
               </View>

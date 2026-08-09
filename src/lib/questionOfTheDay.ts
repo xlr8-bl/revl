@@ -131,7 +131,7 @@ function withReason(c: { q: Question; p: Paper }, logs: RevealLog[]): DailyPick 
     sourceLine: `${c.p.courseCode} · ${c.p.title} · ${c.p.year}`,
     reason: weakTag
       ? `Picked for your weak topic: ${weakTag.tag}`
-      : 'Picked from your courses — a fresh one every day',
+      : 'Picked from your courses. A fresh one every day',
   };
 }
 

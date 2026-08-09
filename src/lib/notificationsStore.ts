@@ -108,7 +108,7 @@ export function checkExamMilestones(examDateISO: string | undefined) {
         lead: `Exams in ${hit} day${hit === 1 ? '' : 's'}`,
         body:
           hit <= 3
-            ? 'Final stretch — review your weakest topics tonight.'
+            ? 'Final stretch. Review your weakest topics tonight.'
             : 'A steady 15 minutes a day from now covers your weak topics.',
       },
       `reminder:exam:${hit}`

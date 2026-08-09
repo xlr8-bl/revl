@@ -98,7 +98,7 @@ export function TopFade({
           style={[StyleSheet.absoluteFill, { height: band.h, opacity: band.o }]}
         />
       ))}
-      {/* Brand tint rides on top of the blur — translucent even at the very
+      {/* Brand tint rides on top of the blur. Translucent even at the very
           top, so blurred content ghosts through from the first pixel. It
           stays present where the faint band edges end and dissolves over the
           short tail, swallowing any residual cut. Android (no blur) keeps

@@ -13,12 +13,12 @@ import type { ChatMessage, ExplainResponse, Question } from '../types';
 const cannedExplanations: Record<string, ExplainResponse> = {
   q1: {
     answer:
-      'Entropy $H(S)$ measures how *mixed* the class labels in a set are. $H(S) = -\\sum_i p_i \\log_2 p_i$. When $H(S) = 0$, the set is pure — every example has the same label, so that branch of the tree is finished.',
+      'Entropy $H(S)$ measures how *mixed* the class labels in a set are. $H(S) = -\\sum_i p_i \\log_2 p_i$. When $H(S) = 0$, the set is pure. Every example has the same label, so that branch of the tree is finished.',
     why:
       'This question is really testing whether you understand **impurity as the driver of tree-building**. ID3 exists to reduce entropy step by step; if you know what $H = 0$ *means*, information gain (which is just "entropy before minus entropy after") follows for free.',
     notesBridge: {
-      text: 'This connects directly to what you wrote on p.12 about "uncertainty in a coin flip" — your own example of a fair coin having entropy 1 bit is exactly the intuition the examiner wants. You already have half of this.',
-      reference: { source: 'notes', label: 'Your notes, p.12 — "Entropy & impurity"', location: 'notes://cec420/p12' },
+      text: 'This connects directly to what you wrote on p.12 about "uncertainty in a coin flip". Your own example of a fair coin having entropy 1 bit is exactly the intuition the examiner wants. You already have half of this.',
+      reference: { source: 'notes', label: 'Your notes, p.12. "Entropy & impurity"', location: 'notes://cec420/p12' },
     },
     prerequisiteTags: ['logarithms', 'probability-basics'],
   },
@@ -26,10 +26,10 @@ const cannedExplanations: Record<string, ExplainResponse> = {
     answer:
       'Compute the entropy of each branch, weight each by its share of the examples, subtract from $H(S)$: $IG = 0.940 - [\\frac{8}{14}(0.811) + \\frac{6}{14}(1.0)] = 0.048$ bits.',
     why:
-      'Information gain is where most marks are lost in this course — not because the idea is hard, but because the arithmetic has three places to slip: the branch entropies, the weights, and the final subtraction. The examiner awards method marks for each stage, so *show the weighted sum explicitly*.',
+      'Information gain is where most marks are lost in this course. Not because the idea is hard, but because the arithmetic has three places to slip: the branch entropies, the weights, and the final subtraction. The examiner awards method marks for each stage, so *show the weighted sum explicitly*.',
     notesBridge: {
-      text: 'On p.14 you worked this exact weather dataset but stopped after the branch entropies — the weighted-average step is the piece your notes are missing. Add one line and this becomes routine.',
-      reference: { source: 'notes', label: 'Your notes, p.14 — worked entropy example', location: 'notes://cec420/p14' },
+      text: 'On p.14 you worked this exact weather dataset but stopped after the branch entropies. The weighted-average step is the piece your notes are missing. Add one line and this becomes routine.',
+      reference: { source: 'notes', label: 'Your notes, p.14. Worked entropy example', location: 'notes://cec420/p14' },
     },
     prerequisiteTags: ['entropy', 'logarithms', 'weighted-averages'],
   },
@@ -40,7 +40,7 @@ const genericExplanation = (q: Question): ExplainResponse => ({
     q.answers.verified ??
     q.answers.aiGeneral ??
     'Work from the definition: identify what the question is really asking, write the governing formula, substitute, and interpret the result in one sentence.',
-  why: `This question sits inside **${q.topics[0] ?? 'the core syllabus'}** — examiners use it to check you can move from definition to computation without prompting. Questions tagged ${q.topics.join(', ')} appear in some form almost every year.`,
+  why: `This question sits inside **${q.topics[0] ?? 'the core syllabus'}**. Examiners use it to check you can move from definition to computation without prompting. Questions tagged ${q.topics.join(', ')} appear in some form almost every year.`,
   // No notesBridge here — this simulates "no relevant notes found".
   // The UI must skip the bridge silently; never break for a note-less user.
   prerequisiteTags: q.topics.slice(0, 2),
@@ -58,6 +58,6 @@ export async function askAboutQuestion(q: Question, userMessage: string): Promis
   return {
     id: `a-${Date.now()}`,
     role: 'assistant',
-    text: `Good question. For Q${q.number}, focus on ${q.topics[0] ?? 'the definition'} first — "${userMessage.slice(0, 60)}" usually comes down to applying the formula carefully and interpreting the result. (Mock reply — this will be grounded in your uploaded notes once the AI is wired.)`,
+    text: `Good question. For Q${q.number}, focus on ${q.topics[0] ?? 'the definition'} first. "${userMessage.slice(0, 60)}" usually comes down to applying the formula carefully and interpreting the result. (Mock reply. This will be grounded in your uploaded notes once the AI is wired.)`,
   };
 }

@@ -51,14 +51,14 @@ export function CourseCardMenu({
     onClose();
     try {
       await Share.share({
-        message: `${code} · ${sentenceCase(title)} — past papers with verified answers on Revl. ${meta}.`,
+        message: `${code} · ${sentenceCase(title)}. Past papers with verified answers on Revl. ${meta}.`,
       });
     } catch {}
   };
 
   const downloadRow =
     doneCount === coursePapers.length && coursePapers.length > 0
-      ? { icon: 'arrow-down-circle' as const, label: 'Downloaded — view', tint: colors.accent, onPress: () => { onClose(); router.push('/downloads' as never); } }
+      ? { icon: 'arrow-down-circle' as const, label: 'Downloaded. View', tint: colors.accent, onPress: () => { onClose(); router.push('/downloads' as never); } }
       : inFlight
         ? { icon: 'arrow-down-circle-outline' as const, label: 'Downloading…', tint: colors.textSecondary, onPress: () => {} }
         : doneCount > 0

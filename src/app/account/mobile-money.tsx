@@ -75,7 +75,7 @@ export default function MobileMoneyScreen() {
           {masked && <Ionicons name="checkmark-circle" size={20} color={colors.verified} />}
         </View>
 
-        {/* Preferred network — same logo-led tiles as the sign-in flow */}
+        {/* Preferred network. Same logo-led tiles as the sign-in flow */}
         <Text style={styles.sectionLabel}>Preferred network</Text>
         <View style={styles.networkRow}>
           {NETWORKS.map((n) => {
@@ -127,8 +127,8 @@ export default function MobileMoneyScreen() {
 
         <Text style={styles.note}>
           {pending
-            ? 'Check your phone — approve the prompt and enter your Mobile Money PIN there. Your PIN never touches Revl.'
-            : 'We send a confirmation prompt to your phone. You approve it with your PIN on your own device — we never see or store it.'}
+            ? 'Check your phone. Approve the prompt and enter your Mobile Money PIN there. Your PIN never touches Revl.'
+            : 'We send a confirmation prompt to your phone. You approve it with your PIN on your own device. We never see or store it.'}
         </Text>
       </ScrollView>
     </View>

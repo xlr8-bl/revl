@@ -102,3 +102,62 @@ The FCFA wallet and unlock ledger. Balances have to be server-authoritative
 with the write path in a transaction or an edge function; a table with an RLS
 policy letting the client update its own balance is a wallet anyone can top up
 for free. It is left out rather than half-built.
+
+## Google and Apple sign in
+
+The code is complete. What is missing is credentials, which only you can create,
+because they are issued against your Apple team and your Google Cloud project.
+
+Both providers use the NATIVE flow: the app receives an `id_token` and passes it
+to `supabase.auth.signInWithIdToken`. No browser redirect, and on iOS that is
+the only route App Review accepts. A nonce is generated per attempt, sent raw to
+the provider and hashed to Supabase, which is what stops a token minted for
+another app being replayed at ours. Leave `skip_nonce_check = false`.
+
+### What you need to create
+
+**Google** (console.cloud.google.com, APIs and Services, Credentials). Create
+three OAuth client IDs for one project:
+
+| Client | Used for |
+| --- | --- |
+| iOS | the app on iPhone, bundle id must match `app.json` |
+| Android | the app on Android, needs your signing SHA-1 |
+| Web | Supabase itself, and the value that goes in `secret` |
+
+All three go in `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` as a comma separated
+list. A token's `aud` is whichever client produced it, so any client left out
+gets rejected at verification.
+
+**Apple** (developer.apple.com). Enable Sign in with Apple on the App ID, then
+create a Services ID for the web flow and a key to sign the client secret. The
+`client_id` takes both the bundle id and the Services ID, comma separated.
+
+### Where the values go
+
+Server side, before `npm run db:push`:
+
+```sh
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID="<ios>,<android>,<web>"
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET="<web client secret>"
+export SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID="<bundle id>,<services id>"
+export SUPABASE_AUTH_EXTERNAL_APPLE_SECRET="<generated client secret>"
+```
+
+Client side, in `app.json` under `expo.extra`, or as `EXPO_PUBLIC_` env vars:
+
+```json
+{
+  "supabase": { "url": "https://<ref>.supabase.co", "publishableKey": "sb_publishable_..." },
+  "google": { "iosClientId": "...", "androidClientId": "...", "webClientId": "..." }
+}
+```
+
+Until those exist, `isConfigured` is false, sign in falls back to the mock
+identity and the app runs exactly as it does now. Nothing needs commenting out.
+
+### What the CLI cannot do
+
+`supabase db push` carries the schema. Auth provider settings live on the
+project, and pushing them needs `supabase link`, which needs your access token.
+The CLI can never create the Google or Apple credentials themselves.

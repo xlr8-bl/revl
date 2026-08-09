@@ -183,7 +183,7 @@ export function QuestionBlock({ question, courseCode, hasNotes, depth = 0, highl
           ) : (
             <View style={styles.resolvedRow}>
               <Text style={styles.resolvedText}>
-                {question.options![picked!]?.correct ? 'Correct. Logged.' : 'Not quite — this topic will resurface.'}
+                {question.options![picked!]?.correct ? 'Correct. Logged.' : 'Not quite. This topic will resurface.'}
               </Text>
               {hasAnswer && (
                 <Pressable onPress={() => setExplainOpen(true)} style={styles.explainBtn} hitSlop={6}>

@@ -70,7 +70,7 @@ export function GlowHorizon({
       <View pointerEvents="none" style={styles.fill}>
         <Svg width={width} height={height}>
           <Defs>
-            {/* Pigment, not light — you cannot get brighter than white, which
+            {/* Pigment, not light. You cannot get brighter than white, which
                 is why a glow dies on a pale page. So this is a body catching
                 the sun: strongest right at the crown and falling away down the
                 curve, gone by the sign-in block so the buttons and the fine
@@ -139,7 +139,7 @@ export function GlowHorizon({
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </RadialGradient>
 
-          {/* Inside the body — same curve, dimmer, and it never escapes the rim. */}
+          {/* Inside the body. Same curve, dimmer, and it never escapes the rim. */}
           <RadialGradient id="gh-inner" cx="50%" cy="50%" r="50%">
             <Stop offset="0" stopColor={colors.glowCore} stopOpacity={a(0.6)} />
             <Stop offset="0.18" stopColor={colors.glow} stopOpacity={a(0.3)} />
@@ -170,7 +170,7 @@ export function GlowHorizon({
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </LinearGradient>
 
-          {/* The soft half of the rim — the part that makes it emit. */}
+          {/* The soft half of the rim. The part that makes it emit. */}
           <LinearGradient
             id="gh-rim-soft"
             x1={0}

@@ -65,7 +65,7 @@ export default function ClassScreen() {
         <Text style={styles.roomKicker}>{profile.school === 'ub' ? 'University of Buea' : 'HND'} · 128 classmates</Text>
         <Text style={styles.roomTitle}>{profile.departmentName}</Text>
 
-        {/* Top solvers strip — status for the people doing the work */}
+        {/* Top solvers strip. Status for the people doing the work */}
         <View style={styles.solversRow}>
           <Text style={styles.solversLabel}>Top solvers this week</Text>
           {TOP_SOLVERS.map((s) => (

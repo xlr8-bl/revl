@@ -319,9 +319,16 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Apple. `client_id` takes BOTH audiences the app can present a token from:
+#   - the iOS bundle id, for native Sign in with Apple (the normal path), and
+#   - the Services ID, for the web/Android flow.
+# Native sign-in returns an identity token straight to the app, so the secret is
+# only needed for the web flow. See docs/AUTH.md for what Apple actually sends:
+# the name arrives ONLY on the first authorisation, and the email may be a
+# @privaterelay.appleid.com forwarder.
 [auth.external.apple]
-enabled = false
-client_id = ""
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 # Overrides the default auth callback URL derived from auth.external_url.
@@ -331,7 +338,22 @@ redirect_uri = ""
 url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+# Apple can withhold the address behind Hide My Email, but it always sends
+# something, so a missing email is a real failure rather than a case to allow.
+email_optional = false
+
+# Google. `client_id` lists every OAuth client that may issue an id_token we
+# accept — the Web client plus the iOS and Android clients — because the token's
+# `aud` is whichever client produced it. `skip_nonce_check` stays false: the
+# native flow sends a nonce and checking it is what stops a token minted for
+# another app being replayed at ours.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
 email_optional = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.

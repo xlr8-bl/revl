@@ -37,11 +37,11 @@ type Props = {
   /** Fixed floor: the sheet is at least this tall (content can still grow it). */
   minHeight?: number;
   /** When false, the sheet appears already in place (used when RESTORING a
-      suspended sheet after returning from a paper — no re-slide). */
+      suspended sheet after returning from a paper. No re-slide). */
   animateIn?: boolean;
   /** Render as an in-screen overlay instead of a Modal. An inline sheet
       stays mounted UNDER a pushed screen, so navigating away and back
-      never re-animates it — it is simply still there. */
+      never re-animates it. It is simply still there. */
   inline?: boolean;
 };
 

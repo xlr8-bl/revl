@@ -38,7 +38,7 @@ function candidatePool(enrolledCodes: string[]): Candidate[] {
 /** ~2.5 min per question, shown as a friendly range. */
 function timeMeta(count: number): string {
   const mid = Math.round(count * 2.5);
-  return `${count} question${count === 1 ? '' : 's'} · ${Math.max(3, mid - 3)}–${mid + 3} min`;
+  return `${count} question${count === 1 ? '' : 's'} · ${Math.max(3, mid - 3)}${mid + 3} min`;
 }
 
 function routeTo(c: Candidate): string {
@@ -63,7 +63,7 @@ export function buildTodayPlan(logs: RevealLog[], enrolledCodes: string[]): Sess
         id: 'starter',
         label: 'Starter session',
         title: `Start with ${newest.courseCode} · ${newest.year}`,
-        meta: `${timeMeta(n)} · attempt, then reveal — this builds your Study DNA`,
+        meta: `${timeMeta(n)} · attempt, then reveal. This builds your Study DNA`,
         icon: 'flag',
         gradient: ['#B4543A', '#7A2E1D'],
         route: routeTo(first),
@@ -87,7 +87,7 @@ export function buildTodayPlan(logs: RevealLog[], enrolledCodes: string[]): Sess
     .sort((a, b) => b.w - a.w);
   for (const { c, w } of scored) {
     if (warmup.length >= 5) break;
-    if (w <= 0) break; // nothing weak left — a short warm-up is fine
+    if (w <= 0) break; // nothing weak left. A short warm-up is fine
     const top = c.q.topics[0];
     const used = perTopic.get(top) ?? 0;
     if (used >= 2) continue;
@@ -115,7 +115,7 @@ export function buildTodayPlan(logs: RevealLog[], enrolledCodes: string[]): Sess
   for (const [qid, last] of lastByQuestion) {
     if (last.resolution !== 'not-yet') continue;
     const age = Date.now() - last.timestamp;
-    if (age < 1 * DAY) continue; // too soon — let it breathe
+    if (age < 1 * DAY) continue; // too soon. Let it breathe
     const c = pool.find((x) => x.q.id === qid);
     if (c) due.push({ c, missedAt: last.timestamp });
   }

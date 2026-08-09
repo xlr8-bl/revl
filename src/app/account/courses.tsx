@@ -106,7 +106,7 @@ export default function ManageCoursesScreen() {
           </View>
         )}
 
-        {/* Add — the whole department, so retakes from other levels count */}
+        {/* Add. The whole department, so retakes from other levels count */}
         <Text style={styles.sectionLabel}>Add a course or carry-over</Text>
         <View style={styles.searchBox}>
           <Ionicons name="search" size={17} color={colors.textTertiary} />

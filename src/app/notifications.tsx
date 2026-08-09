@@ -96,7 +96,7 @@ export default function NotificationsScreen() {
             <Text style={styles.sectionLabel}>{s.label}</Text>
             {s.rows.map((n, i) => (
               <View key={n.id} style={[styles.row, i > 0 && styles.rowDivider]}>
-                {/* Unread rail — a quiet accent edge, not a badge */}
+                {/* Unread rail. A quiet accent edge, not a badge */}
                 <View style={[styles.rail, n.unread && styles.railUnread]} />
                 {n.kind === 'friend' && n.avatar ? (
                   <View style={[styles.disc, { backgroundColor: n.avatar.color }]}>
@@ -122,7 +122,7 @@ export default function NotificationsScreen() {
 
         {sections.length > 0 && (
           <Text style={styles.footnote}>
-            Only your courses and your friends show up here — add people from the person icon
+            Only your courses and your friends show up here. Add people from the person icon
             above.
           </Text>
         )}

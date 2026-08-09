@@ -91,7 +91,7 @@ export const featuredCourses: {
   {
     id: 'feat1',
     title: 'DATA MINING',
-    subtitle: 'CEC420 · Complete past-paper set · 2018–2023',
+    subtitle: 'CEC420 · Complete past-paper set · 20182023',
     courseCode: 'CEC420',
     gradient: ['#22314E', '#0A0F1A'],
     badge: 'FEATURED SET',

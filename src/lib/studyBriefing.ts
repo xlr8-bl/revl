@@ -36,7 +36,7 @@ export function buildBriefing(logs: RevealLog[]): string {
   // student can't see themselves.
   if (fc) {
     parts.push(
-      `You marked ${fc.tag} as "I've got this", then missed it ${fc.falseConfidence}× — close that gap first.`
+      `You marked ${fc.tag} as "I've got this", then missed it ${fc.falseConfidence}×. Close that gap first.`
     );
   } else if (weak[0] && weak[0].weakness > 0) {
     parts.push(`${cap(weak[0].tag)} is where you lose the most marks right now.`);
@@ -56,5 +56,5 @@ export function buildBriefing(logs: RevealLog[]): string {
 
   return parts.length > 0
     ? parts.join(' ')
-    : 'You are steady across your topics — tonight keeps them warm before the exam.';
+    : 'You are steady across your topics. Tonight keeps them warm before the exam.';
 }

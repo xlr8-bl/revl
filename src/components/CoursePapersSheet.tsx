@@ -43,8 +43,8 @@ export function CoursePapersSheet({
         {list.length} paper{list.length === 1 ? '' : 's'} available
       </Text>
 
-      {/* Every course gets the same tall sheet. Long sets grow it further —
-          up to the sheet's max — and only past that does the list scroll
+      {/* Every course gets the same tall sheet. Long sets grow it further 
+          up to the sheet's max. And only past that does the list scroll
           (flexShrink lets the max height actually constrain it). */}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
         {list.map((p, i) => {
@@ -55,7 +55,7 @@ export function CoursePapersSheet({
               onPress={() => open(p.id, unlocked)}
               style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { opacity: 0.6 }]}>
               <Text style={styles.year}>{p.year}</Text>
-              {/* Count first — the session name is what truncates, never the
+              {/* Count first. The session name is what truncates, never the
                   number of questions. */}
               <Text style={styles.meta} numberOfLines={1}>
                 {p.questions.length > 0

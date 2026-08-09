@@ -126,7 +126,7 @@ export async function downloadPaper(id: string) {
     {
       kind: 'download',
       lead: `${p.courseCode} ${p.year}`,
-      body: 'saved to your phone — it opens offline now.',
+      body: 'saved to your phone. It opens offline now.',
     },
     `download:${p.id}`
   );

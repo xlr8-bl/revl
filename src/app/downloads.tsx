@@ -69,7 +69,7 @@ export default function DownloadsScreen() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 90 }}>
-        {/* Header — the app's voice: circle back, kicker, big bold title */}
+        {/* Header. The app's voice: circle back, kicker, big bold title */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -90,7 +90,7 @@ export default function DownloadsScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Code, title or year — e.g. CEC420, 2023"
+                placeholder="Code, title or year. E.g. CEC420, 2023"
                 placeholderTextColor={colors.textTertiary}
                 style={styles.searchInput}
                 autoCapitalize="characters"
@@ -118,7 +118,7 @@ export default function DownloadsScreen() {
               </View>
               <Text style={styles.emptyTitle}>Nothing downloaded yet</Text>
               <Text style={styles.emptyBody}>
-                Tap the arrow on any paper in Courses and it lands here — ready for the amphi, the bus, or a blackout.
+                Tap the arrow on any paper in Courses and it lands here. Ready for the amphi, the bus, or a blackout.
               </Text>
               <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.emptyBtn, pressed && { opacity: 0.9 }]}>
                 <Text style={styles.emptyBtnText}>Browse courses</Text>
@@ -134,7 +134,7 @@ export default function DownloadsScreen() {
                 : `${(courseBytes / 1024 / 1024).toFixed(1)} MB`;
             return (
               <Animated.View key={code} entering={FadeInDown.delay(gi * 50).duration(220)} style={styles.card}>
-                {/* Tinted band — same construction as the Courses index cards */}
+                {/* Tinted band. Same construction as the Courses index cards */}
                 <View style={styles.band}>
                   <Text style={styles.bandCode}>{code}</Text>
                   <Text style={styles.bandSize}>{courseSize}</Text>
@@ -170,7 +170,7 @@ export default function DownloadsScreen() {
         )}
       </ScrollView>
 
-      {/* Undo toast — removal is never a dead end */}
+      {/* Undo toast. Removal is never a dead end */}
       {removed && (
         <Animated.View
           entering={FadeInUp.duration(200)}

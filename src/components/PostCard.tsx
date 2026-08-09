@@ -112,7 +112,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
         </Pressable>
       </View>
 
-      {/* Count line — teaches the gesture while there are no likes yet. */}
+      {/* Count line. Teaches the gesture while there are no likes yet. */}
       {post.likes > 0 ? (
         <Text style={styles.countLine}>
           {post.likes} {post.likes === 1 ? 'like' : 'likes'}
