@@ -29,8 +29,15 @@
  * falls to the screen edges. Flatter than that and it stops being a body and
  * becomes a slack line across the page.
  */
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, {
   Circle,
   ClipPath,
@@ -67,6 +74,46 @@ export function GlowHorizon({
   intensity?: number;
 }) {
   const scheme = useResolvedScheme();
+
+  /**
+   * A slow breathe. Only the wrapper's opacity moves, so no geometry shifts and
+   * the rim never appears to wobble.
+   *
+   * This is a ping-pong on a 0..1 driver rather than a sequence of two timings.
+   * The sequence version dimmed smoothly and then SNAPPED back to full at the
+   * repeat boundary, measured as a jump from 141 to 156 in a single frame,
+   * which is the mechanical flicker the effect is meant to avoid. Reversing a
+   * single timing has no boundary to snap at.
+   */
+  const breath = useSharedValue(0);
+  const [still, setStill] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => alive && setStill(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setStill);
+    return () => {
+      alive = false;
+      sub?.remove?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (still) {
+      breath.value = 0;
+      return;
+    }
+    breath.value = withRepeat(
+      withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    );
+  }, [breath, still]);
+
+  // A tenth of the range: enough to feel alive, not enough to notice as motion.
+  const breathing = useAnimatedStyle(() => ({ opacity: 1 - breath.value * 0.1 }));
+
   if (width <= 0 || height <= 0) return null;
 
   const cx = width / 2;
@@ -77,7 +124,7 @@ export function GlowHorizon({
 
   if (scheme === 'light') {
     return (
-      <View pointerEvents="none" style={styles.fill}>
+      <Animated.View pointerEvents="none" style={[styles.fill, breathing]}>
         <Svg width={width} height={height}>
           <Defs>
             {/* Pigment, not light. You cannot get brighter than white, which
@@ -127,12 +174,12 @@ export function GlowHorizon({
           <Circle cx={cx} cy={cy} r={r} fill="url(#gh-l-body)" />
           <Circle cx={cx} cy={cy} r={r} fill="none" stroke="url(#gh-l-rim)" strokeWidth={1.5} />
         </Svg>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View pointerEvents="none" style={styles.fill}>
+    <Animated.View pointerEvents="none" style={[styles.fill, breathing]}>
       <Svg width={width} height={height}>
         <Defs>
           <ClipPath id="gh-body">
@@ -228,7 +275,7 @@ export function GlowHorizon({
 
         <Ellipse cx={cx} cy={crown} rx={width * 0.13} ry={height * 0.02} fill="url(#gh-core)" />
       </Svg>
-    </View>
+    </Animated.View>
   );
 }
 
