@@ -43,6 +43,10 @@ export type Palette = {
   dockTint: string;
   mtn: string;
   orange: string;
+  /** Atmosphere — the warm light rising behind a page (GlowHorizon). */
+  glow: string;
+  /** The lit edge of that light. Near-invisible in light, crisp in dark. */
+  glowRim: string;
 };
 
 /** Dark — the original "night study" palette. */
@@ -70,6 +74,8 @@ const darkColors: Palette = {
   dockTint: 'rgba(8,8,11,0.97)',
   mtn: '#FFCC08',
   orange: '#FF7900',
+  glow: '#F5852A',
+  glowRim: 'rgba(255,176,98,0.92)',
 };
 
 /**
@@ -79,8 +85,8 @@ const darkColors: Palette = {
  * bright, warm orange rather than deep burnt amber.
  */
 const lightColors: Palette = {
-  bg: '#F6F3EC',
-  bgDeep: '#E8E3D8',
+  bg: '#F7F5F1',
+  bgDeep: '#E9E5DC',
   card: '#FFFFFF',
   surface: '#ECE7DD',
   border: 'rgba(0,0,0,0.12)',
@@ -102,6 +108,12 @@ const lightColors: Palette = {
   dockTint: 'rgba(255,255,255,0.97)',
   mtn: '#FFCC08',
   orange: '#FF7900',
+  // A pale wash of orange over cream reads as a stain, not as light. The page
+  // is pulled a shade off the yellow so warm light has something to be warm
+  // AGAINST, and the glow itself is saturated and tighter so it stays a
+  // deliberate sunrise rather than a smudge.
+  glow: '#FF8A2B',
+  glowRim: 'rgba(226,124,36,0.3)',
 };
 
 /* ------------------------------------------------------------------ */

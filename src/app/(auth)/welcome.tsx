@@ -1,13 +1,14 @@
 /**
- * Welcome — the first screen, composed as a single page from an answer
- * booklet. The wordmark is written at the head of it, the nib writes the
- * invitation on a ruled line a third of the way down (LetsReveal), and the
- * sign-in block sits at the foot below where the ruling stops.
+ * Welcome — the first screen.
  *
- * There is deliberately no feature list. Three icon chips reciting "real past
- * papers, worked answers, your exact courses" is the furniture every app of
- * this kind ships, and it was competing with the one thing here worth looking
- * at. The promise is a single line; the rest of the page is paper.
+ * Everything is centred on one axis: wordmark, the line the nib writes, the
+ * promise, then the sign-in block. Behind them a warm horizon rises from below
+ * the fold (GlowHorizon), and it is the only atmosphere on the page — the rest
+ * is deliberately flat so the light and the writing carry it.
+ *
+ * No feature list. Three icon chips reciting "real past papers, worked answers,
+ * your exact courses" is the furniture every app of this kind ships, and it was
+ * competing with the one thing here worth looking at.
  *
  * Mobile Money is the elevated option — it's how Cameroonian students actually
  * pay, and the same number unlocks papers.
@@ -18,7 +19,7 @@ import React, { useState } from 'react';
 import { LayoutChangeEvent, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BookletPaper } from '../../components/BookletPaper';
+import { GlowHorizon } from '../../components/GlowHorizon';
 import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
@@ -33,39 +34,38 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Measured so the ruling can be phased to the writing line and stopped above
-  // the sign-in block, rather than guessed at from fixed offsets.
-  const [pageH, setPageH] = useState(0);
-  const [heroY, setHeroY] = useState(0);
+  const [page, setPage] = useState({ w: 0, h: 0 });
   const [footY, setFootY] = useState(0);
-  const [headY, setHeadY] = useState(0);
 
-  const onHero = (e: LayoutChangeEvent) => setHeroY(e.nativeEvent.layout.y);
   const onFoot = (e: LayoutChangeEvent) => setFootY(e.nativeEvent.layout.y);
-  const onHead = (e: LayoutChangeEvent) =>
-    setHeadY(e.nativeEvent.layout.y + e.nativeEvent.layout.height);
 
-  // The sign-in block reaches far higher than a tab bar, so the offline pill
-  // is told to float above it rather than landing on a button.
-  useBannerLift(footY ? Math.max(0, pageH - footY) : 0);
+  // The sign-in block reaches far higher than a tab bar, so the offline pill is
+  // told to float above it rather than landing on a button.
+  useBannerLift(footY ? Math.max(0, page.h - footY) : 0);
 
   return (
-    <View style={styles.root} onLayout={(e) => setPageH(e.nativeEvent.layout.height)}>
-      <BookletPaper height={pageH} rulesFrom={headY + 18} rulesTo={footY || pageH} offset={heroY} />
+    <View
+      style={styles.root}
+      onLayout={(e) => setPage({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {/* The light sits low, so its crown breaks just above the buttons. */}
+      <GlowHorizon width={page.w} height={page.h} horizon={0.54} />
 
-      <View style={[styles.page, { paddingTop: insets.top + 26, paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-        <Animated.View entering={FadeIn.duration(400)} onLayout={onHead} style={styles.brandRow}>
+      <View
+        style={[
+          styles.page,
+          { paddingTop: insets.top + 22, paddingBottom: Math.max(insets.bottom, 16) + 8 },
+        ]}>
+        <Animated.View entering={FadeIn.duration(400)} style={styles.brandRow}>
           <RevlLogo size={30} />
           <Text style={styles.wordmark}>revl</Text>
         </Animated.View>
 
         <View style={styles.upper} />
 
-        {/* The one thing on this screen worth looking at. */}
-        <View onLayout={onHero}>
+        <View style={styles.hero}>
           <LetsReveal />
           <Animated.Text entering={FadeInDown.delay(200).duration(560)} style={styles.promise}>
-            Sit the exam having already seen the paper.
+            Walk into the exam having{'\n'}already seen the paper.
           </Animated.Text>
         </View>
 
@@ -76,8 +76,8 @@ export default function WelcomeScreen() {
             <Pressable
               onPress={() => signIn('apple')}
               style={({ pressed }) => [styles.btn, styles.btnApple, pressed && styles.pressed]}>
-              <Ionicons name="logo-apple" size={18} color="#000" />
-              <Text style={[styles.btnText, { color: '#000' }]}>Continue with Apple</Text>
+              <Ionicons name="logo-apple" size={18} color={colors.bg} />
+              <Text style={[styles.btnText, { color: colors.bg }]}>Continue with Apple</Text>
             </Pressable>
           )}
 
@@ -100,9 +100,7 @@ export default function WelcomeScreen() {
             <Text style={styles.btnText}>Continue with Mobile Money</Text>
           </Pressable>
 
-          <Text style={styles.fine}>
-            MTN MoMo or Orange Money — the same number unlocks papers.
-          </Text>
+          <Text style={styles.fine}>MTN MoMo or Orange Money — the same number unlocks papers.</Text>
           {/* Both stores require these to be reachable at sign-up, and it is a
               poor look to claim agreement to documents nobody can open. */}
           <Text style={styles.terms}>
@@ -125,40 +123,40 @@ export default function WelcomeScreen() {
 const makeStyles = () =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bg },
-    page: { flex: 1, paddingHorizontal: GUTTER },
+    page: { flex: 1, paddingHorizontal: GUTTER, alignItems: 'center' },
 
+    hero: { alignSelf: 'stretch' },
     brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    wordmark: { fontFamily: fonts.bold, fontSize: 24, color: colors.text, letterSpacing: -0.5 },
+    wordmark: { fontFamily: fonts.bold, fontSize: 26, color: colors.text, letterSpacing: -0.6 },
 
-    // The writing line sits midway between the head of the page and the
-    // sign-in block, so the ruled page reads evenly above and below it. An
-    // uneven split left a void under the promise roughly twice the depth of
-    // the space over it.
-    upper: { flex: 1 },
-    lower: { flex: 1 },
+    // The writing line sits above the horizon; the light rises into the gap
+    // beneath it, which is why the lower share is the larger one.
+    upper: { flex: 2 },
+    lower: { flex: 3 },
 
-    // 27 is half the rule spacing, so a two-line promise closes exactly on the
-    // next rule instead of drifting off the grid.
     promise: {
       fontFamily: fonts.regular,
-      fontSize: 17,
-      lineHeight: 27,
+      fontSize: 16.5,
+      lineHeight: 24,
       color: colors.textSecondary,
-      marginTop: 9,
-      maxWidth: 320,
+      textAlign: 'center',
+      marginTop: 6,
     },
 
-    foot: { gap: 10 },
+    foot: { alignSelf: 'stretch', gap: 10 },
     btn: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 9,
-      borderRadius: 12,
-      paddingVertical: 15,
+      borderRadius: 14,
+      paddingVertical: 16,
     },
     pressed: { opacity: 0.85 },
-    btnApple: { backgroundColor: '#FFFFFF' },
+    // Inverts with the theme: white on the dark page, black on the light one.
+    // A white button on a near-white page all but disappears, and black-on-light
+    // is Apple's own guidance for the mark anyway.
+    btnApple: { backgroundColor: colors.text },
     btnOutline: {
       backgroundColor: colors.card,
       borderWidth: StyleSheet.hairlineWidth,
@@ -174,15 +172,15 @@ const makeStyles = () =>
       lineHeight: 17,
       color: colors.textTertiary,
       textAlign: 'center',
-      marginTop: 4,
+      marginTop: 6,
     },
     terms: {
       fontFamily: fonts.regular,
-      fontSize: 11,
+      fontSize: 11.5,
       lineHeight: 16,
       color: colors.textTertiary,
       textAlign: 'center',
     },
-    termsLink: { color: colors.textSecondary, textDecorationLine: 'underline' },
+    termsLink: { color: colors.accent },
   });
 const styles = themedStyleSheet(makeStyles);

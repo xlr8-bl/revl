@@ -1,33 +1,26 @@
 /**
  * LetsReveal — the welcome hero.
  *
- * An ink dot eases left→right along the line and acts as a MASK: everything
- * it has passed is written, everything ahead of it is still blank paper. Each
- * letter lands with a strong haptic, so the sentence is felt being written as
- * much as it is read. The dot then eases back to the left, un-writing the line
- * behind it, and the next one starts.
+ * An ink dot eases along the line and acts as a MASK: everything it has passed
+ * is written, everything ahead of it is still blank. Each letter lands with a
+ * haptic, so the sentence is felt being written as much as read. The dot then
+ * sweeps back, un-writing the line behind it, and the next one starts.
  *
- * The dot drags a RULE behind it — the ruled line of an answer booklet, laid
- * down in Revl's orange as the nib passes and pulled back up as it retreats.
- * A bare dot travelling a line is somebody else's signature; this is the one
- * thing on the screen that could only belong to an exam app.
+ * The lines are CENTRED, which is what makes the geometry interesting. Every
+ * line begins and ends at a different x, so there is no fixed home for the dot
+ * to return to. After clearing a line it glides on to the exact point where the
+ * NEXT line will begin — so the nib is always already standing where the first
+ * letter is about to appear, and a short line following a long one does not
+ * make the dot jump on the next write.
  *
- * Two things this file is built around:
+ * Both passes are felt, at different rhythms: writing is a Heavy impact per
+ * letter over the slower sweep, erasing a Light one per letter over the quicker
+ * return. Same sentence, two textures.
  *
- *  - Letter positions are MEASURED, not assumed. In a proportional serif an
- *    evenly-spaced approximation drifts by the second word, and the effect
- *    depends entirely on the dot and the letter it uncovers being the same
- *    pixel.
- *
- *  - EVERY line is measured once, up front, and nothing remounts afterwards.
- *    Swapping the text per cycle meant a remount and a fresh layout pass
- *    between lines, which stranded the dot at the margin for about half a
- *    second — right where the eye was already resting on it. After the first
- *    layout this is pure animation on one shared value.
- *
- * Reduce Motion switches the whole thing off: the first line is already
- * written on an already-drawn rule, and the nib never appears. Screen readers
- * get the sentence as one label rather than twelve separate letters.
+ * Letter positions are MEASURED, and every line is measured once up front so
+ * nothing remounts mid-cycle. Reduce Motion switches the whole thing off:
+ * the first line is simply already written. Screen readers get the sentence as
+ * one label rather than a stream of separate letters.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -46,60 +39,67 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors, fonts } from '../theme';
 
-const LINES = ["Let's begin.", "Let's revise.", "Let's ace it.", "Let's pass."];
+/** [before, accented, after] — the middle word carries the brand colour. */
+const LINES: [string, string, string][] = [
+  ["Let's ", 'begin', '.'],
+  ["Let's ", 'revise', '.'],
+  ["Let's ", 'ace', ' it.'],
+  ["Let's ", 'pass', '.'],
+];
 
-const FONT = 40;
-const LINE_H = 54;
-const DOT = 30;
-const PAD = 22; // breathing room above and below the line
+const FONT = 44;
+const LINE_H = 56;
+const DOT = 34;
+const PAD = 16;
 
-/**
- * Where the nib lays its rule, measured from the top of this component, and
- * how far apart consecutive rules sit. Exported so the ruled paper behind the
- * hero can line up with the ink exactly — the illusion only works if the
- * orange rule falls precisely on a printed one.
- */
-export const RULE_OFFSET = PAD / 2 + LINE_H - 7;
-export const RULE_STEP = LINE_H;
-
-/**
- * Rest position: fully past the left edge, so the wrap's clip hides the dot
- * between lines instead of parking a half-circle against the margin.
- */
-const HOME = -DOT;
-
-// Near-linear with soft ends: an even haptic cadence through the middle of the
-// word, easing in off the margin and settling on the full stop. Anything more
-// curved makes the first and last letters crawl.
 const EASE_WRITE = Easing.bezier(0.4, 0.05, 0.45, 0.95);
-// Coming back is a retreat, not a performance — quicker, and out of the way.
 const EASE_ERASE = Easing.bezier(0.5, 0, 0.2, 1);
+// Repositioning is travel, not performance: get there and settle.
+const EASE_MOVE = Easing.bezier(0.4, 0, 0.2, 1);
 
-const HOLD_MS = 900; // the line sits finished and readable
-const ERASE_MS = 440;
-const GAP_MS = 60; // one beat of blank paper before the next line
+const HOLD_MS = 950; // the line sits finished and readable
+const ERASE_MS = 430;
+const GAP_MS = 90;
 const writeMs = (n: number) => 300 + n * 58;
+/** Repositioning time scales with how far there is to go. */
+const moveMs = (px: number) => Math.min(420, 120 + Math.abs(px) * 1.4);
 
 type Measured = { x: number; w: number };
+type Span = { start: number; end: number };
 
 export function LetsReveal() {
-  const lines = useMemo(() => LINES.map((t) => [...t]), []);
+  // Flattened per line, with the index range that should be accented.
+  const lines = useMemo(
+    () =>
+      LINES.map(([pre, hot, post]) => ({
+        chars: [...(pre + hot + post)],
+        hotFrom: pre.length,
+        hotTo: pre.length + hot.length,
+        text: pre + hot + post,
+      })),
+    []
+  );
 
-  // marks[line][char] = the x at which that character is uncovered.
   const marks = useSharedValue<number[][]>([]);
   const active = useSharedValue(-1);
-  const dotX = useSharedValue(HOME);
+  const dotX = useSharedValue(0);
+  /**
+   * Held down while the nib is only travelling to the next line's start. That
+   * leg can move RIGHTWARDS — a short line following a long one begins further
+   * in — and without sealing the line it would re-reveal the letters it had
+   * just taken away.
+   */
+  const sealed = useSharedValue(0);
 
   const [index, setIndex] = useState(-1); // -1 until every line is measured
-  const measured = useRef<Measured[][]>(lines.map((l) => new Array(l.length)));
-  const ends = useRef<number[]>([]);
+  const measured = useRef<Measured[][]>(lines.map((l) => new Array(l.chars.length)));
+  const spans = useRef<Span[]>([]);
   const ready = useRef(false);
 
   const advance = useCallback(() => setIndex((i) => (i + 1) % LINES.length), []);
 
-  // A looping sweep is exactly the kind of motion Reduce Motion exists to
-  // switch off. With it on, the first line is simply already written, on a rule
-  // already drawn, and the nib never appears.
+  // A sweep that repeats for as long as the screen is up is exactly the motion
+  // Reduce Motion exists to stop.
   const [stillness, setStillness] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -120,108 +120,123 @@ export function LetsReveal() {
       if (ready.current) return;
       for (const row of measured.current) for (let k = 0; k < row.length; k++) if (!row[k]) return;
       ready.current = true;
-      // Uncover a letter a third of the way into it, so the dot is still
-      // sitting on the character as it appears rather than having left it.
+      // Uncover a letter a third of the way into it, so the dot is still on the
+      // character as it appears rather than having already left it.
       marks.value = measured.current.map((row) => row.map((c) => c.x + c.w * 0.34));
-      ends.current = measured.current.map((row) => row[row.length - 1].x + row[row.length - 1].w);
+      spans.current = measured.current.map((row) => ({
+        start: row[0].x - DOT / 2,
+        end: row[row.length - 1].x + row[row.length - 1].w + DOT / 2,
+      }));
       setIndex(0);
     },
     [marks]
   );
 
-  // Drives one line, then hands off to the next. Nothing unmounts.
   useEffect(() => {
     if (index < 0) return;
+    const here = spans.current[index];
+    const next = spans.current[(index + 1) % LINES.length];
     active.value = index;
+    sealed.value = 0;
+
     if (stillness) {
-      // Everything the nib would have crossed, already crossed.
-      dotX.value = ends.current[index] + DOT / 2;
+      dotX.value = here.end;
       return;
     }
-    dotX.value = HOME;
+
+    // Park at this line's own start. On every cycle after the first the dot is
+    // already standing there, so this is a no-op rather than a jump.
+    if (index === 0 && dotX.value === 0) dotX.value = here.start;
+
+    const reposition = next.start - here.start;
     dotX.value = withDelay(
       GAP_MS,
       withSequence(
-        withTiming(ends.current[index] + DOT / 2, {
-          duration: writeMs(lines[index].length),
-          easing: EASE_WRITE,
-        }),
+        withTiming(here.end, { duration: writeMs(lines[index].chars.length), easing: EASE_WRITE }),
+        // Clear the line completely, back to ITS start — stopping early at the
+        // next line's start would strand the leftmost letters on screen.
         withDelay(
           HOLD_MS,
-          withTiming(HOME, { duration: ERASE_MS, easing: EASE_ERASE }, (done) => {
-            if (done) runOnJS(advance)();
+          withTiming(here.start, { duration: ERASE_MS, easing: EASE_ERASE }, (done) => {
+            if (done) sealed.value = 1;
           })
+        ),
+        // Then walk to where the next line begins. Visible, on blank space, and
+        // the reason the next write never starts with a jump.
+        withTiming(
+          next.start,
+          { duration: reposition === 0 ? 0 : moveMs(reposition), easing: EASE_MOVE },
+          (done) => {
+            if (done) runOnJS(advance)();
+          }
         )
       )
     );
     return () => cancelAnimation(dotX);
-  }, [index, active, dotX, lines, advance, stillness]);
+  }, [index, active, dotX, sealed, lines, advance, stillness]);
 
   const buzz = useCallback(
-    (line: number, i: number) => {
+    (line: number, i: number, writing: boolean) => {
       if (Platform.OS === 'web' || stillness) return;
-      if (lines[line]?.[i] === ' ') return; // spaces are passed through, not written
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      if (lines[line]?.chars[i] === ' ') return; // spaces are passed through
+      Haptics.impactAsync(
+        writing ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light
+      ).catch(() => {});
     },
     [lines, stillness]
   );
 
-  // Count of uncovered characters on the active line. It only ever rises on
-  // the write pass, so comparing against the previous count gives exactly one
-  // haptic per letter and silence on the way back — every cycle, for as long
-  // as the screen is up.
+  // Uncovered-character count on the active line. Rising means the nib is
+  // writing, falling means it is taking the line back — both are felt, and the
+  // shorter return gives the lighter taps their own cadence.
   useAnimatedReaction(
     () => {
       const row = marks.value[active.value];
-      if (!row) return 0;
+      if (!row || sealed.value === 1) return -1;
       let n = 0;
       for (let i = 0; i < row.length; i++) if (dotX.value >= row[i]) n++;
       return n;
     },
     (now, before) => {
-      if (before === null || now <= before) return;
-      for (let i = before; i < now; i++) runOnJS(buzz)(active.value, i);
+      if (before === null || now === before || now < 0 || before < 0) return;
+      if (now > before) for (let i = before; i < now; i++) runOnJS(buzz)(active.value, i, true);
+      else for (let i = before - 1; i >= now; i--) runOnJS(buzz)(active.value, i, false);
     }
   );
 
   const dotStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dotX.value - DOT / 2 }] }));
-  // The rule is simply everything the nib has already crossed.
-  const ruleStyle = useAnimatedStyle(() => ({ width: Math.max(0, dotX.value) }));
 
   return (
     <View
       style={styles.wrap}
       accessible
       accessibilityRole="header"
-      accessibilityLabel={LINES[0]}>
-      {lines.map((chars, line) => (
+      accessibilityLabel={lines[0].text}>
+      {lines.map((line, li) => (
         <View
-          key={line}
+          key={li}
           style={styles.row}
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants">
-          {chars.map((ch, i) => (
+          {line.chars.map((ch, i) => (
             <Char
               key={`${i}-${ch}`}
               ch={ch}
-              line={line}
+              line={li}
               i={i}
+              hot={i >= line.hotFrom && i < line.hotTo}
               dotX={dotX}
               marks={marks}
               active={active}
+              sealed={sealed}
               onLayout={onCharLayout}
             />
           ))}
         </View>
       ))}
-      {/* Hidden until the first line is ready, so neither the nib nor its rule
-          sits at the margin waiting on a layout pass. */}
-      {index >= 0 && (
-        <>
-          <Animated.View pointerEvents="none" style={[styles.rule, ruleStyle]} />
-          {!stillness && <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />}
-        </>
+      {index >= 0 && !stillness && (
+        <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />
       )}
     </View>
   );
@@ -231,58 +246,70 @@ function Char({
   ch,
   line,
   i,
+  hot,
   dotX,
   marks,
   active,
+  sealed,
   onLayout,
 }: {
   ch: string;
   line: number;
   i: number;
+  hot: boolean;
   dotX: SharedValue<number>;
   marks: SharedValue<number[][]>;
   active: SharedValue<number>;
+  sealed: SharedValue<number>;
   onLayout: (line: number, i: number, e: LayoutChangeEvent) => void;
 }) {
-  // A hard cut, not a fade — the dot is a mask, and a mask does not blur its
-  // edge. The letter is simply already there once the ink has gone past.
+  // A hard cut, not a fade — a mask does not blur its edge. The letter is
+  // simply already there once the nib has gone past.
   const style = useAnimatedStyle(() => {
-    if (active.value !== line) return { opacity: 0 };
+    if (active.value !== line || sealed.value === 1) return { opacity: 0 };
     const mark = marks.value[line]?.[i];
     return { opacity: mark !== undefined && dotX.value >= mark ? 1 : 0 };
   });
   return (
-    <Animated.Text onLayout={(e) => onLayout(line, i, e)} style={[styles.char, style]}>
-      {ch === ' ' ? ' ' : ch}
+    <Animated.Text
+      onLayout={(e) => onLayout(line, i, e)}
+      style={[styles.char, hot && styles.charHot, style]}>
+      {/* A bare space collapses to zero width under react-native-web, which
+          both closes the gap between words and corrupts the measured mask
+          positions. A non-breaking space renders identically on native. */}
+      {ch === ' ' ? '\u00A0' : ch}
     </Animated.Text>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { height: LINE_H + PAD, justifyContent: 'center', overflow: 'hidden' },
+  // alignSelf is load-bearing: every row is absolutely positioned, so nothing
+  // gives this box an intrinsic width. Inside a centring parent it collapses to
+  // a fraction of the line and the overflow clip eats both ends of the text.
+  wrap: {
+    alignSelf: 'stretch',
+    height: LINE_H + PAD,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   row: {
     position: 'absolute',
     left: 0,
+    right: 0,
     top: PAD / 2,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     height: LINE_H,
   },
   char: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.bold,
     fontSize: FONT,
     lineHeight: LINE_H,
     color: colors.text,
-    letterSpacing: -0.4,
+    letterSpacing: -1.2,
   },
-  rule: {
-    position: 'absolute',
-    left: 0,
-    top: RULE_OFFSET,
-    height: 2.5,
-    borderRadius: 2,
-    backgroundColor: colors.accent,
-  },
+  charHot: { color: colors.accent },
   dot: {
     position: 'absolute',
     left: 0,
