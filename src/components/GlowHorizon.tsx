@@ -143,35 +143,41 @@ export function GlowHorizon({
               amber. More stops than look necessary: the extra ones are what
               stop the falloff banding into visible steps. */}
           <RadialGradient id="gh-bloom" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.8)} />
-            <Stop offset="0.07" stopColor="#FFF2D2" stopOpacity={a(0.66)} />
-            <Stop offset="0.15" stopColor={colors.glowCore} stopOpacity={a(0.46)} />
-            <Stop offset="0.26" stopColor="#FF9A2E" stopOpacity={a(0.28)} />
-            <Stop offset="0.42" stopColor={colors.glow} stopOpacity={a(0.14)} />
-            <Stop offset="0.6" stopColor={colors.glow} stopOpacity={a(0.06)} />
-            <Stop offset="0.8" stopColor={colors.glow} stopOpacity={a(0.02)} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.95)} />
+            <Stop offset="0.04" stopColor="#FFD489" stopOpacity={a(0.9)} />
+            <Stop offset="0.1" stopColor="#FFA22A" stopOpacity={a(0.82)} />
+            <Stop offset="0.2" stopColor="#FF7A05" stopOpacity={a(0.6)} />
+            <Stop offset="0.34" stopColor="#F55E00" stopOpacity={a(0.36)} />
+            <Stop offset="0.52" stopColor="#D94400" stopOpacity={a(0.18)} />
+            <Stop offset="0.72" stopColor="#B03200" stopOpacity={a(0.07)} />
+            <Stop offset="1" stopColor="#8A2400" stopOpacity={0} />
           </RadialGradient>
 
           {/* Inside the body. Deliberately the SAME intensity as the bloom at
               the crown: the inner light is clipped at the rim and the bloom is
               not, so any mismatch shows up as a seam running along the arc. */}
           <RadialGradient id="gh-inner" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.8)} />
-            <Stop offset="0.08" stopColor={colors.glowCore} stopOpacity={a(0.5)} />
-            <Stop offset="0.2" stopColor="#FF9A2E" stopOpacity={a(0.3)} />
-            <Stop offset="0.4" stopColor={colors.glow} stopOpacity={a(0.13)} />
-            <Stop offset="0.62" stopColor={colors.glow} stopOpacity={a(0.05)} />
-            <Stop offset="0.85" stopColor={colors.glow} stopOpacity={a(0.01)} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.95)} />
+            <Stop offset="0.05" stopColor="#FFC46A" stopOpacity={a(0.86)} />
+            <Stop offset="0.13" stopColor="#FF8E12" stopOpacity={a(0.66)} />
+            <Stop offset="0.26" stopColor="#FF6A00" stopOpacity={a(0.42)} />
+            <Stop offset="0.44" stopColor="#E24C00" stopOpacity={a(0.2)} />
+            <Stop offset="0.66" stopColor="#B83400" stopOpacity={a(0.07)} />
+            <Stop offset="1" stopColor="#8A2400" stopOpacity={0} />
           </RadialGradient>
 
-          {/* Blown out at the very centre. Small, or it stops being a highlight. */}
+          {/* Blown out at the very centre, and SMALL. Measured on the previous
+              build, saturation across the whole bright band sat between 0.08
+              and 0.34 and only passed 0.8 where value had fallen to 0.2: all
+              the brightness was white and all the colour was dark, which is
+              exactly what reads as flat. The white is now a highlight rather
+              than the subject, and the ramp reaches saturated orange within a
+              tenth of the radius. */}
           <RadialGradient id="gh-core" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.95)} />
-            <Stop offset="0.18" stopColor="#FFF1D6" stopOpacity={a(0.7)} />
-            <Stop offset="0.45" stopColor={colors.glowCore} stopOpacity={a(0.28)} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(1)} />
+            <Stop offset="0.22" stopColor="#FFE0A6" stopOpacity={a(0.62)} />
+            <Stop offset="0.5" stopColor="#FFA630" stopOpacity={a(0.3)} />
+            <Stop offset="1" stopColor="#FF7A05" stopOpacity={0} />
           </RadialGradient>
 
           {/* The span is set against the geometry, not by eye: at r = width
@@ -186,11 +192,11 @@ export function GlowHorizon({
             y2={crown + r * 0.3}
             gradientUnits="userSpaceOnUse">
             <Stop offset="0" stopColor="#FFFFFF" stopOpacity={1} />
-            <Stop offset="0.06" stopColor="#FFF0CC" stopOpacity={0.9} />
-            <Stop offset="0.16" stopColor={colors.glowRim} stopOpacity={0.62} />
-            <Stop offset="0.34" stopColor="#FF8A1F" stopOpacity={0.3} />
-            <Stop offset="0.58" stopColor={colors.glow} stopOpacity={0.1} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
+            <Stop offset="0.05" stopColor="#FFCE7A" stopOpacity={0.95} />
+            <Stop offset="0.14" stopColor="#FF9316" stopOpacity={0.8} />
+            <Stop offset="0.3" stopColor="#FF6A00" stopOpacity={0.5} />
+            <Stop offset="0.55" stopColor="#DC4600" stopOpacity={0.2} />
+            <Stop offset="1" stopColor="#A82C00" stopOpacity={0} />
           </LinearGradient>
 
         </Defs>
@@ -220,7 +226,7 @@ export function GlowHorizon({
           />
         ))}
 
-        <Ellipse cx={cx} cy={crown} rx={width * 0.19} ry={height * 0.032} fill="url(#gh-core)" />
+        <Ellipse cx={cx} cy={crown} rx={width * 0.13} ry={height * 0.02} fill="url(#gh-core)" />
       </Svg>
     </View>
   );
