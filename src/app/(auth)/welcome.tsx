@@ -15,7 +15,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookletPaper } from '../../components/BookletPaper';
@@ -98,7 +98,19 @@ export default function WelcomeScreen() {
           <Text style={styles.fine}>
             MTN MoMo or Orange Money — the same number you use to unlock papers.
           </Text>
-          <Text style={styles.terms}>By continuing you agree to Revl's Terms and Privacy Policy.</Text>
+          {/* Both stores require these to be reachable at sign-up, and it is a
+              poor look to claim agreement to documents nobody can open. */}
+          <Text style={styles.terms}>
+            By continuing you agree to Revl's{' '}
+            <Text style={styles.termsLink} onPress={() => Linking.openURL('https://revl.app/terms')}>
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text style={styles.termsLink} onPress={() => Linking.openURL('https://revl.app/privacy')}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
         </Animated.View>
       </View>
     </View>
@@ -162,8 +174,10 @@ const makeStyles = () =>
     terms: {
       fontFamily: fonts.regular,
       fontSize: 11,
+      lineHeight: 16,
       color: colors.textTertiary,
       textAlign: 'center',
     },
+    termsLink: { color: colors.textSecondary, textDecorationLine: 'underline' },
   });
 const styles = themedStyleSheet(makeStyles);

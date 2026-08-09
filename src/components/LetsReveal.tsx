@@ -24,10 +24,14 @@
  *    between lines, which stranded the dot at the margin for about half a
  *    second — right where the eye was already resting on it. After the first
  *    layout this is pure animation on one shared value.
+ *
+ * Reduce Motion switches the whole thing off: the first line is already
+ * written on an already-drawn rule, and the nib never appears. Screen readers
+ * get the sentence as one label rather than twelve separate letters.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -93,6 +97,22 @@ export function LetsReveal() {
 
   const advance = useCallback(() => setIndex((i) => (i + 1) % LINES.length), []);
 
+  // A looping sweep is exactly the kind of motion Reduce Motion exists to
+  // switch off. With it on, the first line is simply already written, on a rule
+  // already drawn, and the nib never appears.
+  const [stillness, setStillness] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => alive && setStillness(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setStillness);
+    return () => {
+      alive = false;
+      sub?.remove?.();
+    };
+  }, []);
+
   const onCharLayout = useCallback(
     (line: number, i: number, e: LayoutChangeEvent) => {
       const { x, width } = e.nativeEvent.layout;
@@ -113,6 +133,11 @@ export function LetsReveal() {
   useEffect(() => {
     if (index < 0) return;
     active.value = index;
+    if (stillness) {
+      // Everything the nib would have crossed, already crossed.
+      dotX.value = ends.current[index] + DOT / 2;
+      return;
+    }
     dotX.value = HOME;
     dotX.value = withDelay(
       GAP_MS,
@@ -130,15 +155,15 @@ export function LetsReveal() {
       )
     );
     return () => cancelAnimation(dotX);
-  }, [index, active, dotX, lines, advance]);
+  }, [index, active, dotX, lines, advance, stillness]);
 
   const buzz = useCallback(
     (line: number, i: number) => {
-      if (Platform.OS === 'web') return;
+      if (Platform.OS === 'web' || stillness) return;
       if (lines[line]?.[i] === ' ') return; // spaces are passed through, not written
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     },
-    [lines]
+    [lines, stillness]
   );
 
   // Count of uncovered characters on the active line. It only ever rises on
@@ -164,9 +189,18 @@ export function LetsReveal() {
   const ruleStyle = useAnimatedStyle(() => ({ width: Math.max(0, dotX.value) }));
 
   return (
-    <View style={styles.wrap}>
+    <View
+      style={styles.wrap}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={LINES[0]}>
       {lines.map((chars, line) => (
-        <View key={line} style={styles.row} pointerEvents="none">
+        <View
+          key={line}
+          style={styles.row}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
           {chars.map((ch, i) => (
             <Char
               key={`${i}-${ch}`}
@@ -186,7 +220,7 @@ export function LetsReveal() {
       {index >= 0 && (
         <>
           <Animated.View pointerEvents="none" style={[styles.rule, ruleStyle]} />
-          <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />
+          {!stillness && <Animated.View pointerEvents="none" style={[styles.dot, dotStyle]} />}
         </>
       )}
     </View>
