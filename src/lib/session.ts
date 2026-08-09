@@ -118,6 +118,20 @@ function persist() {
 AsyncStorage.getItem(KEY)
   .then((raw) => {
     if (raw) session = { ...session, ...JSON.parse(raw) };
+    /**
+     * Signed in with no profile means onboarding was started and never
+     * finished. That half state must not survive a relaunch: restored, it
+     * makes the app open straight into the middle of a wizard and the welcome
+     * screen becomes unreachable, because the router only exposes onboarding
+     * while it holds. Cold starting drops back to signed out, so the app
+     * always opens on welcome unless setup actually completed. Backgrounding
+     * does not re-hydrate, so a student who steps away mid setup keeps their
+     * place.
+     */
+    if (session.signedIn && !session.profile) {
+      session = { ...session, signedIn: false, method: null, phone: undefined, identity: undefined };
+      AsyncStorage.removeItem(KEY).catch(() => {});
+    }
     session = { ...session, hydrated: true };
     emit();
   })

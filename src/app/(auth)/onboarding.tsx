@@ -193,8 +193,11 @@ export default function OnboardingScreen() {
 
   const abandon = () => {
     setLeaving(false);
+    // No manual navigation. Clearing the session flips the router guard, which
+    // unmounts this screen and falls back to welcome on its own. Calling
+    // replace as well raced that swap and landed on a route that had just been
+    // removed, which is what produced the blank screen.
     deleteAccount();
-    router.replace('/welcome');
   };
 
   const pickDepartment = (id: string) => {
