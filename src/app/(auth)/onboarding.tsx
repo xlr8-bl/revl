@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -43,7 +44,7 @@ import {
   type Semester,
 } from '../../lib/academic';
 import { useBannerLift } from '../../lib/connectivity';
-import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
+import { AVATAR_COLORS, deleteAccount, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
 type Step = 'identity' | 'school' | 'faculty' | 'department' | 'level' | 'courses' | 'recovery' | 'done';
@@ -83,6 +84,11 @@ export default function OnboardingScreen() {
   const [carryQuery, setCarryQuery] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryPhone, setRecoveryPhone] = useState('');
+  // Validation shows on blur, not mid-keystroke: flagging "a@b" while someone
+  // is still typing the rest of it is noise, not help.
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const isMomo = method === 'momo' || method === 'orange';
   const providerLabel =
@@ -180,7 +186,16 @@ export default function OnboardingScreen() {
     if (res && !res.canceled && res.assets?.[0]) setAvatarUri(res.assets[0].uri);
   };
 
-  const back = () => (stepIndex > 0 ? setStep(stepOrder[stepIndex - 1]) : router.back());
+  // Signing in already created the account, so backing off the FIRST step
+  // abandons it half-built rather than returning anywhere useful. That one
+  // asks; every later step is just a step.
+  const back = () => (stepIndex > 0 ? setStep(stepOrder[stepIndex - 1]) : setLeaving(true));
+
+  const abandon = () => {
+    setLeaving(false);
+    deleteAccount();
+    router.replace('/welcome');
+  };
 
   const pickDepartment = (id: string) => {
     setDepartmentId(id);
@@ -264,7 +279,7 @@ export default function OnboardingScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {step === 'identity' && (
           <Animated.View key="identity" entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
               <Text style={styles.title}>{identity?.fullName ? `Hey, ${firstName || 'there'}` : "Let's start with you"}</Text>
               <Text style={styles.sub}>
                 {identity?.fullName
@@ -401,7 +416,7 @@ export default function OnboardingScreen() {
                 style={[styles.input, { marginTop: 12 }]}
               />
             )}
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 30 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12, paddingBottom: 30 }}>
               {filteredDepartments.map((d) => (
                 <Pressable
                   key={d.id}
@@ -458,7 +473,7 @@ export default function OnboardingScreen() {
                 : `Your ${semesterName(activeSemester).toLowerCase()} courses. Untick what you are not taking.`}
             </Text>
 
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 8, paddingBottom: 12 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 8, paddingBottom: 12 }}>
               {activeCourses.map((c) => {
                 const locked = school === 'hnd' && c.general;
                 const on = selectedCodes.has(c.code);
@@ -552,7 +567,7 @@ export default function OnboardingScreen() {
 
         {step === 'recovery' && (
           <Animated.View key="recovery" entering={FadeIn.duration(300)} exiting={FadeOut.duration(150)} style={{ flex: 1 }}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
               <View style={styles.recoveryShield}>
                 <Ionicons name="key-outline" size={22} color={colors.accent} />
               </View>
@@ -572,10 +587,11 @@ export default function OnboardingScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
-                style={[styles.input, recoveryEmail.trim().length > 3 && !emailOk && styles.inputError]}
+                onBlur={() => setEmailTouched(true)}
+                style={[styles.input, emailTouched && recoveryEmail.trim() !== '' && !emailOk && styles.inputError]}
               />
               <Text style={styles.recoveryHint}>
-                {recoveryEmail.trim().length > 3 && !emailOk
+                {emailTouched && recoveryEmail.trim() !== '' && !emailOk
                   ? "That doesn't look like a complete email address."
                   : emailOk
                     ? "We'll send a confirmation link there so we know it reaches you."
@@ -593,11 +609,18 @@ export default function OnboardingScreen() {
                   placeholder="6 XX XX XX XX"
                   placeholderTextColor={colors.textTertiary}
                   keyboardType="phone-pad"
-                  style={[styles.input, { flex: 1, marginTop: 0 }]}
+                  onBlur={() => setPhoneTouched(true)}
+                  style={[
+                    styles.input,
+                    { flex: 1, marginTop: 0 },
+                    phoneTouched && recoveryPhone.trim() !== '' && !phoneOk && styles.inputError,
+                  ]}
                 />
               </View>
               <Text style={styles.recoveryHint}>
-                A second number that is not this SIM — a parent's, a roommate's, your other line.
+                {phoneTouched && recoveryPhone.trim() !== '' && !phoneOk
+                  ? 'A Cameroonian number is 9 digits after +237.'
+                  : "A second number that is not this SIM — a parent's, a roommate's, your other line."}
               </Text>
             </ScrollView>
 
@@ -613,7 +636,7 @@ export default function OnboardingScreen() {
 
         {step === 'done' && (
           <Animated.View key="done" entering={FadeIn.duration(300)} style={{ flex: 1 }}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 12 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 12 }}>
               <View style={{ alignItems: 'center' }}>
                 <Avatar uri={avatarUri} useDefault color={avatarColor} initial={name.trim()[0]} size={80} ring />
                 <Text style={[styles.title, { textAlign: 'center', marginTop: 18 }]}>You're in{firstName ? `, ${firstName}` : ''}.</Text>
@@ -639,6 +662,28 @@ export default function OnboardingScreen() {
           </Animated.View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Backing out of the first step is not navigation, it is abandoning an
+          account that already exists — say so plainly and name the number, so
+          the choice is obvious rather than alarming. */}
+      <Modal visible={leaving} transparent animationType="fade" onRequestClose={() => setLeaving(false)}>
+        <View style={styles.leaveBackdrop}>
+          <View style={styles.leaveCard}>
+            <Text style={styles.leaveTitle}>Leave setup?</Text>
+            <Text style={styles.leaveBody}>
+              {isMomo
+                ? 'Your Mobile Money number is already signed in. Leaving now discards the account and nothing is saved — you can sign in again any time.'
+                : `You are signed in with ${providerLabel}. Leaving now discards the account and nothing is saved — you can sign in again any time.`}
+            </Text>
+            <Pressable onPress={abandon} style={({ pressed }) => [styles.leaveDanger, pressed && { opacity: 0.85 }]}>
+              <Text style={styles.leaveDangerText}>Discard and sign out</Text>
+            </Pressable>
+            <Pressable onPress={() => setLeaving(false)} style={({ pressed }) => [styles.leaveStay, pressed && { opacity: 0.7 }]}>
+              <Text style={styles.leaveStayText}>Keep setting up</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -669,6 +714,40 @@ const makeStyles = () => StyleSheet.create({
   title: { fontFamily: fonts.bold, fontSize: 26, color: colors.text },
   sub: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21, color: colors.textSecondary, marginTop: 8 },
   fieldLabel: { fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 22, marginBottom: 10 },
+
+  leaveBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  leaveCard: {
+    width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    padding: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+  },
+  leaveTitle: { fontFamily: fonts.bold, fontSize: 19, color: colors.text },
+  leaveBody: {
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: colors.textSecondary,
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  leaveDanger: {
+    backgroundColor: colors.danger,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  leaveDangerText: { fontFamily: fonts.medium, fontSize: 15.5, color: '#FFFFFF' },
+  leaveStay: { paddingVertical: 13, alignItems: 'center' },
+  leaveStayText: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
 
   recoveryShield: {
     width: 46,

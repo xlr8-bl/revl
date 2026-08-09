@@ -24,7 +24,8 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { AccessibilityInfo, LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, AppState, LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -98,6 +99,20 @@ export function LetsReveal() {
 
   const advance = useCallback(() => setIndex((i) => (i + 1) % LINES.length), []);
 
+  /**
+   * The loop only runs while this screen is actually in front. Pushing on to
+   * the Mobile Money screen leaves welcome mounted underneath, and without this
+   * the nib kept writing — and kept firing Heavy haptics — behind a screen
+   * nobody was looking at. Backgrounding the app stops it too.
+   */
+  const focused = useIsFocused();
+  const [foreground, setForeground] = useState(AppState.currentState === 'active');
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => setForeground(st === 'active'));
+    return () => sub.remove();
+  }, []);
+  const awake = focused && foreground;
+
   // A sweep that repeats for as long as the screen is up is exactly the motion
   // Reduce Motion exists to stop.
   const [stillness, setStillness] = useState(false);
@@ -143,10 +158,16 @@ export function LetsReveal() {
       dotX.value = here.end;
       return;
     }
+    if (!awake) {
+      cancelAnimation(dotX);
+      dotX.value = here.start;
+      return;
+    }
 
-    // Park at this line's own start. On every cycle after the first the dot is
-    // already standing there, so this is a no-op rather than a jump.
-    if (index === 0 && dotX.value === 0) dotX.value = here.start;
+    // Park at this line's own start. In the normal flow the previous cycle
+    // already walked the nib to exactly here, so this is a no-op; after a pause
+    // it is what puts the line back to its beginning.
+    dotX.value = here.start;
 
     const reposition = next.start - here.start;
     dotX.value = withDelay(
@@ -173,17 +194,17 @@ export function LetsReveal() {
       )
     );
     return () => cancelAnimation(dotX);
-  }, [index, active, dotX, sealed, lines, advance, stillness]);
+  }, [index, active, dotX, sealed, lines, advance, stillness, awake]);
 
   const buzz = useCallback(
     (line: number, i: number, writing: boolean) => {
-      if (Platform.OS === 'web' || stillness) return;
+      if (Platform.OS === 'web' || stillness || !awake) return;
       if (lines[line]?.chars[i] === ' ') return; // spaces are passed through
       Haptics.impactAsync(
         writing ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light
       ).catch(() => {});
     },
-    [lines, stillness]
+    [lines, stillness, awake]
   );
 
   // Uncovered-character count on the active line. Rising means the nib is
