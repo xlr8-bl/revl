@@ -45,7 +45,10 @@ export type Palette = {
   orange: string;
   /** Atmosphere — the warm light rising behind a page (GlowHorizon). */
   glow: string;
-  /** The lit edge of that light. Near-invisible in light, crisp in dark. */
+  /** The hot centre of that light. Real glows shift hue toward white at the
+   *  core; a single hue at varying alpha reads as a tinted wash instead. */
+  glowCore: string;
+  /** The lit edge. Brightest at the crown, gone by the screen edges. */
   glowRim: string;
 };
 
@@ -74,8 +77,9 @@ const darkColors: Palette = {
   dockTint: 'rgba(8,8,11,0.97)',
   mtn: '#FFCC08',
   orange: '#FF7900',
-  glow: '#F5852A',
-  glowRim: 'rgba(255,176,98,0.92)',
+  glow: '#F5721A',
+  glowCore: '#FFD9A0',
+  glowRim: '#FFC078',
 };
 
 /**
@@ -112,8 +116,9 @@ const lightColors: Palette = {
   // is pulled a shade off the yellow so warm light has something to be warm
   // AGAINST, and the glow itself is saturated and tighter so it stays a
   // deliberate sunrise rather than a smudge.
-  glow: '#FF8A2B',
-  glowRim: 'rgba(226,124,36,0.3)',
+  glow: '#FF7A14',
+  glowCore: '#FFCE8A',
+  glowRim: '#F0913A',
 };
 
 /* ------------------------------------------------------------------ */
