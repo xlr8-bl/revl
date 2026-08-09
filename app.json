@@ -8,9 +8,13 @@
     "scheme": "revl",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "app.revl.mobile",
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +24,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "app.revl.mobile"
     },
     "web": {
       "output": "static",
@@ -37,7 +42,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -47,6 +53,15 @@
       "router": {},
       "eas": {
         "projectId": "0a039f5e-2dc0-4dd0-b6d3-69c44e8fecb9"
+      },
+      "supabase": {
+        "url": "",
+        "publishableKey": ""
+      },
+      "google": {
+        "iosClientId": "",
+        "androidClientId": "",
+        "webClientId": ""
       }
     },
     "owner": "xlr8_bl",
