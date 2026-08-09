@@ -43,6 +43,16 @@ import Svg, {
 } from 'react-native-svg';
 import { colors, useResolvedScheme } from '../theme';
 
+/** Rim passes: widest and faintest first, ending on a thin bright core. */
+const RIM = [
+  { w: 34, o: 0.05 },
+  { w: 22, o: 0.08 },
+  { w: 13, o: 0.13 },
+  { w: 7, o: 0.22 },
+  { w: 3.4, o: 0.42 },
+  { w: 1.4, o: 0.92 },
+];
+
 export function GlowHorizon({
   width,
   height,
@@ -129,22 +139,30 @@ export function GlowHorizon({
             <Circle cx={cx} cy={cy} r={r} />
           </ClipPath>
 
-          {/* Open sky. Hot core, fast decay, hue walking down to amber. */}
+          {/* Open sky. Hot core, fast decay, hue walking white to yellow to
+              amber. More stops than look necessary: the extra ones are what
+              stop the falloff banding into visible steps. */}
           <RadialGradient id="gh-bloom" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.72)} />
-            <Stop offset="0.1" stopColor={colors.glowCore} stopOpacity={a(0.52)} />
-            <Stop offset="0.24" stopColor={colors.glow} stopOpacity={a(0.26)} />
-            <Stop offset="0.45" stopColor={colors.glow} stopOpacity={a(0.1)} />
-            <Stop offset="0.7" stopColor={colors.glow} stopOpacity={a(0.03)} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.8)} />
+            <Stop offset="0.07" stopColor="#FFF2D2" stopOpacity={a(0.66)} />
+            <Stop offset="0.15" stopColor={colors.glowCore} stopOpacity={a(0.46)} />
+            <Stop offset="0.26" stopColor="#FF9A2E" stopOpacity={a(0.28)} />
+            <Stop offset="0.42" stopColor={colors.glow} stopOpacity={a(0.14)} />
+            <Stop offset="0.6" stopColor={colors.glow} stopOpacity={a(0.06)} />
+            <Stop offset="0.8" stopColor={colors.glow} stopOpacity={a(0.02)} />
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </RadialGradient>
 
-          {/* Inside the body. Same curve, dimmer, and it never escapes the rim. */}
+          {/* Inside the body. Deliberately the SAME intensity as the bloom at
+              the crown: the inner light is clipped at the rim and the bloom is
+              not, so any mismatch shows up as a seam running along the arc. */}
           <RadialGradient id="gh-inner" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={colors.glowCore} stopOpacity={a(0.6)} />
-            <Stop offset="0.18" stopColor={colors.glow} stopOpacity={a(0.3)} />
-            <Stop offset="0.42" stopColor={colors.glow} stopOpacity={a(0.1)} />
-            <Stop offset="0.7" stopColor={colors.glow} stopOpacity={a(0.02)} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.8)} />
+            <Stop offset="0.08" stopColor={colors.glowCore} stopOpacity={a(0.5)} />
+            <Stop offset="0.2" stopColor="#FF9A2E" stopOpacity={a(0.3)} />
+            <Stop offset="0.4" stopColor={colors.glow} stopOpacity={a(0.13)} />
+            <Stop offset="0.62" stopColor={colors.glow} stopOpacity={a(0.05)} />
+            <Stop offset="0.85" stopColor={colors.glow} stopOpacity={a(0.01)} />
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </RadialGradient>
 
@@ -156,44 +174,53 @@ export function GlowHorizon({
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </RadialGradient>
 
+          {/* The span is set against the geometry, not by eye: at r = width
+              x 0.7 the arc has dropped about 82px by the time it reaches the
+              screen edge, so fading over ~82px is what makes the limb go out
+              at the edges instead of running off as a bright line. */}
           <LinearGradient
             id="gh-rim"
             x1={0}
             y1={crown}
             x2={0}
-            y2={crown + r * 0.5}
+            y2={crown + r * 0.3}
             gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={a(0.95)} />
-            <Stop offset="0.08" stopColor={colors.glowRim} stopOpacity={a(0.8)} />
-            <Stop offset="0.32" stopColor={colors.glowRim} stopOpacity={a(0.28)} />
-            <Stop offset="0.7" stopColor={colors.glow} stopOpacity={a(0.06)} />
+            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={1} />
+            <Stop offset="0.06" stopColor="#FFF0CC" stopOpacity={0.9} />
+            <Stop offset="0.16" stopColor={colors.glowRim} stopOpacity={0.62} />
+            <Stop offset="0.34" stopColor="#FF8A1F" stopOpacity={0.3} />
+            <Stop offset="0.58" stopColor={colors.glow} stopOpacity={0.1} />
             <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
           </LinearGradient>
 
-          {/* The soft half of the rim. The part that makes it emit. */}
-          <LinearGradient
-            id="gh-rim-soft"
-            x1={0}
-            y1={crown}
-            x2={0}
-            y2={crown + r * 0.42}
-            gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor={colors.glowCore} stopOpacity={a(0.34)} />
-            <Stop offset="0.3" stopColor={colors.glow} stopOpacity={a(0.14)} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
-          </LinearGradient>
         </Defs>
 
-        <Ellipse cx={cx} cy={crown} rx={width * 0.7} ry={height * 0.17} fill="url(#gh-bloom)" />
+        <Ellipse cx={cx} cy={crown} rx={width * 0.72} ry={height * 0.2} fill="url(#gh-bloom)" />
 
         <G clipPath="url(#gh-body)">
-          <Ellipse cx={cx} cy={crown} rx={width * 0.66} ry={height * 0.12} fill="url(#gh-inner)" />
+          <Ellipse cx={cx} cy={crown} rx={width * 0.7} ry={height * 0.15} fill="url(#gh-inner)" />
         </G>
 
-        <Circle cx={cx} cy={cy} r={r} fill="none" stroke="url(#gh-rim-soft)" strokeWidth={12} />
-        <Circle cx={cx} cy={cy} r={r} fill="none" stroke="url(#gh-rim)" strokeWidth={1.6} />
+        {/* The rim as a STACK, widest and faintest first. Each pass shares one
+            gradient and only differs in width and opacity, which builds a
+            falloff perpendicular to the arc. That perpendicular softness is
+            what a blur would give and what a single stroke cannot: one crisp
+            line always reads as drawn, however well it is graded along its
+            length. */}
+        {RIM.map(({ w, o }) => (
+          <Circle
+            key={w}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke="url(#gh-rim)"
+            strokeWidth={w}
+            strokeOpacity={a(o)}
+          />
+        ))}
 
-        <Ellipse cx={cx} cy={crown} rx={width * 0.17} ry={height * 0.028} fill="url(#gh-core)" />
+        <Ellipse cx={cx} cy={crown} rx={width * 0.19} ry={height * 0.032} fill="url(#gh-core)" />
       </Svg>
     </View>
   );

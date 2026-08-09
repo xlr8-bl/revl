@@ -77,9 +77,9 @@ const darkColors: Palette = {
   dockTint: 'rgba(8,8,11,0.97)',
   mtn: '#FFCC08',
   orange: '#FF7900',
-  glow: '#F5721A',
-  glowCore: '#FFD9A0',
-  glowRim: '#FFC078',
+  glow: '#FF6A0A',
+  glowCore: '#FFE7BC',
+  glowRim: '#FFC98A',
 };
 
 /**
