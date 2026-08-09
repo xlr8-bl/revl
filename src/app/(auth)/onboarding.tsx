@@ -499,6 +499,7 @@ export default function OnboardingScreen() {
                         {c.title ? c.code : 'title pending confirmation'}
                         {c.general ? ' · general paper' : ''}
                         {locked ? ' · required' : ''}
+                        {school === 'hnd' && !c.verified ? ' · pending syllabus' : ''}
                       </Text>
                     </View>
                   </Pressable>
