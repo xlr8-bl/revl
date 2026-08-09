@@ -42,6 +42,7 @@ import {
   semesterName,
   type Semester,
 } from '../../lib/academic';
+import { useBannerLift } from '../../lib/connectivity';
 import { AVATAR_COLORS, isUsernameAvailable, setProfile, useSession } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
@@ -87,6 +88,10 @@ export default function OnboardingScreen() {
   const providerLabel =
     method === 'google' ? 'Google' : method === 'apple' ? 'Apple' : method ? 'Mobile Money' : 'your account';
   const firstName = name.trim().split(' ')[0];
+
+  // Every step pins a CTA to the bottom, and the recovery step adds a skip
+  // link beneath it — lift the offline pill clear of both.
+  useBannerLift(Math.max(insets.bottom, 12) + 60 + (step === 'recovery' ? 44 : 0));
 
   const usernameRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);

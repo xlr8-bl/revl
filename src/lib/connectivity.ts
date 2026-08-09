@@ -6,7 +6,7 @@
  * background. Failure or timeout flips the app to offline; the next good
  * check flips it back.
  */
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
 const PING_URL = 'https://clients3.google.com/generate_204';
@@ -78,6 +78,39 @@ export function useBannerSuppressed(): boolean {
     () => suppressCount > 0,
     () => suppressCount > 0
   );
+}
+
+/**
+ * Banner lift — how far up the pill has to float on THIS screen.
+ *
+ * The default offset clears a tab bar, which is what most screens have under
+ * it. A screen whose own furniture reaches higher — the welcome page's sign-in
+ * block, an onboarding step's pinned CTA — declares its height here so the
+ * pill never lands on a button. Registered per component and dropped on
+ * unmount, so leaving the screen restores the default with nothing to reset.
+ */
+const lifts = new Map<object, number>();
+
+export function useBannerLift(px: number) {
+  const key = useRef<object>({}).current;
+  useEffect(() => {
+    if (lifts.get(key) === px) return;
+    lifts.set(key, px);
+    emit();
+  }, [key, px]);
+  useEffect(
+    () => () => {
+      lifts.delete(key);
+      emit();
+    },
+    [key]
+  );
+}
+
+/** The tallest declared obstruction, or 0 when the screen has none. */
+export function useBannerClearance(): number {
+  const read = () => (lifts.size ? Math.max(...lifts.values()) : 0);
+  return useSyncExternalStore((l) => (listeners.add(l), () => listeners.delete(l)), read, read);
 }
 
 /** Current connectivity — null until the first check completes. */

@@ -22,6 +22,7 @@ import { BookletPaper } from '../../components/BookletPaper';
 import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
+import { useBannerLift } from '../../lib/connectivity';
 import { signIn } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
 
@@ -44,6 +45,10 @@ export default function WelcomeScreen() {
   const onHead = (e: LayoutChangeEvent) =>
     setHeadY(e.nativeEvent.layout.y + e.nativeEvent.layout.height);
 
+  // The sign-in block reaches far higher than a tab bar, so the offline pill
+  // is told to float above it rather than landing on a button.
+  useBannerLift(footY ? Math.max(0, pageH - footY) : 0);
+
   return (
     <View style={styles.root} onLayout={(e) => setPageH(e.nativeEvent.layout.height)}>
       <BookletPaper height={pageH} rulesFrom={headY + 18} rulesTo={footY || pageH} offset={heroY} />
@@ -60,7 +65,7 @@ export default function WelcomeScreen() {
         <View onLayout={onHero}>
           <LetsReveal />
           <Animated.Text entering={FadeInDown.delay(200).duration(560)} style={styles.promise}>
-            Walk into the exam having already seen the paper.
+            Sit the exam having already seen the paper.
           </Animated.Text>
         </View>
 
@@ -96,12 +101,12 @@ export default function WelcomeScreen() {
           </Pressable>
 
           <Text style={styles.fine}>
-            MTN MoMo or Orange Money — the same number you use to unlock papers.
+            MTN MoMo or Orange Money — the same number unlocks papers.
           </Text>
           {/* Both stores require these to be reachable at sign-up, and it is a
               poor look to claim agreement to documents nobody can open. */}
           <Text style={styles.terms}>
-            By continuing you agree to Revl's{' '}
+            By continuing you accept Revl's{' '}
             <Text style={styles.termsLink} onPress={() => Linking.openURL('https://revl.app/terms')}>
               Terms
             </Text>{' '}

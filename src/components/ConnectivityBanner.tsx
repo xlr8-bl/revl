@@ -1,16 +1,19 @@
 /**
  * ConnectivityBanner — the quiet Spotify-style status pill. It floats near
- * the BOTTOM (above where the tab bar sits) so it never covers a screen's
- * title or controls. Going offline shows a persistent "You're offline"
- * pill; coming back shows "You're online" in green for a moment, then it
- * slips away. Nothing renders while undetermined or steadily online.
+ * the BOTTOM so it never covers a screen's title or controls, clearing the tab
+ * bar by default and whatever a screen declares via useBannerLift otherwise —
+ * a fixed offset put it straight through the welcome page's sign-in buttons.
+ *
+ * Going offline shows a persistent "You're offline" pill; coming back shows
+ * "You're online" in green for a moment, then it slips away. Nothing renders
+ * while undetermined or steadily online.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBannerSuppressed, useOnline } from '../lib/connectivity';
+import { useBannerClearance, useBannerSuppressed, useOnline } from '../lib/connectivity';
 import { colors, fonts, themedStyleSheet, useThemeVersion } from '../theme';
 
 export function ConnectivityBanner() {
@@ -20,6 +23,7 @@ export function ConnectivityBanner() {
   // USSD approval prompts cut data for a few seconds — screens waiting on
   // one suppress the banner so we never flash a false "You're offline".
   const suppressed = useBannerSuppressed();
+  const clearance = useBannerClearance();
   const prev = useRef<boolean | null>(null);
   const [showBack, setShowBack] = useState(false);
 
@@ -37,10 +41,13 @@ export function ConnectivityBanner() {
   const offline = online === false;
   if (suppressed || (!offline && !showBack)) return null;
 
+  // Screens that declare their own bottom furniture (a sign-in block, a pinned
+  // CTA) are cleared by measurement. Everything else gets the tab-bar default,
+  // with the inset floored so it still clears on devices reporting none.
+  const bottom = clearance > 0 ? clearance + 12 : Math.max(insets.bottom, 28) + 82;
+
   return (
-    // Floors the inset so the pill still clears a bottom-pinned CTA on the
-    // devices that report no bottom inset at all (most Android, web).
-    <View pointerEvents="none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 28) + 82 }]}>
+    <View pointerEvents="none" style={[styles.wrap, { bottom }]}>
       <Animated.View
         key={offline ? 'off' : 'on'}
         entering={FadeInDown.duration(220)}
