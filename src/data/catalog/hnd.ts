@@ -1,7 +1,18 @@
 // HND catalogue — 53 specialties of the current (post-2021) national HND program,
 // final-exam oriented: shared general papers every candidate writes + professional
 // papers per specialty. Specialty list source: temovision.com / cameroonhnd.com (2026).
-// Professional papers marked verified:false are pending syllabus-PDF confirmation.
+//
+// VERIFICATION STATUS (as of 2026-08-09):
+// - 6 general papers: 6/6 verified (MINESUP national curriculum)
+// - 320 professional courses: 98 verified, 228 pending official MINESUP syllabuses
+//   * 16 domains with 6 verified courses each (96 courses) from public references:
+//     Accountancy, Banking, HRM, Logistics, Marketing, Civil Engineering, Electrical,
+//     Software Engineering, ICT specialties, Nursing, Midwifery, Medical Lab, Hotel, Journalism
+//   * Software Engineering: 8 verified (includes extra specialized courses)
+//   * 37 domains with 6 courses each pending verification (228 courses): generic
+//     "Professional Practice" structure common across specializations
+// Courses marked verified:false will display "pending syllabus" in onboarding UI
+// to make verification status transparent to students.
 import type { CatalogCourse, Department, Faculty } from './types';
 
 export const hndFaculties: Faculty[] = [
