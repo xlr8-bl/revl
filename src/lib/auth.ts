@@ -108,12 +108,7 @@ export async function signInWithApple(): Promise<ProviderIdentity | null> {
  * resolves with the id_token, which goes straight to Supabase.
  */
 export function useGoogleSignIn() {
-  // The hook throws outright if no client id is present, and hooks cannot be
-  // called conditionally, so an inert placeholder keeps the screen mounting
-  // before credentials exist. `ready` is what actually gates prompting.
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
-    googleReady ? googleClientIds : { webClientId: 'unconfigured.apps.googleusercontent.com' }
-  );
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(googleClientIds);
 
   const exchange = async (): Promise<ProviderIdentity | null> => {
     if (!googleReady) return null;
@@ -138,6 +133,30 @@ export function useGoogleSignIn() {
 
   return { request, response, exchange, ready: googleReady };
 }
+
+/**
+ * Mounts the Google hook, and nothing else.
+ *
+ * The hook throws on sight if the client id for the CURRENT platform is
+ * missing, and it checks a different key per platform: web wants webClientId,
+ * iOS wants iosClientId. Feeding it placeholders papered over the crash on web
+ * and still took the app down on a real iPhone. Hooks cannot be called
+ * conditionally, so the only honest fix is a component boundary: this renders
+ * nothing and is mounted only when credentials actually exist, so with no
+ * project attached the hook never runs at all.
+ */
+export function GoogleAuthBridge({ bind }: { bind: GoogleExchangeRef }) {
+  const { exchange } = useGoogleSignIn();
+  // Assigned during render deliberately: it is only ever read from a press
+  // handler, and an effect would need `exchange` as a dependency, which is a
+  // fresh closure every render.
+  bind.current = exchange;
+  return null;
+}
+
+export type GoogleExchangeRef = {
+  current: null | (() => Promise<ProviderIdentity | null>);
+};
 
 /** Ends the Supabase session. The local profile is cleared by lib/session. */
 export async function signOutRemote() {

@@ -15,7 +15,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +23,8 @@ import { GlowHorizon } from '../../components/GlowHorizon';
 import { LetsReveal } from '../../components/LetsReveal';
 import { RevlLogo } from '../../components/RevlLogo';
 import { MtnCircle, OrangeCircle } from '../../components/BrandLogos';
-import { appleAvailable, signInWithApple, useGoogleSignIn } from '../../lib/auth';
+import { appleAvailable, GoogleAuthBridge, googleReady, signInWithApple } from '../../lib/auth';
+import type { GoogleExchangeRef } from '../../lib/auth';
 import { useBannerLift } from '../../lib/connectivity';
 import { signIn, signInWithIdentity } from '../../lib/session';
 import { colors, fonts, spacing, themedStyleSheet, useThemeVersion } from '../../theme';
@@ -40,7 +41,10 @@ export default function WelcomeScreen() {
 
   // Real provider sign in when a Supabase project is attached, the mock
   // identity when it is not, so the app is usable before credentials exist.
-  const google = useGoogleSignIn();
+  // The Google hook lives behind GoogleAuthBridge because it throws if the
+  // current platform's client id is missing, so it must not run at all until
+  // credentials exist.
+  const googleExchange = useRef(null) as GoogleExchangeRef;
   const [appleReady, setAppleReady] = useState(false);
   useEffect(() => {
     appleAvailable().then(setAppleReady);
@@ -55,8 +59,8 @@ export default function WelcomeScreen() {
           ? appleReady
             ? await signInWithApple()
             : null
-          : google.ready
-            ? await google.exchange()
+          : googleExchange.current
+            ? await googleExchange.current()
             : null;
       if (identity) signInWithIdentity(identity);
       else signIn(which);
@@ -79,6 +83,8 @@ export default function WelcomeScreen() {
     <View
       style={styles.root}
       onLayout={(e) => setPage({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {googleReady && <GoogleAuthBridge bind={googleExchange} />}
+
       {/* The light sits low, so its crown breaks just above the buttons. */}
       <GlowHorizon width={page.w} height={page.h} horizon={0.54} />
 
